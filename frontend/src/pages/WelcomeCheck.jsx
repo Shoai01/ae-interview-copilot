@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Card, CardContent, Stack, Button, Chip } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -12,11 +12,90 @@ import VolumeUpOutlinedIcon from '@mui/icons-material/VolumeUpOutlined';
 import WifiOutlinedIcon from '@mui/icons-material/WifiOutlined';
 import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 import SyncIcon from '@mui/icons-material/Sync';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 export default function WelcomeCheck() {
   const navigate = useNavigate();
+  const videoRef = useRef(null);
+
+  const [checks, setChecks] = useState({
+    camera: 'checking',
+    mic: 'checking',
+    speaker: 'checking', // Simplification: we'll mark this passed when audio is granted
+    network: navigator.onLine ? 'passed' : 'failed',
+    browser: 'passed' // Assuming modern browser if React is running
+  });
+
+  const [stream, setStream] = useState(null);
+
+  useEffect(() => {
+    // Network listener
+    const handleOnline = () => setChecks(prev => ({ ...prev, network: 'passed' }));
+    const handleOffline = () => setChecks(prev => ({ ...prev, network: 'failed' }));
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    let activeStream = null;
+
+    const setupMedia = async () => {
+      try {
+        activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        setStream(activeStream);
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = activeStream;
+        }
+
+        setChecks(prev => ({ 
+          ...prev, 
+          camera: 'passed', 
+          mic: 'passed', 
+          speaker: 'passed' 
+        }));
+      } catch (err) {
+        console.error("Media access error:", err);
+        setChecks(prev => ({ 
+          ...prev, 
+          camera: 'failed', 
+          mic: 'failed', 
+          speaker: 'failed' 
+        }));
+      }
+    };
+
+    setupMedia();
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  const handleStart = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    navigate('/interview');
+  };
+
+  const isReady = Object.values(checks).every(status => status === 'passed');
+  const readyCount = Object.values(checks).filter(status => status === 'passed').length;
+
+  const StatusIcon = ({ status }) => {
+    if (status === 'passed') return <CheckCircleIcon sx={{ color: '#16a34a', fontSize: '20px' }} />;
+    if (status === 'failed') return <CancelIcon sx={{ color: '#dc2626', fontSize: '20px' }} />;
+    return (
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ color: '#f59e0b' }}>
+        <Typography variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px' }}>Checking</Typography>
+        <SyncIcon sx={{ fontSize: '16px', animation: 'spin 2s linear infinite', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
+      </Stack>
+    );
+  };
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
@@ -96,62 +175,71 @@ export default function WelcomeCheck() {
 
             {/* System Check Card */}
             <Card sx={{ flex: 1, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0px 4px 20px rgba(0,0,0,0.02)', p: 1 }}>
-              <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 2, mb: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <CardContent sx={{ p: 3, '&:last-child': { pb: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
                   <Stack direction="row" alignItems="center" spacing={1.5}>
                     <FactCheckOutlinedIcon sx={{ color: '#f26522' }} />
                     <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>System Check</Typography>
                   </Stack>
-                  <Typography variant="caption" sx={{ color: '#535f74', fontWeight: 500 }}>4/5 Ready</Typography>
+                  <Typography variant="caption" sx={{ color: '#535f74', fontWeight: 500 }}>{readyCount}/5 Ready</Typography>
+                </Box>
+
+                {/* Live Video Preview Box */}
+                <Box sx={{ width: '100%', height: 160, bgcolor: '#000', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                  {!stream && (
+                    <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>Allow camera access...</Typography>
+                    </Box>
+                  )}
                 </Box>
                 
-                <Stack spacing={1}>
-                  {/* Camera */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, borderRadius: 2 }}>
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <VideocamOutlinedIcon sx={{ color: '#535f74', fontSize: '20px' }} />
+                <Stack spacing={0.5}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
+                    <Stack direction="row" alignItems="center" spacing={1.5}>
+                      <VideocamOutlinedIcon sx={{ color: '#535f74', fontSize: '18px' }} />
                       <Typography variant="body2" sx={{ color: '#0d1c2e' }}>Camera</Typography>
                     </Stack>
-                    <CheckCircleIcon sx={{ color: '#16a34a', fontSize: '20px' }} />
+                    <StatusIcon status={checks.camera} />
                   </Box>
                   
-                  {/* Microphone */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, borderRadius: 2 }}>
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <MicNoneOutlinedIcon sx={{ color: '#535f74', fontSize: '20px' }} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
+                    <Stack direction="row" alignItems="center" spacing={1.5}>
+                      <MicNoneOutlinedIcon sx={{ color: '#535f74', fontSize: '18px' }} />
                       <Typography variant="body2" sx={{ color: '#0d1c2e' }}>Microphone</Typography>
                     </Stack>
-                    <CheckCircleIcon sx={{ color: '#16a34a', fontSize: '20px' }} />
+                    <StatusIcon status={checks.mic} />
                   </Box>
                   
-                  {/* Speaker */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, borderRadius: 2, bgcolor: '#fffbeb', border: '1px solid #fef3c7' }}>
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <VolumeUpOutlinedIcon sx={{ color: '#f59e0b', fontSize: '20px' }} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
+                    <Stack direction="row" alignItems="center" spacing={1.5}>
+                      <VolumeUpOutlinedIcon sx={{ color: '#535f74', fontSize: '18px' }} />
                       <Typography variant="body2" sx={{ color: '#0d1c2e' }}>Speaker</Typography>
                     </Stack>
-                    <Stack direction="row" alignItems="center" spacing={1} sx={{ color: '#f59e0b' }}>
-                      <Typography variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px' }}>Checking</Typography>
-                      <SyncIcon sx={{ fontSize: '16px', animation: 'spin 2s linear infinite', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
-                    </Stack>
+                    <StatusIcon status={checks.speaker} />
                   </Box>
                   
-                  {/* Internet */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, borderRadius: 2 }}>
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <WifiOutlinedIcon sx={{ color: '#535f74', fontSize: '20px' }} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
+                    <Stack direction="row" alignItems="center" spacing={1.5}>
+                      <WifiOutlinedIcon sx={{ color: '#535f74', fontSize: '18px' }} />
                       <Typography variant="body2" sx={{ color: '#0d1c2e' }}>Internet</Typography>
                     </Stack>
-                    <CheckCircleIcon sx={{ color: '#16a34a', fontSize: '20px' }} />
+                    <StatusIcon status={checks.network} />
                   </Box>
                   
-                  {/* Browser */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, borderRadius: 2 }}>
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <PublicOutlinedIcon sx={{ color: '#535f74', fontSize: '20px' }} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
+                    <Stack direction="row" alignItems="center" spacing={1.5}>
+                      <PublicOutlinedIcon sx={{ color: '#535f74', fontSize: '18px' }} />
                       <Typography variant="body2" sx={{ color: '#0d1c2e' }}>Browser</Typography>
                     </Stack>
-                    <CheckCircleIcon sx={{ color: '#16a34a', fontSize: '20px' }} />
+                    <StatusIcon status={checks.browser} />
                   </Box>
                 </Stack>
               </CardContent>
@@ -163,6 +251,7 @@ export default function WelcomeCheck() {
           <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 2, gap: 1.5 }}>
             <Button 
               variant="contained" 
+              disabled={!isReady}
               sx={{ 
                 bgcolor: '#F26522', 
                 color: '#fff',
@@ -173,16 +262,19 @@ export default function WelcomeCheck() {
                 py: 1.5, 
                 borderRadius: 2,
                 boxShadow: 'none',
-                '&:hover': { bgcolor: '#d95a1e', boxShadow: 'none' }
+                '&:hover': { bgcolor: '#d95a1e', boxShadow: 'none' },
+                '&.Mui-disabled': { bgcolor: 'rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.26)' }
               }}
               endIcon={<ArrowForwardIcon />}
-              onClick={() => navigate('/interview')}
+              onClick={handleStart}
             >
               I Accept & Start Viva
             </Button>
-            <Typography variant="body2" sx={{ color: '#8d7166', fontSize: '13px' }}>
-              Button will enable once system check is complete.
-            </Typography>
+            {!isReady && (
+              <Typography variant="body2" sx={{ color: '#dc2626', fontSize: '13px', fontWeight: 500 }}>
+                Please allow camera and microphone access to proceed.
+              </Typography>
+            )}
           </Box>
 
         </Box>
