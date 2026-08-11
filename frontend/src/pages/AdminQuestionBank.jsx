@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Switch } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel } from '@mui/material';
 import Layout from '../components/Layout';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -9,13 +9,79 @@ import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
 import SignalCellularAlt2BarIcon from '@mui/icons-material/SignalCellularAlt2Bar';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { adminService } from '../services/api';
 
 export default function AdminQuestionBank() {
-  const questions = [
-    { text: 'Explain the difference between concurrent and parallel execution in Node.js.', type: 'Voice', difficulty: 'Hard', active: true },
-    { text: 'Walk me through how you would optimize a slow-performing PostgreSQL query.', type: 'Voice', difficulty: 'Medium', active: false },
-    { text: 'Describe a time you had to refactor legacy code without breaking existing functionality.', type: 'Text', difficulty: 'Medium', active: true },
-  ];
+  const [modules, setModules] = useState([]);
+  const [activeModuleId, setActiveModuleId] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Dialog State
+  const [open, setOpen] = useState(false);
+  const [newQuestion, setNewQuestion] = useState({ text: '', question_type: 'VOICE', difficulty: 'MEDIUM' });
+
+  useEffect(() => {
+    fetchModules();
+  }, []);
+
+  useEffect(() => {
+    if (activeModuleId) {
+      fetchQuestions(activeModuleId);
+    }
+  }, [activeModuleId]);
+
+  const fetchModules = async () => {
+    try {
+      const data = await adminService.getModules();
+      setModules(data);
+      if (data.length > 0) setActiveModuleId(data[0].id);
+    } catch (err) {
+      console.error("Failed to load modules:", err);
+    }
+  };
+
+  const fetchQuestions = async (moduleId) => {
+    try {
+      const data = await adminService.getQuestions(moduleId);
+      setQuestions(data);
+    } catch (err) {
+      console.error("Failed to load questions:", err);
+    }
+  };
+
+  const handleCreate = async () => {
+    try {
+      if (!newQuestion.text.trim()) return;
+      await adminService.createQuestion({ ...newQuestion, module_id: activeModuleId });
+      setOpen(false);
+      setNewQuestion({ text: '', question_type: 'VOICE', difficulty: 'MEDIUM' });
+      fetchQuestions(activeModuleId);
+    } catch (err) {
+      console.error("Failed to create question:", err);
+    }
+  };
+
+  const handleToggle = async (questionId) => {
+    try {
+      await adminService.toggleQuestionStatus(questionId);
+      // Optimistic update
+      setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, is_active: !q.is_active } : q));
+    } catch (err) {
+      console.error("Failed to toggle status:", err);
+    }
+  };
+
+  const handleDelete = async (questionId) => {
+    try {
+      await adminService.deleteQuestion(questionId);
+      setQuestions(prev => prev.filter(q => q.id !== questionId));
+    } catch (err) {
+      console.error("Failed to delete question:", err);
+    }
+  };
+
+  const filteredQuestions = questions.filter(q => q.text.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <Layout>
@@ -27,22 +93,42 @@ export default function AdminQuestionBank() {
             <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>Question Bank</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>Manage AI assessment scenarios and evaluation criteria.</Typography>
           </Box>
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} sx={{ boxShadow: 'none', borderRadius: 2 }}>
+          <Button variant="contained" color="primary" startIcon={<AddIcon />} sx={{ boxShadow: 'none', borderRadius: 2 }} onClick={() => setOpen(true)}>
             Add Question
           </Button>
         </Box>
 
         {/* Module Tabs */}
         <Box sx={{ display: 'flex', gap: 3, borderBottom: '1px solid', borderColor: 'divider', px: 1 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ py: 1, cursor: 'pointer', '&:hover': { color: 'text.primary' } }}>Foundation</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ py: 1, cursor: 'pointer', '&:hover': { color: 'text.primary' } }}>Intermediate</Typography>
-          <Typography variant="body2" color="primary.main" sx={{ py: 1, cursor: 'pointer', fontWeight: 600, borderBottom: '2px solid', borderColor: 'primary.main' }}>Developer</Typography>
+          {modules.map(mod => (
+            <Typography 
+              key={mod.id}
+              onClick={() => setActiveModuleId(mod.id)}
+              variant="body2" 
+              sx={{ 
+                py: 1, 
+                cursor: 'pointer', 
+                color: activeModuleId === mod.id ? 'primary.main' : 'text.secondary',
+                fontWeight: activeModuleId === mod.id ? 600 : 400, 
+                borderBottom: activeModuleId === mod.id ? '2px solid' : 'none', 
+                borderColor: 'primary.main',
+                '&:hover': { color: 'text.primary' } 
+              }}
+            >
+              {mod.name}
+            </Typography>
+          ))}
         </Box>
 
         {/* Search Bar */}
         <Paper elevation={0} sx={{ display: 'flex', alignItems: 'center', p: 0.5, border: '1px solid', borderColor: 'divider', borderRadius: 2, maxWidth: 400 }}>
           <SearchIcon sx={{ color: 'text.secondary', ml: 1 }} />
-          <InputBase placeholder="Search questions..." sx={{ ml: 1, flex: 1, fontSize: 14 }} />
+          <InputBase 
+            placeholder="Search questions..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            sx={{ ml: 1, flex: 1, fontSize: 14 }} 
+          />
         </Paper>
 
         {/* Data Table */}
@@ -58,35 +144,38 @@ export default function AdminQuestionBank() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {questions.map((q, idx) => (
-                <TableRow key={idx} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+              {filteredQuestions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
+                    <Typography color="text.secondary">No questions found.</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : filteredQuestions.map((q) => (
+                <TableRow key={q.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                   <TableCell sx={{ maxWidth: 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {q.text}
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, bgcolor: 'rgba(0,0,0,0.04)', px: 1, py: 0.5, borderRadius: 4 }}>
-                      {q.type === 'Voice' ? <MicIcon sx={{ fontSize: 14, color: 'text.secondary' }} /> : <ChatIcon sx={{ fontSize: 14, color: 'text.secondary' }} />}
-                      <Typography variant="caption" color="text.secondary" fontWeight={500}>{q.type}</Typography>
+                      {q.question_type === 'VOICE' ? <MicIcon sx={{ fontSize: 14, color: 'text.secondary' }} /> : <ChatIcon sx={{ fontSize: 14, color: 'text.secondary' }} />}
+                      <Typography variant="caption" color="text.secondary" fontWeight={500}>{q.question_type}</Typography>
                     </Box>
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-                      {q.difficulty === 'Hard' ? (
+                      {q.difficulty === 'HARD' ? (
                         <SignalCellularAltIcon sx={{ fontSize: 16, color: 'error.main' }} />
                       ) : (
                         <SignalCellularAlt2BarIcon sx={{ fontSize: 16, color: 'primary.main' }} />
                       )}
-                      <Typography variant="caption" sx={{ color: q.difficulty === 'Hard' ? 'error.main' : 'primary.main', fontWeight: 600 }}>{q.difficulty}</Typography>
+                      <Typography variant="caption" sx={{ color: q.difficulty === 'HARD' ? 'error.main' : 'primary.main', fontWeight: 600 }}>{q.difficulty}</Typography>
                     </Box>
                   </TableCell>
                   <TableCell align="center">
-                    <Switch checked={q.active} size="small" color="primary" />
+                    <Switch checked={q.is_active} onChange={() => handleToggle(q.id)} size="small" color="primary" />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main' } }}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}>
+                    <IconButton size="small" onClick={() => handleDelete(q.id)} sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -97,6 +186,54 @@ export default function AdminQuestionBank() {
         </TableContainer>
 
       </Box>
+
+      {/* Add Question Dialog */}
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>Add New Question</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
+            <TextField 
+              label="Question Text" 
+              multiline 
+              rows={3} 
+              fullWidth 
+              value={newQuestion.text}
+              onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
+            />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Type</InputLabel>
+                <Select
+                  value={newQuestion.question_type}
+                  label="Type"
+                  onChange={(e) => setNewQuestion({ ...newQuestion, question_type: e.target.value })}
+                >
+                  <MenuItem value="VOICE">VOICE</MenuItem>
+                  <MenuItem value="TEXT">TEXT</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Difficulty</InputLabel>
+                <Select
+                  value={newQuestion.difficulty}
+                  label="Difficulty"
+                  onChange={(e) => setNewQuestion({ ...newQuestion, difficulty: e.target.value })}
+                >
+                  <MenuItem value="EASY">EASY</MenuItem>
+                  <MenuItem value="MEDIUM">MEDIUM</MenuItem>
+                  <MenuItem value="HARD">HARD</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setOpen(false)} color="inherit">Cancel</Button>
+          <Button onClick={handleCreate} variant="contained" color="primary" disabled={!newQuestion.text.trim()}>
+            Save Question
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Layout>
   );
 }

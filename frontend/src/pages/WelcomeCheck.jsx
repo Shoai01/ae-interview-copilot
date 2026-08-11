@@ -15,6 +15,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SyncIcon from '@mui/icons-material/Sync';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { vivaService } from '../services/api';
+import { globalState } from '../store';
 
 export default function WelcomeCheck() {
   const navigate = useNavigate();
@@ -29,8 +31,25 @@ export default function WelcomeCheck() {
   });
 
   const [stream, setStream] = useState(null);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [traineeName, setTraineeName] = useState("Loading...");
 
   useEffect(() => {
+    // Fetch Trainee (Dummy Trainee ID 1 for now)
+    const fetchTrainee = async () => {
+      try {
+        const trainee = await vivaService.getTrainee(1);
+        if (trainee && trainee.name) {
+          setTraineeName(trainee.name);
+        } else {
+          setTraineeName("Candidate");
+        }
+      } catch (err) {
+        console.error("Failed to fetch trainee:", err);
+        setTraineeName("Candidate");
+      }
+    };
+    fetchTrainee();
     // Network listener
     const handleOnline = () => setChecks(prev => ({ ...prev, network: 'passed' }));
     const handleOffline = () => setChecks(prev => ({ ...prev, network: 'failed' }));
@@ -41,7 +60,10 @@ export default function WelcomeCheck() {
 
     const setupMedia = async () => {
       try {
-        activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (!globalState.mediaStream) {
+          globalState.mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        }
+        activeStream = globalState.mediaStream;
         setStream(activeStream);
         
         if (videoRef.current) {
@@ -70,17 +92,23 @@ export default function WelcomeCheck() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      if (activeStream) {
-        activeStream.getTracks().forEach(track => track.stop());
-      }
+      // We intentionally do NOT stop the stream here so it persists to the Interview page
     };
   }, []);
 
-  const handleStart = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+  const handleStart = async () => {
+    try {
+      setIsCreatingSession(true);
+      // Create session for dummy trainee (1) and module (1) as per user request
+      const session = await vivaService.createSession(1, 1);
+      
+      // We explicitly do NOT stop the stream here anymore
+      
+      navigate('/interview', { state: { sessionId: session.id } });
+    } catch (err) {
+      console.error("Failed to create session:", err);
+      setIsCreatingSession(false);
     }
-    navigate('/interview');
   };
 
   const isReady = Object.values(checks).every(status => status === 'passed');
@@ -127,7 +155,7 @@ export default function WelcomeCheck() {
               }} 
             />
             <Typography variant="h2" sx={{ fontWeight: 700, fontSize: { xs: '32px', md: '48px' }, mb: 1, color: '#0d1c2e' }}>
-              Welcome, Rahul
+              Welcome, {traineeName}
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ fontSize: '18px' }}>
               Let's get you ready for your AI-powered evaluation.
