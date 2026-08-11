@@ -52,6 +52,10 @@ export const vivaService = {
   getTrainee: async (traineeId) => {
     const response = await api.get(`/viva/trainees/${traineeId}`);
     return response.data;
+  },
+  getSessionSummary: async (sessionId) => {
+    const response = await api.get(`/viva/${sessionId}/summary`);
+    return response.data;
   }
 };
 

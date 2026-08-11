@@ -35,3 +35,10 @@ def submit_answer(session_id: int, answer_data: viva_schemas.AnswerSubmit, db: S
         raise HTTPException(status_code=404, detail="Question not found in session")
     return {"status": "success"}
 
+
+@router.get("/{session_id}/summary", response_model=viva_schemas.SessionSummaryResponse)
+def get_session_summary_route(session_id: int, db: Session = Depends(get_db)):
+    summary = viva_service.get_session_summary(db, session_id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return summary

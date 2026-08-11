@@ -1,8 +1,63 @@
-import React from 'react';
-import { Box, Typography, Card, CardContent, Divider, Stack } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, Card, CardContent, Divider, CircularProgress } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { vivaService } from '../services/api';
 
 export default function VivaComplete() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const sessionId = location.state?.sessionId;
+  
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!sessionId) {
+      navigate('/');
+      return;
+    }
+
+    const fetchSummary = async () => {
+      try {
+        setLoading(true);
+        const data = await vivaService.getSessionSummary(sessionId);
+        setSummary(data);
+      } catch (err) {
+        console.error("Failed to fetch session summary:", err);
+        setError("Could not load session details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSummary();
+  }, [sessionId, navigate]);
+
+  const formatDuration = (seconds) => {
+    if (!seconds && seconds !== 0) return '0m 0s';
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}m ${s}s`;
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default', p: 2 }}>
       
@@ -34,7 +89,7 @@ export default function VivaComplete() {
                 Duration
               </Typography>
               <Typography variant="h3" sx={{ color: 'text.primary', textAlign: 'center' }}>
-                18m 24s
+                {summary ? formatDuration(summary.duration_seconds) : 'N/A'}
               </Typography>
             </Box>
             
@@ -43,7 +98,7 @@ export default function VivaComplete() {
                 Questions
               </Typography>
               <Typography variant="h3" sx={{ color: 'text.primary', textAlign: 'center' }}>
-                10/10
+                {summary ? `${summary.questions_answered}/${summary.total_questions}` : 'N/A'}
               </Typography>
             </Box>
           </Box>

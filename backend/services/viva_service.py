@@ -100,3 +100,33 @@ def submit_answer(db: Session, session_id: int, answer_data: viva_schemas.Answer
         db.commit()
         return True
     return False
+
+def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSummaryResponse:
+    session = db.query(domain.VivaSession).filter(domain.VivaSession.id == session_id).first()
+    if not session:
+        return None
+        
+    total_questions = db.query(domain.QuestionBank).filter(
+        domain.QuestionBank.module_id == session.module_id,
+        domain.QuestionBank.is_active == True
+    ).count()
+    
+    answered_questions = [q for q in session.questions if q.answered_at is not None]
+    questions_answered = len(answered_questions)
+    
+    last_answer_time = max([q.answered_at for q in answered_questions], default=session.start_time) if answered_questions else session.start_time
+    
+    if session.end_time is None and questions_answered > 0 and questions_answered == total_questions:
+        session.end_time = last_answer_time
+        session.status = domain.SessionStatus.COMPLETED
+        db.commit()
+        
+    end_time_to_use = session.end_time if session.end_time else last_answer_time
+    duration_seconds = int((end_time_to_use - session.start_time).total_seconds())
+
+    return viva_schemas.SessionSummaryResponse(
+        session_id=session.id,
+        duration_seconds=duration_seconds,
+        questions_answered=questions_answered,
+        total_questions=total_questions
+    )

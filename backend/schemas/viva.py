@@ -32,3 +32,11 @@ class TraineeResponse(BaseModel):
 class AnswerSubmit(BaseModel):
     viva_question_id: int
     transcript: str
+
+class SessionSummaryResponse(BaseModel):
+    session_id: int
+    duration_seconds: int
+    questions_answered: int
+    total_questions: int
+    
+    model_config = ConfigDict(from_attributes=True)

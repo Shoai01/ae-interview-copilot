@@ -87,7 +87,7 @@ export default function VivaInProgress() {
           globalState.mediaStream.getTracks().forEach(track => track.stop());
           globalState.mediaStream = null;
         }
-        navigate('/complete');
+        navigate('/complete', { state: { sessionId } });
       } else {
         fetchQuestion();
       }
