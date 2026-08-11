@@ -4,6 +4,8 @@ import WelcomeCheck from './pages/WelcomeCheck';
 import VivaInProgress from './pages/VivaInProgress';
 import VivaComplete from './pages/VivaComplete';
 import TrainerDashboard from './pages/TrainerDashboard';
+import TrainerReviewDetail from './pages/TrainerReviewDetail';
+import AdminQuestionBank from './pages/AdminQuestionBank';
 
 function App() {
   return (
@@ -12,8 +14,10 @@ function App() {
         <Route path="/" element={<WelcomeCheck />} />
         <Route path="/interview" element={<VivaInProgress />} />
         <Route path="/complete" element={<VivaComplete />} />
-        {/* We will route the dashboard to /hr/dashboard for now */}
+        {/* Trainer / HR Flows */}
         <Route path="/hr/dashboard" element={<TrainerDashboard />} />
+        <Route path="/hr/review/:id" element={<TrainerReviewDetail />} />
+        <Route path="/hr/questions" element={<AdminQuestionBank />} />
       </Routes>
     </BrowserRouter>
   );

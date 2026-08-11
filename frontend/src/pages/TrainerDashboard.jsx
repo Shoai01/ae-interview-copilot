@@ -1,75 +1,141 @@
 import React from 'react';
+import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack } from '@mui/material';
 import Layout from '../components/Layout';
-import { Box, Card, CardContent, Typography, Button, Grid, Chip, Stack } from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningIcon from '@mui/icons-material/Warning';
+import CancelIcon from '@mui/icons-material/Cancel';
+import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import { useNavigate } from 'react-router-dom';
 
-function TrainerDashboard() {
+export default function TrainerDashboard() {
+  const navigate = useNavigate();
+
+  const sessions = [
+    { name: 'Eleanor Pena', id: 'EMP-9021', module: 'Sales Obj. Handling', rec: 'Pass', status: 'Pending Review', date: 'Oct 24, 2023' },
+    { name: 'Cameron Williamson', id: 'EMP-8832', module: 'Cust. Support Esc.', rec: 'Borderline', status: 'Pending Review', date: 'Oct 24, 2023' },
+    { name: 'Jerome Bell', id: 'EMP-7104', module: 'Compliance Audit Q3', rec: 'Fail', status: 'Reviewed', date: 'Oct 23, 2023' },
+  ];
+
   return (
     <Layout>
-      <Box sx={{ pb: 4 }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} spacing={2} sx={{ mb: 4 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        
+        {/* Page Header & Filters */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
           <Box>
-            <Typography variant="h2" gutterBottom>Trainer Review Dashboard</Typography>
-            <Typography variant="body1" color="text.secondary">Welcome back. Here is the latest overview of candidate interviews.</Typography>
+            <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', fontFamily: 'Syne, sans-serif', mb: 0.5 }}>
+              Viva Sessions
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Review AI evaluations and finalize trainee outcomes.
+            </Typography>
           </Box>
-          <Button variant="contained" color="primary" startIcon={<PlayArrowIcon />}>
-            Start New Viva
-          </Button>
-        </Stack>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Select size="small" defaultValue="" displayEmpty sx={{ minWidth: 180, bgcolor: 'background.paper', borderRadius: 2 }}>
+              <MenuItem value="" disabled>Filter by Module</MenuItem>
+              <MenuItem value="sales">Sales Objection Handling</MenuItem>
+              <MenuItem value="support">Customer Support Esc.</MenuItem>
+              <MenuItem value="compliance">Compliance Audit Q3</MenuItem>
+            </Select>
+            <Select size="small" defaultValue="" displayEmpty sx={{ minWidth: 140, bgcolor: 'background.paper', borderRadius: 2 }}>
+              <MenuItem value="" disabled>Status</MenuItem>
+              <MenuItem value="pending">Pending Review</MenuItem>
+              <MenuItem value="reviewed">Reviewed</MenuItem>
+            </Select>
+          </Box>
+        </Box>
 
-        <Grid container spacing={3}>
-          {/* Stats Cards */}
-          {['Total Interviews', 'Pending Reviews', 'Completed Today'].map((stat, i) => (
-            <Grid item xs={12} sm={4} key={i}>
-              <Card>
-                <CardContent>
-                  <Typography variant="overline" color="text.secondary">{stat}</Typography>
-                  <Typography variant="h3" sx={{ mt: 1 }}>
-                    {i === 0 ? '124' : i === 1 ? '12' : '8'}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-
-          {/* Recent Candidates List */}
-          <Grid item xs={12}>
-            <Typography variant="h4" sx={{ mb: 2, mt: 4 }}>Recent Candidates</Typography>
-            <Card>
-              <CardContent>
-                <Stack spacing={2}>
-                  {[
-                    { name: 'Sarah Jenkins', role: 'Senior React Developer', status: 'Completed', score: 85 },
-                    { name: 'Michael Chen', role: 'Backend Engineer', status: 'In Review', score: '--' },
-                    { name: 'Amanda Torres', role: 'UI/UX Designer', status: 'Scheduled', score: '--' },
-                  ].map((candidate, i) => (
-                    <Box key={i} sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, gap: 2 }}>
-                      <Box>
-                        <Typography variant="h6">{candidate.name}</Typography>
-                        <Typography variant="body2" color="text.secondary">{candidate.role}</Typography>
-                      </Box>
-                      <Stack direction="row" spacing={2} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: 'space-between' }}>
-                        <Chip 
-                          label={candidate.status} 
-                          size="small"
-                          sx={{ 
-                            bgcolor: candidate.status === 'Completed' ? 'primary.light' : 'background.default',
-                            color: candidate.status === 'Completed' ? 'primary.dark' : 'text.secondary',
-                          }} 
-                        />
-                        <Typography variant="h6" sx={{ minWidth: 40, textAlign: 'right' }}>{candidate.score}</Typography>
-                        <Button variant="outlined" size="small" color="secondary">View Details</Button>
-                      </Stack>
+        {/* Data Table */}
+        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden' }}>
+          <Table sx={{ minWidth: 800 }} aria-label="sessions table">
+            <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+              <TableRow>
+                <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Trainee Name</TableCell>
+                <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Employee ID</TableCell>
+                <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Module</TableCell>
+                <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>AI Rec.</TableCell>
+                <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Status</TableCell>
+                <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Date</TableCell>
+                <TableCell align="right" sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {sessions.map((row) => (
+                <TableRow 
+                  key={row.id} 
+                  hover 
+                  sx={{ 
+                    '&:last-child td, &:last-child th': { border: 0 },
+                    '&:hover .action-btn': { opacity: 1 } 
+                  }}
+                >
+                  <TableCell sx={{ fontWeight: 500 }}>{row.name}</TableCell>
+                  <TableCell color="text.secondary">{row.id}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'inline-flex', px: 1, py: 0.5, bgcolor: '#F1F5F9', borderRadius: 1, fontSize: '12px', fontWeight: 500, color: '#3c475b' }}>
+                      {row.module}
                     </Box>
-                  ))}
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      {row.rec === 'Pass' && <CheckCircleIcon sx={{ fontSize: 18, color: '#059669' }} />}
+                      {row.rec === 'Borderline' && <WarningIcon sx={{ fontSize: 18, color: '#d97706' }} />}
+                      {row.rec === 'Fail' && <CancelIcon sx={{ fontSize: 18, color: '#dc2626' }} />}
+                      <Typography variant="body2" sx={{ fontWeight: 500, color: row.rec === 'Pass' ? '#059669' : row.rec === 'Borderline' ? '#d97706' : '#dc2626' }}>
+                        {row.rec}
+                      </Typography>
+                    </Stack>
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={row.status} 
+                      size="small" 
+                      variant="outlined"
+                      sx={{ 
+                        height: 24, 
+                        fontSize: '12px',
+                        bgcolor: row.status === 'Reviewed' ? 'rgba(0,0,0,0.04)' : 'transparent',
+                        borderColor: row.status === 'Reviewed' ? 'transparent' : 'divider',
+                        color: 'text.secondary'
+                      }} 
+                    />
+                  </TableCell>
+                  <TableCell sx={{ color: 'text.secondary' }}>{row.date}</TableCell>
+                  <TableCell align="right">
+                    <Button 
+                      className="action-btn"
+                      variant="contained" 
+                      color="primary" 
+                      size="small"
+                      onClick={() => navigate(`/hr/review/${row.id}`)}
+                      sx={{ opacity: 0, transition: 'opacity 0.2s', boxShadow: 'none' }}
+                    >
+                      Review
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          
+          {/* Pagination Footer */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'rgba(0,0,0,0.01)' }}>
+            <Typography variant="body2" color="text.secondary">
+              Showing 1 to 3 of 24 entries
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button disabled size="small" sx={{ minWidth: 'auto', p: 0.5, color: 'text.secondary' }}>
+                <KeyboardArrowLeftIcon />
+              </Button>
+              <Button size="small" sx={{ minWidth: 'auto', p: 0.5, color: 'text.secondary' }}>
+                <KeyboardArrowRightIcon />
+              </Button>
+            </Box>
+          </Box>
+        </TableContainer>
+
       </Box>
     </Layout>
   );
 }
-
-export default TrainerDashboard;
