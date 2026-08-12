@@ -56,6 +56,18 @@ export const vivaService = {
   getSessionSummary: async (sessionId) => {
     const response = await api.get(`/viva/${sessionId}/summary`);
     return response.data;
+  },
+  evaluateSession: async (sessionId) => {
+    const response = await api.post(`/viva/${sessionId}/evaluate`);
+    return response.data;
+  },
+  getSessionReport: async (sessionId) => {
+    const response = await api.get(`/viva/${sessionId}/report`);
+    return response.data;
+  },
+  getAllSessions: async () => {
+    const response = await api.get('/viva');
+    return response.data;
   }
 };
 

@@ -42,3 +42,23 @@ def get_session_summary_route(session_id: int, db: Session = Depends(get_db)):
     if not summary:
         raise HTTPException(status_code=404, detail="Session not found")
     return summary
+
+from typing import List
+
+@router.get("", response_model=List[viva_schemas.SessionListItem])
+def list_sessions(db: Session = Depends(get_db)):
+    return viva_service.get_all_sessions(db)
+
+@router.post("/{session_id}/evaluate", status_code=status.HTTP_200_OK)
+def evaluate_session_route(session_id: int, db: Session = Depends(get_db)):
+    success = viva_service.evaluate_session(db, session_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"status": "Evaluation completed"}
+
+@router.get("/{session_id}/report", response_model=viva_schemas.SessionFullReportResponse)
+def get_session_report_route(session_id: int, db: Session = Depends(get_db)):
+    report = viva_service.get_session_report(db, session_id)
+    if not report:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return report

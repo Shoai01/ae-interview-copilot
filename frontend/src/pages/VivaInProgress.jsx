@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Typography, IconButton, Paper, Button, TextField } from '@mui/material';
+import { Box, Typography, IconButton, Paper, Button, TextField, CircularProgress } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CodeIcon from '@mui/icons-material/Code';
 import TimerIcon from '@mui/icons-material/Timer';
 import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import SendIcon from '@mui/icons-material/Send';
 import { vivaService } from '../services/api';
 import { globalState } from '../store';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
@@ -19,9 +21,11 @@ export default function VivaInProgress() {
 
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const { 
     isRecording, 
+    isConnecting,
     liveText, 
     finalText, 
     setFinalText, 
@@ -31,6 +35,10 @@ export default function VivaInProgress() {
   } = useSpeechRecognition();
   
   const { speakQuestion, cancelSpeech } = useSpeechSynthesis();
+
+  // Compute the display value for the text field.
+  // Show finalText, and append liveText (greyed-out interim) separately.
+  const displayValue = finalText + (liveText ? (finalText ? ' ' : '') + liveText : '');
 
   const fetchQuestion = async () => {
     try {
@@ -68,18 +76,25 @@ export default function VivaInProgress() {
   }, [currentQuestion, loading, speakQuestion]);
 
   const handleNextAction = async () => {
-    if (!currentQuestion) return;
+    if (!currentQuestion || submitting) return;
     
-    // Stop recording if user clicked next while still recording
-    if (isRecording) {
-      stopRecording();
-    }
+    setSubmitting(true);
     cancelSpeech();
 
     try {
-      setLoading(true);
-      // Combine finalized text and any lingering live text
-      const transcriptToSubmit = (finalText + (liveText ? ' ' + liveText : '')).trim() || "(No answer provided)";
+      // If still recording, stop and wait for it to fully close
+      if (isRecording) {
+        await stopRecording();
+      }
+
+      // Small delay to let React flush the final state from stopRecording
+      await new Promise(r => setTimeout(r, 100));
+
+      // Build the transcript from the DOM text field as the source of truth
+      // This ensures any user edits are captured
+      const textField = document.getElementById('transcript-field');
+      const transcriptToSubmit = (textField?.value || displayValue || '').trim() || "(No answer provided)";
+      
       await vivaService.submitAnswer(sessionId, currentQuestion.viva_question_id, transcriptToSubmit);
       
       if (currentQuestion.is_last_question) {
@@ -87,13 +102,16 @@ export default function VivaInProgress() {
           globalState.mediaStream.getTracks().forEach(track => track.stop());
           globalState.mediaStream = null;
         }
+        // Trigger AI evaluation in the background before navigating
+        vivaService.evaluateSession(sessionId).catch(e => console.error("Evaluation failed", e));
         navigate('/complete', { state: { sessionId } });
       } else {
         fetchQuestion();
       }
     } catch (err) {
       console.error("Failed to submit answer:", err);
-      setLoading(false);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -180,14 +198,18 @@ export default function VivaInProgress() {
           <IconButton 
             color={isRecording ? "error" : "primary"} 
             onClick={toggleRecording}
+            disabled={isConnecting || submitting}
             sx={{ 
               width: 96, 
               height: 96, 
-              bgcolor: isRecording ? 'error.light' : 'primary.light', 
-              color: isRecording ? 'error.dark' : 'primary.dark',
+              bgcolor: isRecording ? 'error.light' : (isConnecting ? 'grey.300' : 'primary.light'), 
+              color: isRecording ? 'error.dark' : (isConnecting ? 'grey.500' : 'primary.dark'),
               boxShadow: 2,
               mb: 4,
-              '&:hover': { bgcolor: isRecording ? 'error.main' : 'primary.main', color: 'white' },
+              '&:hover': { 
+                bgcolor: isConnecting ? 'grey.300' : (isRecording ? 'error.main' : 'primary.main'), 
+                color: isConnecting ? 'grey.500' : 'white' 
+              },
               animation: isRecording ? 'pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite' : 'none',
               '@keyframes pulse-ring': {
                 '0%': { transform: 'scale(0.95)', boxShadow: '0 0 0 0 rgba(242, 101, 34, 0.7)' },
@@ -201,27 +223,32 @@ export default function VivaInProgress() {
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 500, fontSize: '12px', mb: 2 }}>
             <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: isRecording ? 'error.main' : 'primary.main', animation: isRecording ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none' }} />
-            {isRecording ? "Live Transcribing with Deepgram..." : "Click Mic to Answer"}
+            {isConnecting ? "Connecting to AI..." : (isRecording ? "Live Transcribing with Deepgram..." : "Click Mic to Answer")}
           </Box>
 
           <Paper elevation={0} sx={{ 
             width: '100%', 
             p: 1, 
             borderRadius: 3, 
-            border: '1px solid rgba(0,0,0,0.08)', 
+            border: isRecording ? '1px solid rgba(242, 101, 34, 0.3)' : '1px solid rgba(0,0,0,0.08)', 
             bgcolor: 'rgba(255,255,255,0.8)',
             backdropFilter: 'blur(8px)',
-            position: 'relative'
+            position: 'relative',
+            transition: 'border-color 0.3s ease'
           }}>
             <TextField
+              id="transcript-field"
               fullWidth
               multiline
               minRows={3}
               maxRows={8}
               variant="outlined"
               placeholder="Your answer will magically appear here..."
-              value={finalText + (liveText ? (finalText ? ' ' : '') + liveText : '')}
-              onChange={(e) => setFinalText(e.target.value)}
+              value={displayValue}
+              onChange={(e) => {
+                // When user edits, treat it all as finalText and clear liveText
+                setFinalText(e.target.value);
+              }}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   fontSize: '18px',
@@ -231,18 +258,37 @@ export default function VivaInProgress() {
                 }
               }}
             />
+            {isRecording && liveText && (
+              <Box sx={{ 
+                position: 'absolute', 
+                bottom: 8, 
+                right: 12, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 0.5 
+              }}>
+                <Box sx={{ 
+                  width: 6, height: 6, borderRadius: '50%', bgcolor: 'error.main',
+                  animation: 'pulse 1.5s infinite'
+                }} />
+                <Typography variant="caption" sx={{ color: 'text.disabled', fontSize: '11px' }}>
+                  listening...
+                </Typography>
+              </Box>
+            )}
           </Paper>
 
-          <Box sx={{ mt: 4, width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ mt: 4, width: '100%', display: 'flex', justifyContent: 'center', gap: 2 }}>
             <Button 
               variant="contained" 
               color="primary" 
               size="large"
               sx={{ px: 4, py: 1.5, fontSize: '16px', fontWeight: 600, borderRadius: 2, boxShadow: 'none' }}
               onClick={handleNextAction}
-              disabled={loading || !currentQuestion || isRecording}
+              disabled={loading || !currentQuestion || submitting}
+              startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : (currentQuestion?.is_last_question ? <SendIcon /> : <NavigateNextIcon />)}
             >
-              {currentQuestion?.is_last_question ? 'Submit Interview' : 'Next Question'}
+              {submitting ? 'Submitting...' : (currentQuestion?.is_last_question ? 'Submit Interview' : 'Next Question')}
             </Button>
           </Box>
         </Box>

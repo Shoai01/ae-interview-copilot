@@ -130,3 +130,113 @@ def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSum
         questions_answered=questions_answered,
         total_questions=total_questions
     )
+
+from ai import evaluator as ai_service
+
+def evaluate_session(db: Session, session_id: int):
+    session = db.query(domain.VivaSession).filter(domain.VivaSession.id == session_id).first()
+    if not session:
+        return False
+        
+    # Prepare data for AI
+    questions_data = []
+    for q in session.questions:
+        if q.answered_at and q.transcript:
+            questions_data.append({
+                'viva_question_id': q.id,
+                'question_text': q.question_bank.text,
+                'transcript': q.transcript
+            })
+            
+    # Call AI Service
+    eval_result = ai_service.evaluate_interview_session(questions_data)
+    
+    # Save Question Evaluations
+    for q_eval in eval_result.question_evaluations:
+        db_eval = domain.Evaluation(
+            viva_question_id=q_eval.viva_question_id,
+            score_communication=q_eval.score_communication,
+            score_technical=q_eval.score_technical,
+            score_confidence=q_eval.score_confidence,
+            ai_feedback=q_eval.ai_feedback
+        )
+        db.add(db_eval)
+        
+    # Save Report
+    db_report = domain.VivaReport(
+        session_id=session.id,
+        aggregate_score=eval_result.aggregate_score,
+        ai_recommendation=eval_result.ai_recommendation,
+        strengths=eval_result.strengths,
+        areas_of_improvement=eval_result.areas_of_improvement
+    )
+    db.add(db_report)
+    db.commit()
+    return True
+
+def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFullReportResponse:
+    session = db.query(domain.VivaSession).filter(domain.VivaSession.id == session_id).first()
+    if not session:
+        return None
+        
+    summary = get_session_summary(db, session_id)
+    
+    questions = []
+    for q in session.questions:
+        eval_data = None
+        if q.evaluation:
+            eval_data = {
+                "score_communication": q.evaluation.score_communication,
+                "score_technical": q.evaluation.score_technical,
+                "score_confidence": q.evaluation.score_confidence,
+                "ai_feedback": q.evaluation.ai_feedback,
+            }
+        
+        questions.append({
+            "viva_question_id": q.id,
+            "question_order": q.question_order,
+            "text": q.question_bank.text,
+            "transcript": q.transcript,
+            "duration": int((q.answered_at - q.asked_at).total_seconds()) if q.answered_at and q.asked_at else 0,
+            "evaluation": eval_data
+        })
+        
+    report_data = None
+    if session.report:
+        report_data = {
+            "aggregate_score": session.report.aggregate_score,
+            "ai_recommendation": session.report.ai_recommendation.value if session.report.ai_recommendation else None,
+            "strengths": session.report.strengths,
+            "areas_of_improvement": session.report.areas_of_improvement,
+            "trainer_decision": session.report.trainer_decision.value if session.report.trainer_decision else None
+        }
+        
+    return viva_schemas.SessionFullReportResponse(
+        session=session,
+        trainee=session.trainee,
+        summary=summary,
+        report=report_data,
+        questions=questions
+    )
+
+def get_all_sessions(db: Session):
+    sessions = db.query(domain.VivaSession).order_by(domain.VivaSession.start_time.desc()).all()
+    result = []
+    for s in sessions:
+        ai_rec = s.report.ai_recommendation.value if s.report and s.report.ai_recommendation else None
+        status = "Pending Review"
+        if s.status == domain.SessionStatus.IN_PROGRESS:
+            status = "In Progress"
+        elif s.report and s.report.trainer_decision:
+            status = "Reviewed"
+            
+        result.append(viva_schemas.SessionListItem(
+            id=s.id,
+            trainee_name=s.trainee.name or "Unknown",
+            employee_id=s.trainee.employee_id or f"EMP-{s.trainee.id:04d}",
+            module_name=s.module.name,
+            ai_recommendation=ai_rec,
+            status=status,
+            date=s.start_time.strftime("%b %d, %Y")
+        ))
+    return result
