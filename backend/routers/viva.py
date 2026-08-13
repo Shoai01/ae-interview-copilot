@@ -49,6 +49,13 @@ from typing import List
 def list_sessions(db: Session = Depends(get_db)):
     return viva_service.get_all_sessions(db)
 
+@router.post("/{session_id}/fraud-flag", status_code=status.HTTP_201_CREATED)
+def report_fraud_flag(session_id: int, flag_data: viva_schemas.FraudFlagCreate, db: Session = Depends(get_db)):
+    result = viva_service.create_fraud_flag(db, session_id, flag_data)
+    if not result:
+        raise HTTPException(status_code=404, detail="Session or question not found")
+    return {"status": "flagged"}
+
 @router.post("/{session_id}/evaluate", status_code=status.HTTP_200_OK)
 def evaluate_session_route(session_id: int, db: Session = Depends(get_db)):
     success = viva_service.evaluate_session(db, session_id)

@@ -15,7 +15,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SyncIcon from '@mui/icons-material/Sync';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import { vivaService } from '../services/api';
+import { vivaService, adminService } from '../services/api';
 import { globalState } from '../store';
 
 export default function WelcomeCheck() {
@@ -33,6 +33,9 @@ export default function WelcomeCheck() {
   const [stream, setStream] = useState(null);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [traineeName, setTraineeName] = useState("Loading...");
+  const [modules, setModules] = useState([]);
+  const [selectedModuleId, setSelectedModuleId] = useState(null);
+  const [questionCount, setQuestionCount] = useState(null);
 
   useEffect(() => {
     // Fetch Trainee (Dummy Trainee ID 1 for now)
@@ -50,6 +53,20 @@ export default function WelcomeCheck() {
       }
     };
     fetchTrainee();
+
+    // Fetch available modules
+    const fetchModules = async () => {
+      try {
+        const mods = await adminService.getModules();
+        setModules(mods);
+        if (mods.length > 0) {
+          setSelectedModuleId(mods[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch modules:", err);
+      }
+    };
+    fetchModules();
     // Network listener
     const handleOnline = () => setChecks(prev => ({ ...prev, network: 'passed' }));
     const handleOffline = () => setChecks(prev => ({ ...prev, network: 'failed' }));
@@ -99,12 +116,28 @@ export default function WelcomeCheck() {
   const handleStart = async () => {
     try {
       setIsCreatingSession(true);
-      // Create session for dummy trainee (1) and module (1) as per user request
-      const session = await vivaService.createSession(1, 1);
+
+      // Request fullscreen here — this is inside a user gesture (button click)
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch (_) {
+        // Some browsers may still block — proceed anyway
+      }
+
+      // Create session with selected module
+      const moduleId = selectedModuleId || 1;
+      const session = await vivaService.createSession(1, moduleId);
       
-      // We explicitly do NOT stop the stream here anymore
-      
-      navigate('/interview', { state: { sessionId: session.id } });
+      // Pass full session data to the interview page
+      navigate('/interview', { 
+        state: { 
+          sessionId: session.id,
+          moduleName: session.module_name,
+          traineeName: session.trainee_name,
+          durationMinutes: session.duration_minutes,
+          totalQuestions: session.total_questions
+        } 
+      });
     } catch (err) {
       console.error("Failed to create session:", err);
       setIsCreatingSession(false);
@@ -113,6 +146,21 @@ export default function WelcomeCheck() {
 
   const isReady = Object.values(checks).every(status => status === 'passed');
   const readyCount = Object.values(checks).filter(status => status === 'passed').length;
+  const selectedModule = modules.find(m => m.id === selectedModuleId) || null;
+
+  // Fetch question count when selected module changes
+  useEffect(() => {
+    if (!selectedModuleId) return;
+    const fetchCount = async () => {
+      try {
+        const questions = await adminService.getQuestions(selectedModuleId);
+        setQuestionCount(questions.filter(q => q.is_active !== false).length);
+      } catch (_) {
+        setQuestionCount(null);
+      }
+    };
+    fetchCount();
+  }, [selectedModuleId]);
 
   const StatusIcon = ({ status }) => {
     if (status === 'passed') return <CheckCircleIcon sx={{ color: '#16a34a', fontSize: '20px' }} />;
@@ -141,7 +189,7 @@ export default function WelcomeCheck() {
           {/* Welcome Header */}
           <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
             <Chip 
-              label="DEVELOPER MODULE" 
+              label={selectedModule ? `${selectedModule.name.toUpperCase()} MODULE` : 'LOADING...'}
               size="small"
               sx={{ 
                 bgcolor: '#ffdbce', 
@@ -186,7 +234,7 @@ export default function WelcomeCheck() {
                     <FormatListNumberedOutlinedIcon sx={{ color: '#009ade', fontSize: '22px' }} />
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#0d1c2e', mb: 0.5 }}>Questions</Typography>
-                      <Typography variant="body2" sx={{ color: '#535f74', lineHeight: 1.6 }}>15 dynamic questions tailored to your Developer profile.</Typography>
+                      <Typography variant="body2" sx={{ color: '#535f74', lineHeight: 1.6 }}>{questionCount ? `${questionCount} dynamic questions` : 'Dynamic questions'} tailored to your {selectedModule?.name || ''} profile.</Typography>
                     </Box>
                   </Box>
                   

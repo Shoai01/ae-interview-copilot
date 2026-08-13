@@ -10,6 +10,10 @@ class SessionResponse(BaseModel):
     trainee_id: int
     module_id: int
     status: str
+    module_name: str
+    trainee_name: str
+    duration_minutes: int
+    total_questions: int
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -32,6 +36,11 @@ class TraineeResponse(BaseModel):
 class AnswerSubmit(BaseModel):
     viva_question_id: int
     transcript: str
+
+class FraudFlagCreate(BaseModel):
+    viva_question_id: int
+    flag_type: str
+    detected_at: str
 
 class SessionSummaryResponse(BaseModel):
     session_id: int

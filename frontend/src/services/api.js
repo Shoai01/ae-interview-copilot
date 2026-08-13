@@ -68,6 +68,17 @@ export const vivaService = {
   getAllSessions: async () => {
     const response = await api.get('/viva');
     return response.data;
+  },
+  reportFraudFlag: async (sessionId, vivaQuestionId, flagType) => {
+    try {
+      await api.post(`/viva/${sessionId}/fraud-flag`, {
+        viva_question_id: vivaQuestionId,
+        flag_type: flagType,
+        detected_at: new Date().toISOString()
+      });
+    } catch (_) {
+      // Fail silently — never interrupt the trainee's exam
+    }
   }
 };
 

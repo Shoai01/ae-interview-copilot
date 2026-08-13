@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Typography, IconButton, Paper, Button, TextField, CircularProgress } from '@mui/material';
+import { Box, Typography, IconButton, Paper, Button, TextField, CircularProgress, Collapse } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CodeIcon from '@mui/icons-material/Code';
 import TimerIcon from '@mui/icons-material/Timer';
@@ -12,16 +12,48 @@ import { vivaService } from '../services/api';
 import { globalState } from '../store';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
+import { useFraudDetection } from '../hooks/useFraudDetection';
 
 export default function VivaInProgress() {
   const navigate = useNavigate();
   const location = useLocation();
   const videoRef = useRef(null);
   const sessionId = location.state?.sessionId;
+  const moduleName = location.state?.moduleName || 'Module';
+  const durationMinutes = location.state?.durationMinutes || 15;
 
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Live countdown timer
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const totalSeconds = durationMinutes * 60;
+  const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+  const timerMinutes = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
+  const timerSecs = String(remainingSeconds % 60).padStart(2, '0');
+  const timerExpired = remainingSeconds <= 0;
+  const timerWarning = remainingSeconds <= 120 && remainingSeconds > 0; // last 2 min
+
+  // Fraud detection with monitor panel
+  const { logs: fraudLogs, detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id);
+  const [showMonitor, setShowMonitor] = useState(true);
+  const logEndRef = useRef(null);
+
+  // Auto-scroll log feed
+  useEffect(() => {
+    if (logEndRef.current && showMonitor) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [fraudLogs, showMonitor]);
+
+  // Timer tick — counts up every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsedSeconds(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const { 
     isRecording, 
@@ -102,6 +134,12 @@ export default function VivaInProgress() {
           globalState.mediaStream.getTracks().forEach(track => track.stop());
           globalState.mediaStream = null;
         }
+
+        // Exit fullscreen when the session finishes
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+
         // Trigger AI evaluation in the background before navigating
         vivaService.evaluateSession(sessionId).catch(e => console.error("Evaluation failed", e));
         navigate('/complete', { state: { sessionId } });
@@ -126,14 +164,22 @@ export default function VivaInProgress() {
         <Paper elevation={0} sx={{ borderRadius: 8, border: '1px solid rgba(0,0,0,0.08)', px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 2, pointerEvents: 'auto', backdropFilter: 'blur(12px)', bgcolor: 'rgba(255,255,255,0.9)' }}>
           <Box sx={{ bgcolor: 'rgba(0,0,0,0.04)', px: 1.5, py: 0.5, borderRadius: 4, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <CodeIcon fontSize="small" />
-            <Typography variant="overline" sx={{ letterSpacing: 0, fontSize: '14px', textTransform: 'none' }}>Developer</Typography>
+            <Typography variant="overline" sx={{ letterSpacing: 0, fontSize: '14px', textTransform: 'none' }}>{moduleName}</Typography>
           </Box>
           <Typography variant="body2" sx={{ borderLeft: '1px solid rgba(0,0,0,0.1)', pl: 2 }}>
             {currentQuestion ? `Question ${currentQuestion.current_question_index} of ${currentQuestion.total_questions}` : 'Loading...'}
           </Typography>
-          <Typography variant="h4" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1, borderLeft: '1px solid rgba(0,0,0,0.1)', pl: 2 }}>
+          <Typography 
+            variant="h4" 
+            sx={{ 
+              display: 'flex', alignItems: 'center', gap: 1, 
+              borderLeft: '1px solid rgba(0,0,0,0.1)', pl: 2,
+              color: timerExpired ? 'error.main' : timerWarning ? '#d97706' : 'primary.main',
+              animation: timerWarning ? 'pulse 2s infinite' : 'none'
+            }}
+          >
             <TimerIcon />
-            08:45
+            {timerMinutes}:{timerSecs}
           </Typography>
         </Paper>
 
@@ -171,7 +217,7 @@ export default function VivaInProgress() {
           >
             <VolumeUpIcon sx={{ color: 'text.secondary', fontSize: 32, opacity: 0.7, '&:hover': { opacity: 1, color: 'primary.main' } }} />
           </Box>
-          <Typography variant="h1" sx={{ letterSpacing: '-0.02em', mb: 4 }}>
+          <Typography variant="h1" sx={{ letterSpacing: '-0.02em', mb: 4, fontFamily: '"Georgia", "Merriweather", serif', fontWeight: 500 }}>
             {loading ? "Loading..." : currentQuestion ? currentQuestion.text : "Session Complete"}
           </Typography>
 
@@ -293,6 +339,179 @@ export default function VivaInProgress() {
           </Box>
         </Box>
       </Box>
+
+      {/* ===== FRAUD DETECTION MONITOR (temp dev panel) ===== */}
+      <Paper
+        elevation={4}
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          left: 16,
+          width: 360,
+          zIndex: 9999,
+          borderRadius: 3,
+          overflow: 'hidden',
+          border: '1px solid rgba(0,0,0,0.12)',
+          bgcolor: '#1a1a2e',
+          color: '#e0e0e0',
+          fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+          fontSize: '11px',
+        }}
+      >
+        {/* Header */}
+        <Box
+          onClick={() => setShowMonitor(!showMonitor)}
+          sx={{
+            px: 1.5,
+            py: 1,
+            bgcolor: '#16213e',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            userSelect: 'none',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ fontSize: '13px' }}>🛡️</Box>
+            <Typography sx={{ fontSize: '11px', fontWeight: 700, color: '#e0e0e0', fontFamily: 'inherit', letterSpacing: '0.05em' }}>
+              FRAUD MONITOR
+            </Typography>
+            {fraudLogs.filter(l => l.severity === 'flag').length > 0 && (
+              <Box sx={{
+                bgcolor: '#ff4444',
+                color: '#fff',
+                fontSize: '9px',
+                fontWeight: 700,
+                px: 0.8,
+                py: 0.1,
+                borderRadius: 1,
+                lineHeight: 1.4,
+              }}>
+                {fraudLogs.filter(l => l.severity === 'flag').length} FLAGS
+              </Box>
+            )}
+          </Box>
+          <Typography sx={{ fontSize: '10px', color: '#666', fontFamily: 'inherit' }}>
+            {showMonitor ? '▼' : '▲'}
+          </Typography>
+        </Box>
+
+        <Collapse in={showMonitor}>
+          {/* Detector Status Bar */}
+          <Box sx={{
+            px: 1.5,
+            py: 1,
+            display: 'flex',
+            gap: 1.5,
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            bgcolor: '#0f3460',
+          }}>
+            {/* Face */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{
+                width: 6, height: 6, borderRadius: '50%',
+                bgcolor:
+                  detectorStatus.faceDetection === 'error' ? '#ff4444' :
+                  detectorStatus.faceDetection === 'initializing' ? '#ffaa00' :
+                  detectorStatus.facePresent === true ? '#00cc66' :
+                  detectorStatus.facePresent === false ? '#ff4444' : '#888',
+                boxShadow: detectorStatus.facePresent === false ? '0 0 6px #ff4444' : 'none',
+              }} />
+              <Typography sx={{ fontSize: '10px', color: '#aaa', fontFamily: 'inherit' }}>FACE</Typography>
+            </Box>
+            {/* Tab */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{
+                width: 6, height: 6, borderRadius: '50%',
+                bgcolor: '#00cc66',
+              }} />
+              <Typography sx={{ fontSize: '10px', color: '#aaa', fontFamily: 'inherit' }}>TAB</Typography>
+            </Box>
+            {/* Fullscreen */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{
+                width: 6, height: 6, borderRadius: '50%',
+                bgcolor:
+                  detectorStatus.fullscreen === 'active' ? '#00cc66' :
+                  detectorStatus.fullscreen === 'inactive' ? '#ffaa00' : '#888',
+              }} />
+              <Typography sx={{ fontSize: '10px', color: '#aaa', fontFamily: 'inherit' }}>FS</Typography>
+            </Box>
+            {/* Question */}
+            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
+              <Typography sx={{ fontSize: '10px', color: '#666', fontFamily: 'inherit' }}>
+                Q:{currentQuestion?.viva_question_id || '—'}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Log Feed */}
+          <Box sx={{
+            maxHeight: 200,
+            overflowY: 'auto',
+            px: 1,
+            py: 0.5,
+            '&::-webkit-scrollbar': { width: 4 },
+            '&::-webkit-scrollbar-thumb': { bgcolor: '#333', borderRadius: 2 },
+          }}>
+            {fraudLogs.length === 0 ? (
+              <Typography sx={{ fontSize: '10px', color: '#555', fontFamily: 'inherit', py: 2, textAlign: 'center' }}>
+                Waiting for events...
+              </Typography>
+            ) : (
+              fraudLogs.map((log) => (
+                <Box
+                  key={log.id}
+                  sx={{
+                    display: 'flex',
+                    gap: 0.8,
+                    py: 0.3,
+                    alignItems: 'flex-start',
+                    borderBottom: '1px solid rgba(255,255,255,0.03)',
+                  }}
+                >
+                  <Typography sx={{ fontSize: '9px', color: '#555', fontFamily: 'inherit', flexShrink: 0, pt: '1px' }}>
+                    {log.time}
+                  </Typography>
+                  <Typography sx={{
+                    fontSize: '9px',
+                    fontFamily: 'inherit',
+                    fontWeight: 600,
+                    flexShrink: 0,
+                    pt: '1px',
+                    color:
+                      log.severity === 'flag' ? '#ff4444' :
+                      log.severity === 'error' ? '#ff6b6b' :
+                      log.severity === 'warn' ? '#ffaa00' : '#4a9eff',
+                  }}>
+                    {log.severity === 'flag' ? '🚩' : log.severity === 'error' ? '❌' : log.severity === 'warn' ? '⚠️' : 'ℹ️'}
+                  </Typography>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography component="span" sx={{
+                      fontSize: '10px',
+                      fontFamily: 'inherit',
+                      fontWeight: 700,
+                      color:
+                        log.severity === 'flag' ? '#ff4444' :
+                        log.severity === 'error' ? '#ff6b6b' :
+                        log.severity === 'warn' ? '#ffaa00' : '#4a9eff',
+                    }}>
+                      [{log.type}]
+                    </Typography>
+                    <Typography component="span" sx={{ fontSize: '10px', fontFamily: 'inherit', color: '#ccc', ml: 0.5 }}>
+                      {log.message}
+                    </Typography>
+                  </Box>
+                </Box>
+              ))
+            )}
+            <div ref={logEndRef} />
+          </Box>
+        </Collapse>
+      </Paper>
+
     </Box>
   );
 }

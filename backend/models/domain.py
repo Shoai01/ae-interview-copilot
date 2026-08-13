@@ -21,6 +21,8 @@ class SessionStatus(str, enum.Enum):
 class FraudFlagType(str, enum.Enum):
     MULTIPLE_FACES = "MULTIPLE_FACES"
     NO_FACE = "NO_FACE"
+    TAB_SWITCH = "TAB_SWITCH"
+    FULLSCREEN_EXIT = "FULLSCREEN_EXIT"
 
 class AIRecommendationType(str, enum.Enum):
     PASS = "PASS"
@@ -115,6 +117,7 @@ class FraudFlag(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     viva_question_id = Column(Integer, ForeignKey("viva_questions.id"), nullable=False)
     flag_type = Column(SQLEnum(FraudFlagType), nullable=False)
+    count = Column(Integer, default=1, nullable=False)
     detected_at = Column(DateTime, default=datetime.utcnow) # format as mm:ss only at display time
 
     viva_question = relationship("VivaQuestion", back_populates="fraud_flags")
