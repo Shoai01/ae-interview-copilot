@@ -187,9 +187,25 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
             "trainer_decision": session.report.trainer_decision.value if session.report.trainer_decision else None
         }
         
+    session_response = viva_schemas.SessionResponse(
+        id=session.id,
+        trainee_id=session.trainee_id,
+        module_id=session.module_id,
+        status=session.status.value,
+        module_name=session.module.name if session.module else "Unknown",
+        trainee_name=session.trainee.name if session.trainee and session.trainee.name else "Candidate",
+        duration_minutes=session.duration_minutes,
+        total_questions=summary.total_questions
+    )
+
+    trainee_response = viva_schemas.TraineeResponse(
+        id=session.trainee.id if session.trainee else 0,
+        name=session.trainee.name if session.trainee and session.trainee.name else "Unknown Candidate"
+    )
+
     return viva_schemas.SessionFullReportResponse(
-        session=session,
-        trainee=session.trainee,
+        session=session_response,
+        trainee=trainee_response,
         summary=summary,
         report=report_data,
         questions=questions
