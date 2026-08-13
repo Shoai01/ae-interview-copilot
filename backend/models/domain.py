@@ -5,9 +5,10 @@ from datetime import datetime
 
 from core.database import Base
 
-class QuestionType(str, enum.Enum):
-    VOICE = "VOICE"
-    TEXT = "TEXT"
+class UserRole(str, enum.Enum):
+    TRAINEE = "TRAINEE"
+    TRAINER = "TRAINER"
+    ADMIN = "ADMIN"
 
 class DifficultyLevel(str, enum.Enum):
     EASY = "EASY"
@@ -34,14 +35,26 @@ class TrainerDecisionType(str, enum.Enum):
     FAIL = "FAIL"
     HOLD = "HOLD"
 
-class Trainee(Base):
-    __tablename__ = "trainees"
+class User(Base):
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    employee_id = Column(String, nullable=True) # nullable for now — stand-in field
-    name = Column(String, nullable=True) # nullable for now
+    role = Column(SQLEnum(UserRole), nullable=False)
+    username = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    full_name = Column(String, nullable=True)
+    employee_id = Column(String, nullable=True) # Relevant for trainees
+    module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=True) # Set for trainees at account creation
+    is_active = Column(Boolean, default=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True) # Who provisioned this account
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    sessions = relationship("VivaSession", back_populates="trainee")
+    module = relationship("TrainingModule", back_populates="users", foreign_keys=[module_id])
+    creator = relationship("User", remote_side=[id], back_populates="created_users")
+    created_users = relationship("User", back_populates="creator")
+    sessions = relationship("VivaSession", back_populates="trainee", foreign_keys="VivaSession.trainee_id")
+    reviewed_reports = relationship("VivaReport", back_populates="reviewer", foreign_keys="VivaReport.reviewed_by")
+
 
 class TrainingModule(Base):
     __tablename__ = "training_modules"
@@ -50,6 +63,7 @@ class TrainingModule(Base):
     name = Column(String, nullable=False) # Foundation | Intermediate | Developer
     description = Column(String, nullable=True)
 
+    users = relationship("User", back_populates="module")
     questions = relationship("QuestionBank", back_populates="module")
     sessions = relationship("VivaSession", back_populates="module")
 
@@ -59,7 +73,6 @@ class QuestionBank(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=False)
     text = Column(String, nullable=False)
-    question_type = Column(SQLEnum(QuestionType), nullable=False)
     difficulty = Column(SQLEnum(DifficultyLevel), nullable=False)
     is_active = Column(Boolean, default=True)
 
@@ -70,14 +83,14 @@ class VivaSession(Base):
     __tablename__ = "viva_sessions"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    trainee_id = Column(Integer, ForeignKey("trainees.id"), nullable=False)
+    trainee_id = Column(Integer, ForeignKey("users.id"), nullable=False) # Must be a user with role TRAINEE
     module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=False)
     duration_minutes = Column(Integer, default=15) # default session length
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime, nullable=True)
     status = Column(SQLEnum(SessionStatus), nullable=False, default=SessionStatus.IN_PROGRESS)
 
-    trainee = relationship("Trainee", back_populates="sessions")
+    trainee = relationship("User", back_populates="sessions", foreign_keys=[trainee_id])
     module = relationship("TrainingModule", back_populates="sessions")
     questions = relationship("VivaQuestion", back_populates="session")
     report = relationship("VivaReport", back_populates="session", uselist=False)
@@ -131,6 +144,9 @@ class VivaReport(Base):
     ai_recommendation = Column(SQLEnum(AIRecommendationType), nullable=True)
     strengths = Column(Text, nullable=True)
     areas_of_improvement = Column(Text, nullable=True)
-    trainer_decision = Column(SQLEnum(TrainerDecisionType), nullable=True) # stays null until trainer review built
+    trainer_decision = Column(SQLEnum(TrainerDecisionType), nullable=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True) # Trainer/Admin who made the call
+    reviewed_at = Column(DateTime, nullable=True)
 
     session = relationship("VivaSession", back_populates="report")
+    reviewer = relationship("User", back_populates="reviewed_reports", foreign_keys=[reviewed_by])

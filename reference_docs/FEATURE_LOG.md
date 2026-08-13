@@ -13,6 +13,20 @@
 **Related:** links to PROJECT_CONTEXT.md sections or task if applicable
 ```
 
+## [2026-08-13] Frontend Auth and User Management
+**Type:** Added
+**Summary:** Integrated the React frontend with the new JWT auth backend. Added global `AuthContext` to manage token state and silent refresh. Built a dedicated UI for Admins and Trainers to provision new accounts. Added generic `Login.jsx`, guarded routes with `ProtectedRoute.jsx`, and implemented `UserManagement.jsx` for role-based account creation.
+**Files touched:** `frontend/src/store/AuthContext.jsx`, `frontend/src/components/ProtectedRoute.jsx`, `frontend/src/pages/Login.jsx`, `frontend/src/pages/UserManagement.jsx`, `frontend/src/services/api.js`, `frontend/src/App.jsx`, `frontend/src/pages/WelcomeCheck.jsx`
+**Related:** Auth Module Implementation, User Management Feature
+
+---
+
+## [2026-08-13] Auth module and role-based access implemented
+**Type:** Added
+**Summary:** Implemented the full backend authentication layer. `Trainee` model merged into a unified `User` model with roles (`TRAINEE`, `TRAINER`, `ADMIN`). Implemented JWT access tokens, `httpOnly` refresh cookies, and `slowapi` rate limiting on login. Refactored session creation to occur via `POST /viva/sessions/start` post-system-check. Added `POST /admin/users` for account provisioning.
+**Files touched:** `backend/models/domain.py`, `backend/core/security.py`, `backend/core/deps.py`, `backend/core/rate_limit.py`, `backend/routers/auth.py`, `backend/routers/admin.py`, `backend/routers/viva.py`, `backend/services/`
+**Related:** PROJECT_CONTEXT.md (Auth Flow), ARCHITECTURE.md (Entry Flow)
+
 ---
 
 ## [2026-08-10] Project kickoff — foundational docs created
@@ -39,9 +53,12 @@
 
 ---
 
+## [2026-08-10] Auth added: shared login for all roles, no self-registration
+**Type:** Architecture change
+**Summary:** Reversed the earlier "no auth for now" and "token-only trainee entry" decisions. All three roles (trainee, trainer, admin) now authenticate via one shared `users` table and `/auth/login`. Trainees don't self-register — accounts are provisioned in advance by admin/trainer (trainees are already a known, verified population by the time they reach Viva, having passed Practical Exam + MCQ on the main platform). Considered and rejected a self-register + trainer-approval model as solving a trust problem that doesn't exist here. Dropped the standalone `trainees` table (merged into `users` with role=TRAINEE) and `question_bank.question_type` (VOICE/TEXT — dead weight, module is voice-only). Narrowed fraud detection to three deterministic, low-false-positive signals: NO_FACE, TAB_SWITCH, FULLSCREEN_EXIT. Token-based trainee entry from the main platform remains a deferred future phase — only the entry point changes when built, session-resolution logic stays identical.
+**Files touched:** PROJECT_CONTEXT.md, ARCHITECTURE.md, schema.dbml
+**Related:** Auth Flow, Entry Flow, Reusable Services, fraud detection scope
+
+---
+
 _(No code written yet — this is the baseline entry. Next entries should reflect actual implementation work.)_
-## [2026-08-11] AI Evaluation Integration
-- **Added**: google-genai integration for evaluating candidate transcripts.
-- **Changed**: Moved AI evaluation logic to ackend/ai/evaluator.py as per architecture docs.
-- **Added**: Backend API endpoints for /viva/{session_id}/evaluate and /viva/{session_id}/report.
-- **Changed**: Made TrainerReviewDetail.jsx and TrainerDashboard.jsx fully dynamic by pulling real session and evaluation data from the DB.

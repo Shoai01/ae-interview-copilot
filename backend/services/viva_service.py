@@ -4,25 +4,30 @@ from schemas import viva as viva_schemas
 from repositories import viva_repository
 import datetime
 
-def create_session(db: Session, session_data: viva_schemas.SessionCreate):
-    # In a real scenario with auth, trainee_id comes from token.
-    # For now, ensure trainee exists or create a dummy one.
-    trainee = viva_repository.get_trainee_by_id(db, session_data.trainee_id)
-    if not trainee:
-        trainee = viva_repository.create_trainee(db, session_data.trainee_id, "Test Candidate")
+def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas.SessionResponse:
+    if not trainee.module_id:
+        raise ValueError("Trainee does not have an assigned module.")
 
-    db_session = viva_repository.create_session(db, trainee.id, session_data.module_id)
-    
-    # Fetch extra data for the rich response
-    total_questions = viva_repository.count_active_questions(db, session_data.module_id)
-    
+    # Check for existing in-progress session
+    existing_session = db.query(domain.VivaSession).filter(
+        domain.VivaSession.trainee_id == trainee.id,
+        domain.VivaSession.status == domain.SessionStatus.IN_PROGRESS
+    ).first()
+
+    if existing_session:
+        db_session = existing_session
+    else:
+        db_session = viva_repository.create_session(db, trainee.id, trainee.module_id)
+
+    total_questions = viva_repository.count_active_questions(db, db_session.module_id)
+
     return viva_schemas.SessionResponse(
         id=db_session.id,
         trainee_id=db_session.trainee_id,
         module_id=db_session.module_id,
         status=db_session.status.value,
-        module_name=db_session.module.name,
-        trainee_name=trainee.name or "Candidate",
+        module_name=db_session.module.name if db_session.module else "Unknown",
+        trainee_name=trainee.full_name or trainee.username,
         duration_minutes=db_session.duration_minutes,
         total_questions=total_questions
     )
@@ -32,11 +37,8 @@ def get_next_question(db: Session, session_id: int) -> viva_schemas.NextQuestion
     if not session:
         return None
 
-    # Get IDs of questions already asked in this session
     asked_question_ids = [vq.question_bank_id for vq in session.questions]
 
-    # Prevent React Strict Mode double-fetching from skipping questions:
-    # If the last question hasn't been answered yet, just return it again.
     if session.questions:
         last_vq = max(session.questions, key=lambda x: x.question_order)
         if last_vq.answered_at is None:
@@ -44,40 +46,32 @@ def get_next_question(db: Session, session_id: int) -> viva_schemas.NextQuestion
             return viva_schemas.NextQuestionResponse(
                 viva_question_id=last_vq.id,
                 text=last_vq.question_bank.text,
-                question_type=last_vq.question_bank.question_type.value,
+                question_type="VOICE", # Fixed since we removed question_type from DB
                 is_last_question=(last_vq.question_order >= total_questions),
                 current_question_index=last_vq.question_order,
                 total_questions=total_questions
             )
 
-    # Find next active question in the module that hasn't been asked
     next_qb_item = viva_repository.get_next_active_question(db, session.module_id, asked_question_ids)
-
-    # Get total active questions for this module
     total_questions = viva_repository.count_active_questions(db, session.module_id)
 
     if not next_qb_item:
-        return None # No more questions available
+        return None
 
-    # Record that this question is being asked
     question_order = len(asked_question_ids) + 1
     viva_question = viva_repository.create_viva_question(db, session.id, next_qb_item.id, question_order)
 
     return viva_schemas.NextQuestionResponse(
         viva_question_id=viva_question.id,
         text=next_qb_item.text,
-        question_type=next_qb_item.question_type.value,
+        question_type="VOICE",
         is_last_question=(question_order >= total_questions),
         current_question_index=question_order,
         total_questions=total_questions
     )
 
-def get_trainee(db: Session, trainee_id: int) -> domain.Trainee:
-    return viva_repository.get_trainee_by_id(db, trainee_id)
-
 def submit_answer(db: Session, session_id: int, answer_data: viva_schemas.AnswerSubmit) -> bool:
     viva_question = viva_repository.get_viva_question(db, answer_data.viva_question_id, session_id)
-    
     if viva_question:
         viva_repository.update_viva_question_answer(db, viva_question, answer_data.transcript)
         return True
@@ -115,7 +109,6 @@ def evaluate_session(db: Session, session_id: int):
     if not session:
         return False
         
-    # Prepare data for AI
     questions_data = []
     for q in session.questions:
         if q.answered_at and q.transcript:
@@ -125,10 +118,8 @@ def evaluate_session(db: Session, session_id: int):
                 'transcript': q.transcript
             })
             
-    # Call AI Service
     eval_result = ai_service.evaluate_interview_session(questions_data)
     
-    # Save Question Evaluations
     for q_eval in eval_result.question_evaluations:
         db_eval = domain.Evaluation(
             viva_question_id=q_eval.viva_question_id,
@@ -139,7 +130,6 @@ def evaluate_session(db: Session, session_id: int):
         )
         viva_repository.save_evaluation(db, db_eval)
         
-    # Save Report
     db_report = domain.VivaReport(
         session_id=session.id,
         aggregate_score=eval_result.aggregate_score,
@@ -193,14 +183,14 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
         module_id=session.module_id,
         status=session.status.value,
         module_name=session.module.name if session.module else "Unknown",
-        trainee_name=session.trainee.name if session.trainee and session.trainee.name else "Candidate",
+        trainee_name=session.trainee.full_name or session.trainee.username if session.trainee else "Candidate",
         duration_minutes=session.duration_minutes,
         total_questions=summary.total_questions
     )
 
     trainee_response = viva_schemas.TraineeResponse(
         id=session.trainee.id if session.trainee else 0,
-        name=session.trainee.name if session.trainee and session.trainee.name else "Unknown Candidate"
+        name=session.trainee.full_name or session.trainee.username if session.trainee else "Unknown Candidate"
     )
 
     return viva_schemas.SessionFullReportResponse(
@@ -224,9 +214,9 @@ def get_all_sessions(db: Session):
             
         result.append(viva_schemas.SessionListItem(
             id=s.id,
-            trainee_name=s.trainee.name or "Unknown",
-            employee_id=s.trainee.employee_id or f"EMP-{s.trainee.id:04d}",
-            module_name=s.module.name,
+            trainee_name=s.trainee.full_name or s.trainee.username if s.trainee else "Unknown",
+            employee_id=s.trainee.employee_id if s.trainee else f"EMP-{s.trainee.id:04d}",
+            module_name=s.module.name if s.module else "Unknown",
             ai_recommendation=ai_rec,
             status=status,
             date=s.start_time.strftime("%b %d, %Y")
@@ -238,7 +228,6 @@ def create_fraud_flag(db: Session, session_id: int, flag_data: viva_schemas.Frau
     session = viva_repository.get_session_by_id(db, session_id)
     if not session:
         return None
-    # Verify the question belongs to this session
     viva_question = viva_repository.get_viva_question(db, flag_data.viva_question_id, session_id)
     if not viva_question:
         return None

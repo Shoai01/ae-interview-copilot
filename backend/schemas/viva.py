@@ -1,10 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
-class SessionCreate(BaseModel):
-    trainee_id: int
-    module_id: int
-
 class SessionResponse(BaseModel):
     id: int
     trainee_id: int
@@ -79,10 +75,10 @@ class SessionFullReportResponse(BaseModel):
 
 class SessionListItem(BaseModel):
     id: int
-    trainee_name: str
-    employee_id: str
+    trainee_name: Optional[str] = None
+    employee_id: Optional[str] = None
     module_name: str
-    ai_recommendation: Optional[str]
+    ai_recommendation: Optional[str] = None
     status: str
     date: str
     

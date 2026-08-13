@@ -5,7 +5,23 @@ const API_BASE_URL = 'http://localhost:8000';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true, // Crucial for sending/receiving HTTP-only cookies
 });
+
+export const authService = {
+  login: async (username, password) => {
+    const response = await api.post('/auth/login', { username, password });
+    return response.data;
+  },
+  refresh: async () => {
+    const response = await api.post('/auth/refresh');
+    return response.data;
+  },
+  logout: async () => {
+    const response = await api.post('/auth/logout');
+    return response.data;
+  }
+};
 
 export const adminService = {
   getModules: async () => {
@@ -27,15 +43,20 @@ export const adminService = {
   deleteQuestion: async (questionId) => {
     await api.delete(`/admin/questions/${questionId}`);
     return true;
+  },
+  createUser: async (userData) => {
+    const response = await api.post('/admin/users', userData);
+    return response.data;
   }
 };
 
 export const vivaService = {
-  createSession: async (traineeId, moduleId) => {
-    const response = await api.post('/viva/sessions', {
-      trainee_id: traineeId,
-      module_id: moduleId
-    });
+  getTrainee: async (userId) => {
+    const response = await api.get(`/viva/trainee/${userId}`);
+    return response.data;
+  },
+  startSession: async () => {
+    const response = await api.post('/viva/sessions/start');
     return response.data;
   },
   getNextQuestion: async (sessionId) => {
@@ -47,10 +68,6 @@ export const vivaService = {
       viva_question_id: questionId,
       transcript: transcript
     });
-    return response.data;
-  },
-  getTrainee: async (traineeId) => {
-    const response = await api.get(`/viva/trainees/${traineeId}`);
     return response.data;
   },
   getSessionSummary: async (sessionId) => {
@@ -76,7 +93,7 @@ export const vivaService = {
         flag_type: flagType,
         detected_at: new Date().toISOString()
       });
-    } catch (_) {
+    } catch {
       // Fail silently — never interrupt the trainee's exam
     }
   }

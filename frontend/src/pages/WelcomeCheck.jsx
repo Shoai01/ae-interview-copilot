@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Card, CardContent, Stack, Button, Chip } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
@@ -17,35 +17,45 @@ import SyncIcon from '@mui/icons-material/Sync';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { vivaService, adminService } from '../services/api';
 import { globalState } from '../store';
+import { useAuth } from '../store/AuthContext';
+
+const StatusIcon = ({ status }) => {
+  if (status === 'passed') return <CheckCircleIcon sx={{ color: '#16a34a', fontSize: '20px' }} />;
+  if (status === 'failed') return <CancelIcon sx={{ color: '#dc2626', fontSize: '20px' }} />;
+  return (
+    <Stack direction="row" alignItems="center" spacing={1} sx={{ color: '#f59e0b' }}>
+      <Typography variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px' }}>Checking</Typography>
+      <SyncIcon sx={{ fontSize: '16px', animation: 'spin 2s linear infinite', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
+    </Stack>
+  );
+};
 
 export default function WelcomeCheck() {
   const navigate = useNavigate();
   const videoRef = useRef(null);
+  const { user } = useAuth();
 
   const [checks, setChecks] = useState({
     camera: 'checking',
     mic: 'checking',
-    speaker: 'checking', // Simplification: we'll mark this passed when audio is granted
+    speaker: 'checking', 
     network: navigator.onLine ? 'passed' : 'failed',
-    browser: 'passed' // Assuming modern browser if React is running
+    browser: 'passed'
   });
 
   const [stream, setStream] = useState(null);
-  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [traineeName, setTraineeName] = useState("Loading...");
   const [modules, setModules] = useState([]);
   const [selectedModuleId, setSelectedModuleId] = useState(null);
   const [questionCount, setQuestionCount] = useState(null);
 
   useEffect(() => {
-    // Fetch Trainee (Dummy Trainee ID 1 for now)
+    // Fetch Trainee Details
     const fetchTrainee = async () => {
       try {
-        const trainee = await vivaService.getTrainee(1);
-        if (trainee && trainee.name) {
-          setTraineeName(trainee.name);
-        } else {
-          setTraineeName("Candidate");
+        if (user?.id) {
+            const trainee = await vivaService.getTrainee(user.id);
+            setTraineeName(trainee.name || "Candidate");
         }
       } catch (err) {
         console.error("Failed to fetch trainee:", err);
@@ -59,7 +69,9 @@ export default function WelcomeCheck() {
       try {
         const mods = await adminService.getModules();
         setModules(mods);
-        if (mods.length > 0) {
+        if (user?.moduleId) {
+          setSelectedModuleId(user.moduleId);
+        } else if (mods.length > 0) {
           setSelectedModuleId(mods[0].id);
         }
       } catch (err) {
@@ -67,6 +79,7 @@ export default function WelcomeCheck() {
       }
     };
     fetchModules();
+
     // Network listener
     const handleOnline = () => setChecks(prev => ({ ...prev, network: 'passed' }));
     const handleOffline = () => setChecks(prev => ({ ...prev, network: 'failed' }));
@@ -109,24 +122,19 @@ export default function WelcomeCheck() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      // We intentionally do NOT stop the stream here so it persists to the Interview page
     };
-  }, []);
+  }, [user]);
 
   const handleStart = async () => {
     try {
-      setIsCreatingSession(true);
-
-      // Request fullscreen here — this is inside a user gesture (button click)
       try {
         await document.documentElement.requestFullscreen();
-      } catch (_) {
+      } catch {
         // Some browsers may still block — proceed anyway
       }
 
-      // Create session with selected module
-      const moduleId = selectedModuleId || 1;
-      const session = await vivaService.createSession(1, moduleId);
+      // Start session using the token (backend determines module and trainee)
+      const session = await vivaService.startSession();
       
       // Pass full session data to the interview page
       navigate('/interview', { 
@@ -140,7 +148,6 @@ export default function WelcomeCheck() {
       });
     } catch (err) {
       console.error("Failed to create session:", err);
-      setIsCreatingSession(false);
     }
   };
 
@@ -155,23 +162,13 @@ export default function WelcomeCheck() {
       try {
         const questions = await adminService.getQuestions(selectedModuleId);
         setQuestionCount(questions.filter(q => q.is_active !== false).length);
-      } catch (_) {
+      } catch {
         setQuestionCount(null);
       }
     };
     fetchCount();
   }, [selectedModuleId]);
 
-  const StatusIcon = ({ status }) => {
-    if (status === 'passed') return <CheckCircleIcon sx={{ color: '#16a34a', fontSize: '20px' }} />;
-    if (status === 'failed') return <CancelIcon sx={{ color: '#dc2626', fontSize: '20px' }} />;
-    return (
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ color: '#f59e0b' }}>
-        <Typography variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px' }}>Checking</Typography>
-        <SyncIcon sx={{ fontSize: '16px', animation: 'spin 2s linear infinite', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
-      </Stack>
-    );
-  };
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>

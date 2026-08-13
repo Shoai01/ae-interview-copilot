@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel } from '@mui/material';
 import Layout from '../components/Layout';
 import AddIcon from '@mui/icons-material/Add';
@@ -7,7 +7,6 @@ import MicIcon from '@mui/icons-material/Mic';
 import ChatIcon from '@mui/icons-material/Chat';
 import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
 import SignalCellularAlt2BarIcon from '@mui/icons-material/SignalCellularAlt2Bar';
-import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { adminService } from '../services/api';
 
@@ -20,16 +19,6 @@ export default function AdminQuestionBank() {
   // Dialog State
   const [open, setOpen] = useState(false);
   const [newQuestion, setNewQuestion] = useState({ text: '', question_type: 'VOICE', difficulty: 'MEDIUM' });
-
-  useEffect(() => {
-    fetchModules();
-  }, []);
-
-  useEffect(() => {
-    if (activeModuleId) {
-      fetchQuestions(activeModuleId);
-    }
-  }, [activeModuleId]);
 
   const fetchModules = async () => {
     try {
@@ -49,6 +38,18 @@ export default function AdminQuestionBank() {
       console.error("Failed to load questions:", err);
     }
   };
+
+  useEffect(() => {
+    fetchModules();
+  }, []);
+
+  useEffect(() => {
+    if (activeModuleId) {
+      fetchQuestions(activeModuleId);
+    }
+  }, [activeModuleId]);
+
+
 
   const handleCreate = async () => {
     try {

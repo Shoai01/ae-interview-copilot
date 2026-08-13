@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Button, IconButton, InputBase, Avatar } from '@mui/material';
+import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Button, IconButton, InputBase, Avatar, Menu, MenuItem } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import MicIcon from '@mui/icons-material/Mic';
@@ -12,18 +12,31 @@ import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import MenuIcon from '@mui/icons-material/Menu';
+import PeopleIcon from '@mui/icons-material/People';
+import { useAuth } from '../store/AuthContext';
 
 const drawerWidth = 280;
 
 export default function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [anchorEl, setAnchorEl] = React.useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout, user } = useAuth();
+
+  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
   const navItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/hr/dashboard' },
     { text: 'Sessions', icon: <MicIcon />, path: '/hr/sessions' },
     { text: 'Question Bank', icon: <SourceIcon />, path: '/hr/questions' },
+    { text: 'Users & Access', icon: <PeopleIcon />, path: '/hr/users' },
     { text: 'Analytics', icon: <InsightsIcon />, path: '/hr/analytics' },
     { text: 'Settings', icon: <SettingsIcon />, path: '/hr/settings' },
   ];
@@ -97,7 +110,7 @@ export default function Layout({ children }) {
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>
-            <ListItemButton sx={{ borderRadius: 2, py: 1 }}>
+            <ListItemButton sx={{ borderRadius: 2, py: 1 }} onClick={handleLogout}>
               <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><LogoutIcon /></ListItemIcon>
               <ListItemText primary="Sign Out" primaryTypographyProps={{ variant: 'body2', color: 'text.secondary', fontWeight: 500 }} />
             </ListItemButton>
@@ -173,7 +186,26 @@ export default function Layout({ children }) {
             <IconButton>
               <NotificationsIcon sx={{ color: 'text.secondary' }} />
             </IconButton>
-            <Avatar alt="User Profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4zFFPAniJtOrCmp56_RJss-J6WPrC2sxDkxiMkwqsQ-ND-vzzGyAMSXu81sTKLyM5aHHF8gGHTjjcpXMVOLtMQi1Ku6XgPTBWU1EtfDR4b5_mlaiBh4pH92kl8N5ymily4eWq1O5QjuRpRH9Th04E9a4d-MYv4slvE-ekhiHVDCbT3QR1SHuBJf7UuR3u5XICuFHWou6gClOso7E3W9u7qRjeKaiY-OodrWeGIOjthgEvTlki4vus" sx={{ width: 36, height: 36, cursor: 'pointer' }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }} onClick={handleMenuOpen}>
+              <Avatar 
+                sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: '16px' }}
+              >
+                {user?.role ? user.role.charAt(0).toUpperCase() : 'U'}
+              </Avatar>
+              <Typography variant="body2" sx={{ display: { xs: 'none', md: 'block' }, fontWeight: 600, color: 'text.primary' }}>
+                {user?.username || 'User'}
+              </Typography>
+            </Box>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleMenuClose}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+              <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
+              <MenuItem onClick={handleLogout}>Logout</MenuItem>
+            </Menu>
           </Box>
         </Box>
 

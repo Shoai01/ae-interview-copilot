@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Box, Typography, IconButton, Paper, Button, TextField, CircularProgress, Collapse } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CodeIcon from '@mui/icons-material/Code';
@@ -8,6 +8,7 @@ import StopIcon from '@mui/icons-material/Stop';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import SendIcon from '@mui/icons-material/Send';
+import PersonIcon from '@mui/icons-material/Person';
 import { vivaService } from '../services/api';
 import { globalState } from '../store';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
@@ -20,6 +21,7 @@ export default function VivaInProgress() {
   const videoRef = useRef(null);
   const sessionId = location.state?.sessionId;
   const moduleName = location.state?.moduleName || 'Module';
+  const traineeName = location.state?.traineeName || 'Candidate';
   const durationMinutes = location.state?.durationMinutes || 15;
 
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -58,7 +60,8 @@ export default function VivaInProgress() {
   const { 
     isRecording, 
     isConnecting,
-    liveText, 
+    liveText,
+    setLiveText, 
     finalText, 
     setFinalText, 
     toggleRecording, 
@@ -163,6 +166,10 @@ export default function VivaInProgress() {
         
         <Paper elevation={0} sx={{ borderRadius: 8, border: '1px solid rgba(0,0,0,0.08)', px: 2, py: 1, display: 'flex', alignItems: 'center', gap: 2, pointerEvents: 'auto', backdropFilter: 'blur(12px)', bgcolor: 'rgba(255,255,255,0.9)' }}>
           <Box sx={{ bgcolor: 'rgba(0,0,0,0.04)', px: 1.5, py: 0.5, borderRadius: 4, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <PersonIcon fontSize="small" />
+            <Typography variant="overline" sx={{ letterSpacing: 0, fontSize: '14px', textTransform: 'none', fontWeight: 600 }}>{traineeName}</Typography>
+          </Box>
+          <Box sx={{ bgcolor: 'rgba(0,0,0,0.04)', px: 1.5, py: 0.5, borderRadius: 4, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 0.5 }}>
             <CodeIcon fontSize="small" />
             <Typography variant="overline" sx={{ letterSpacing: 0, fontSize: '14px', textTransform: 'none' }}>{moduleName}</Typography>
           </Box>
@@ -243,7 +250,10 @@ export default function VivaInProgress() {
           
           <IconButton 
             color={isRecording ? "error" : "primary"} 
-            onClick={toggleRecording}
+            onClick={() => {
+              if (!isRecording) cancelSpeech();
+              toggleRecording();
+            }}
             disabled={isConnecting || submitting}
             sx={{ 
               width: 96, 
@@ -294,6 +304,7 @@ export default function VivaInProgress() {
               onChange={(e) => {
                 // When user edits, treat it all as finalText and clear liveText
                 setFinalText(e.target.value);
+                setLiveText('');
               }}
               sx={{
                 '& .MuiOutlinedInput-root': {

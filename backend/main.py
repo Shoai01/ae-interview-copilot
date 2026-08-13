@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from core.database import engine
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from core.database import engine, get_db
 from models import domain
-from routers import admin, viva
+from routers import admin, viva, auth
+from core.rate_limit import limiter
+from services.admin_seed_service import seed_admin
 
 # This line ensures all database tables defined in models/domain.py
 # are automatically created in the database when the server starts up.
@@ -16,6 +20,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -25,7 +32,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Seed initial admin on startup
+with engine.connect() as connection:
+    from sqlalchemy.orm import Session
+    with Session(engine) as session:
+        seed_admin(session)
+
 # Include Routers
+app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(viva.router)
 

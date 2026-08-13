@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
-from models.domain import QuestionType, DifficultyLevel
+from models.domain import DifficultyLevel
 
 class ModuleResponse(BaseModel):
     id: int
@@ -12,14 +12,12 @@ class ModuleResponse(BaseModel):
 class QuestionCreate(BaseModel):
     module_id: int
     text: str
-    question_type: QuestionType
     difficulty: DifficultyLevel
 
 class QuestionResponse(BaseModel):
     id: int
     module_id: int
     text: str
-    question_type: QuestionType
     difficulty: DifficultyLevel
     is_active: bool
     

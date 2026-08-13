@@ -3,16 +3,6 @@ from models import domain
 import datetime
 from typing import List
 
-def get_trainee_by_id(db: Session, trainee_id: int) -> domain.Trainee:
-    return db.query(domain.Trainee).filter(domain.Trainee.id == trainee_id).first()
-
-def create_trainee(db: Session, trainee_id: int, name: str) -> domain.Trainee:
-    trainee = domain.Trainee(id=trainee_id, name=name)
-    db.add(trainee)
-    db.commit()
-    db.refresh(trainee)
-    return trainee
-
 def create_session(db: Session, trainee_id: int, module_id: int) -> domain.VivaSession:
     db_session = domain.VivaSession(
         trainee_id=trainee_id,

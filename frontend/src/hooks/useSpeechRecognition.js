@@ -23,10 +23,10 @@ export function useSpeechRecognition() {
   useEffect(() => {
     return () => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try { mediaRecorderRef.current.stop(); } catch (_) { /* ignore */ }
+        try { mediaRecorderRef.current.stop(); } catch { /* ignore */ }
       }
       if (socketRef.current) {
-        try { socketRef.current.close(); } catch (_) { /* ignore */ }
+        try { socketRef.current.close(); } catch { /* ignore */ }
       }
     };
   }, []);
@@ -58,8 +58,7 @@ export function useSpeechRecognition() {
     console.log("[Deepgram] Audio tracks found:", audioTracks.length, audioTracks.map(t => t.label));
 
     // Create an AUDIO-ONLY stream — this is critical!
-    // The globalState.mediaStream has both video+audio tracks.
-    // MediaRecorder would encode video frames too, which Deepgram can't parse.
+    // MediaRecorder would encode video frames too, which Deepgram can't parse easily over websocket.
     const audioOnlyStream = new MediaStream(audioTracks);
 
     isConnectingRef.current = true;
@@ -72,7 +71,7 @@ export function useSpeechRecognition() {
     console.log("[Deepgram] Connecting to WebSocket...");
     
     const socket = new WebSocket(
-      'wss://api.deepgram.com/v1/listen?model=nova-2&language=en-US&smart_format=true&interim_results=true&endpointing=300&utterance_end_ms=1500',
+      'wss://api.deepgram.com/v1/listen?model=nova-2&language=en-US&smart_format=true&interim_results=true&endpointing=300',
       ['token', apiKey]
     );
     socketRef.current = socket;
@@ -114,9 +113,9 @@ export function useSpeechRecognition() {
           console.error("[Deepgram] MediaRecorder error:", e);
         };
         
-        // Send audio chunks every 150ms for lower latency
-        mediaRecorder.start(150);
-        console.log("[Deepgram] MediaRecorder started, sending chunks every 150ms");
+        // Use 250ms timeslice to ensure stable chunk delivery without browser buffering overhead
+        mediaRecorder.start(250);
+        console.log("[Deepgram] MediaRecorder started, sending chunks every 250ms");
       } catch (e) {
         console.error("[Deepgram] MediaRecorder start error:", e);
       }
@@ -180,9 +179,23 @@ export function useSpeechRecognition() {
       isConnectingRef.current = false;
       setIsConnectingState(false);
       setIsRecording(false);
+      
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try { mediaRecorderRef.current.stop(); } catch (_) { /* ignore */ }
       }
+
+      // Flush any remaining live text into final text using refs
+      const currentLive = liveTextRef.current;
+      if (currentLive) {
+        setFinalText(prev => {
+          const updated = prev + (prev ? ' ' : '') + currentLive;
+          finalTextRef.current = updated;
+          return updated;
+        });
+        setLiveText('');
+        liveTextRef.current = '';
+      }
+
       if (stopResolveRef.current) {
         stopResolveRef.current();
         stopResolveRef.current = null;
@@ -202,18 +215,6 @@ export function useSpeechRecognition() {
       // Stop the MediaRecorder first so no more audio is sent
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try { mediaRecorderRef.current.stop(); } catch (_) { /* ignore */ }
-      }
-
-      // Flush any remaining live text into final text using refs (always fresh)
-      const currentLive = liveTextRef.current;
-      if (currentLive) {
-        setFinalText(prev => {
-          const updated = prev + (prev ? ' ' : '') + currentLive;
-          finalTextRef.current = updated;
-          return updated;
-        });
-        setLiveText('');
-        liveTextRef.current = '';
       }
 
       // Send CloseStream to Deepgram and wait for the socket to close
@@ -253,6 +254,7 @@ export function useSpeechRecognition() {
     isRecording,
     isConnecting: isConnectingState,
     liveText,
+    setLiveText,
     finalText,
     setFinalText,
     toggleRecording,

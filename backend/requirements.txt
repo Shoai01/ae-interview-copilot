@@ -5,3 +5,8 @@ pydantic
 python-dotenv
 alembic
 google-genai
+psycopg2-binary
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+slowapi

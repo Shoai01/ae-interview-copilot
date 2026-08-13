@@ -1,7 +1,5 @@
 # ARCHITECTURE.md
-> Defines system structure and layer boundaries. This module is a standalone, self-contained "Viva" service that will eventually plug into AE's existing training exam platform via a token handoff — it does not own login, exams, MCQ, or Post-Exam aggregation.
->
-> **CURRENT BUILD PHASE: no auth.** The token handoff, trainer/admin login, and `users` table described below are the TARGET design for a later integration phase. Right now, `trainee_id`/`module_id` are passed directly into requests and every endpoint is open. Do not implement auth, JWT, or the `core/token_verify.py` middleware until explicitly asked — build the core viva engine first.
+> Defines system structure and layer boundaries. This module is a standalone "Viva" service that will eventually integrate with AE's existing training exam platform (main platform owns Login/System Test/Exam/MCQ upstream of this). This module now owns its OWN full auth — shared login for trainee, trainer, and admin — provisioned in advance, no self-registration.
 
 ---
 
@@ -63,15 +61,17 @@ src/
 
 ## 4. Entry Flow
 
-**Current phase (build this now):** `POST /viva/sessions` accepts `{trainee_id, module_id}` directly in the request body. `trainee_service.get_or_create_trainee()` still exists as the entry point — just called with the raw id/module instead of decoded token claims. This keeps the eventual token-based swap a one-line change in the router, not a rewrite of `viva_service`.
+**Current design (build this now):** All roles authenticate via `POST /auth/login` against the shared `users` table. Post-login, routing branches by role:
+- Trainer/Admin → `/dashboard` (fixed)
+- Trainee → redirect to `/viva/welcome` for system checks. Upon clicking "Start Viva", calls `POST /viva/sessions/start` — checks for an existing in-progress `viva_sessions` row for this trainee; resumes it if found, otherwise creates a new one against the `module_id` already assigned on their account → navigates to `/viva/:sessionId/exam`
 
 **Deferred (future integration phase — do not build yet):**
-1. Existing platform redirects to `https://<viva-app>/entry?token=<jwt>`
-2. Backend `core/token_verify.py` validates signature + expiry against the existing platform's shared secret/public key
-3. On success: decode claims (employee_id, name, email, module) → same `trainee_service.get_or_create_trainee()` call → create `viva_sessions` row
+1. Main platform redirects to `https://<viva-app>/entry?token=<jwt>` instead of the trainee using direct login
+2. Backend `core/token_verify.py` validates signature + expiry against the main platform's shared secret/public key
+3. On success: decode claims → same `viva_service.resolve_or_create_session()` call as above, just fed a token-derived trainee identity instead of a logged-in session's identity
 4. On failure: reject with a clear error page — no fallback login, no guessing
 
-When this is eventually built, `core/token_verify.py` becomes the ONE place external trust enters the system — treat it as security-critical, isolated, and heavily tested. Right now it doesn't exist.
+When this is eventually built, `core/token_verify.py` becomes the ONE place external trust enters the system. Only the trainee entry point changes — session-resolution logic, the entire viva loop, and reporting stay identical either way.
 
 ---
 
@@ -137,14 +137,15 @@ Rule: if Gemini/Whisper/TTS provider changes later, only files inside `ai/` chan
 ## 9. Reusable Services (backend)
 
 **Build now:**
-- `trainee_service` — get-or-create trainee (currently from raw id, later from token claims — same function signature either way)
-- `viva_service` — orchestrates the Q&A loop, session lifecycle
+- `auth_service` — login (verify password, issue JWT access + refresh), refresh, logout
+- `user_service` — create trainer/trainee accounts (admin creates trainers; admin or trainer creates trainees, sets their `module_id`)
+- `viva_service` — resolve-or-create session on trainee login, orchestrates the Q&A loop, session lifecycle
 - `scoring_service` — aggregates per-question evaluations into a report + AI recommendation
-- `fraud_service` — stores multi-face/no-face flags from frontend-provided signals
+- `fraud_service` — stores NO_FACE/TAB_SWITCH/FULLSCREEN_EXIT flags from frontend-provided signals
+- `admin_seed_service` — seeds first admin from env vars on startup if none exists
 
 **Deferred — do not build yet:**
-- `token_verify_service` — validates incoming JWT from the existing platform
-- `admin_seed_service` — seeds first admin from env vars on startup
+- `token_verify_service` — validates incoming JWT from the main platform (replaces direct login as trainee's entry point)
 
 ---
 

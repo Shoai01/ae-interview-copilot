@@ -11,11 +11,11 @@ Last updated: 2026-08-10
 **One-liner:** A standalone module that replaces Section 8 ("Start Viva") of AE's existing training exam platform. Trainees complete Login → System Test → Exam → Solution Upload → MCQ on the EXISTING platform; once MCQ is done, they're redirected here with a signed token to take an AI-conducted voice viva. This app owns ONLY the viva — nothing before it.
 
 **Scope boundary (important):**
-- ❌ NOT building right now: login/OTP for trainees, system test, main exam, solution flow upload, MCQ exam, Post-Exam aggregation UI, token verification, ANY authentication/authorization — all of this belongs to the main platform and will be integrated LATER.
-- ✅ Building NOW: the standalone AI viva engine only — session creation (trainee_id + module_id passed directly, no token), question generation, TTS, STT, evaluation, basic fraud flagging, report generation. Every endpoint is open/unauthenticated for this phase.
-- Integration back to the main platform (token-based entry, pushing viva score into their Post-Exam aggregation, auth) is a deliberate LATER phase — do not build it now, do not block core functionality on it.
+- ❌ NOT building right now: token-based entry from the main platform, system test/exam/MCQ (owned by the main platform), Post-Exam aggregation UI.
+- ✅ Building NOW: a single shared login system for ALL roles (trainee, trainer, admin) via username/password against one `users` table. Admin/trainer provisions trainee accounts directly (ideally bulk-import by cohort later, one-by-one to start) — no self-registration, no approval queue. Trainees are already verified by having passed Practical Exam + MCQ on the main platform, so there's no unknown-population trust problem to solve here.
+- Token handoff from the main platform (replacing direct login as the trainee entry point) is a future integration phase — not blocking, not built now.
 
-**Roles in this module (current build phase):** none enforced yet — no `users` table, no login, no trainer/admin auth. `trainee_id` and `module_id` are passed directly into API calls as stand-ins for what will later come from a verified token and a trainer/admin session.
+**Roles in this module:** Trainee, Trainer, Admin — all authenticate via the same `/auth/login`, differentiated by `role` on their `users` row. Post-login routing differs by role: trainer/admin → `/dashboard`; trainee → resolve or create their current viva session → `/viva/:sessionId/welcome`.
 
 ---
 
@@ -29,77 +29,109 @@ Last updated: 2026-08-10
 | STT | Whisper |
 | TTS | TBD engine (Whisper is STT-only — pick a TTS lib/API separately; questions must be spoken AND shown as text) |
 | AI Evaluation / Question Gen | Gemini 2.5 Flash |
-| Trainee entry | **Deferred.** For now: `trainee_id` + `module_id` passed directly in API requests. Token-based handoff from the existing platform is a future phase — see Section 9. |
-| Trainer/Admin Auth | **Deferred.** No `users` table, no login, no roles enforced in this phase. All endpoints open. Will be added when integrating with the main platform. |
+| Trainee entry | Direct login (username/password) against the shared `users` table — account provisioned by admin/trainer in advance. Token-based handoff from the main platform is a FUTURE phase, not built now. |
+| Trainer/Admin Auth | Username + password against the shared `users` table. First admin seeded via `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` env vars on backend startup. Admin creates trainer accounts; admin/trainer creates trainee accounts. No self-registration for any role. |
+| Session strategy | JWT — short-lived access token (15-30 min) + longer-lived refresh token (7 days) in an httpOnly cookie. Access token sent as `Authorization: Bearer` on every request. |
 | Fraud/Proctoring | Lightweight browser-based multi-face / no-face detection only |
 | Hosting | TBD |
 
 ---
 
-## 3. App Flow (CURRENT build phase — no auth, standalone engine)
+## 3. App Flow (current build — shared login for all roles)
 
-1. A `viva_sessions` row is created directly via `POST /viva/sessions` with `{trainee_id, module_id}` in the body — no token, no verification (stand-in for what will later be a token-verified entry point)
-2. Frontend: camera/mic/speaker checks (mirrors the existing platform's "System Test" pattern for consistency, but scoped just to viva readiness)
-3. AI generates question (Gemini 2.5 Flash, scoped to trainee's module) → question is spoken (TTS) AND displayed as text → trainee answers by voice
-4. Audio → Whisper STT → transcript → Gemini evaluates (Technical Knowledge, Communication, Confidence, Clarity, Logical Reasoning, Response Quality) → basic fraud check (multi-face/no-face, frontend-detected signal) runs in parallel
-5. Repeat until viva question set complete or time runs out
-6. Aggregate → AI recommendation (pass/fail/borderline) generated → stored as a `viva_reports` row (score breakdown, strengths, areas of improvement — modeled on reference report format)
-7. `GET /viva/{session_id}/report` returns the full report — open endpoint for now, no trainer-decision gating built yet (see Section 9 for what's deferred)
+### Trainer / Admin
+1. Login at `/login` (username + password) → JWT issued → redirected to `/dashboard`
+2. Trainer: reviews viva sessions, sets final pass/fail/hold decisions
+3. Admin: everything trainer can do, plus manages modules, question bank, and creates trainer/trainee accounts
 
-### Deferred flow (future integration phase — do not build yet)
-- Trainee arrives via signed token from the existing platform → token verified → `trainees` record created/found → session created automatically
-- Trainer logs in (username/password) → reviews AI report → sets `trainer_decision` (pass/fail/hold), can override AI
+### Trainee
+1. Login at `/login` (same login page, same `users` table, role = trainee) → JWT issued
+2. On successful login, backend resolves: does this trainee have an existing in-progress `viva_sessions` row? Resume it. Otherwise, create a new session against their assigned `module_id` (set on their account at creation time by admin/trainer)
+3. Redirected to `/viva/:sessionId/welcome` → camera/mic/speaker/network checks
+4. AI generates question (Gemini 2.5 Flash, scoped to trainee's module) → spoken (TTS) AND displayed as text → trainee answers by voice
+5. Audio → Whisper STT → transcript → Gemini evaluates (Technical Knowledge, Communication, Confidence, Clarity, Logical Reasoning, Response Quality) → basic fraud check runs in parallel (NO_FACE, TAB_SWITCH, FULLSCREEN_EXIT)
+6. Repeat until viva question set complete or time runs out
+7. Aggregate → AI recommendation (pass/fail/borderline) generated → stored as a `viva_reports` row
+8. Trainee sees a calm completion screen — no scores shown to them directly
+9. Trainer reviews the report (transcript, per-question scores, AI recommendation) → sets `trainer_decision` (pass/fail/hold), can override AI
+
+### Account provisioning (no self-registration, any role)
+- Admin creates trainer accounts
+- Admin or trainer creates trainee accounts, including their `module_id` assignment
+- One-by-one to start; bulk CSV import by cohort is a natural next step once the manual flow proves out
+
+### Deferred (future integration phase — do not build yet)
+- Trainee entry via signed token from the main platform, replacing direct login as the trainee's way in
 - Result pushed to or pulled by the main platform's Post-Exam aggregation
 
 ---
 
 ## 4. Auth Flow
 
-**Status: NOT IMPLEMENTED in this phase — by design.** Auth (trainee token handoff, trainer/admin login) will be built when this module integrates with the main platform. Every endpoint in the current build is open/unauthenticated.
+**Single shared login for all roles** — trainee, trainer, admin all authenticate via `POST /auth/login` (username/password) against one `users` table, differentiated by `role`. No self-registration for any role; no approval queue. Accounts are provisioned in advance:
+- First admin seeded from `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD` env vars on backend startup (password hashed, never logged)
+- Admin creates trainer accounts
+- Admin or trainer creates trainee accounts — including setting their `module_id` at creation time (trainee doesn't self-select module; it's assigned)
 
-For reference, the deferred design (build later, not now):
-- **Trainee:** arrives via a signed token issued by the existing platform (shared secret or public key — TBD with platform team). Token verified on entry; trainee identity cached in a `trainees` table.
-- **Trainer/Admin:** username + password, first admin seeded from env vars, JWT sessions.
+**Why no self-registration for trainees:** trainees reaching this module have already passed Practical Exam + MCQ on the main platform — they're a known, pre-verified population, not an open public signup. Provisioning avoids inventing a trust/approval problem that doesn't exist here.
 
-**Do not add auth middleware, `users` table, or login routes until explicitly asked.**
+**Session mechanics:**
+- JWT access token (15-30 min) + refresh token (7 days, httpOnly cookie)
+- Access token sent as `Authorization: Bearer <token>` on every request
+- On 401, attempt silent refresh via the refresh cookie; force re-login only if refresh itself fails
+- Role-based route/endpoint guards: `require_role("admin")`, `require_role("trainer", "admin")`, etc.
+
+**Post-login redirect logic (role-dependent, this is the one asymmetry):**
+- Trainer/Admin → straight to `/dashboard` (fixed destination)
+- Trainee → backend resolves: existing in-progress `viva_sessions` row for this trainee? Resume it. Otherwise create one against their assigned `module_id`. → redirect to `/viva/:sessionId/welcome`
+
+**Deferred (future integration phase — do not build yet):** replacing trainee direct-login with a signed-token handoff from the main platform. When built, only the trainee entry point changes — everything from session-resolution onward stays identical.
 
 ---
 
 ## 5. Database Schema (draft — see schema.dbml for full ER diagram)
 
-**Current build phase — active tables only:**
-- `trainees` — minimal record, created directly via API for now (stand-in for future token-derived identity): id, employee_id/name (optional at this stage — can be as simple as an id passed in)
+**Active tables (current build):**
+- `users` — trainee, trainer, and admin accounts (shared table, `role` column). Trainee rows include `module_id` (assigned at creation), `password_hash`, `created_by` (which admin/trainer provisioned them)
 - `training_modules` — Foundation, Intermediate, Developer
 - `question_bank` — scoped to a module
-- `viva_sessions` — one per trainee attempt, linked to a module — created directly via `{trainee_id, module_id}`, no token
-- `viva_questions` — questions asked in a session, with transcript + audio path
+- `viva_sessions` — one per trainee attempt, linked to a module and a `users` row (trainee) — created automatically on trainee's first post-login session-resolution, or resumed if already in progress
+- `viva_questions` — questions asked in a session, with transcript + audio path, `question_order`, `answered_at`
 - `evaluations` — per-question AI scores
-- `fraud_flags` — multi-face/no-face flags per question
-- `viva_reports` — aggregate score, AI recommendation (trainer_decision field exists in schema but stays null/unused until trainer review is built)
+- `fraud_flags` — NO_FACE, TAB_SWITCH, FULLSCREEN_EXIT flags per question, real `detected_at` datetime
+- `viva_reports` — aggregate score, AI recommendation, `trainer_decision` (now meaningful — FK `reviewed_by` → `users.id`)
 
-**Deferred — do not build yet:** `users` (trainer/admin accounts), `audit_logs` (needs an actor to log against, meaningless without auth)
+**Deferred — do not build yet:** `audit_logs` (add once there's a clear need to track admin/trainer actions beyond what's already implicit in `created_by`/`reviewed_by`)
+
+**Dropped from schema:** the standalone `trainees` cache table — no longer needed now that trainees are real `users` rows. `question_bank.question_type` (VOICE/TEXT) — dropped as dead weight since this module is voice-only by design; revisit only if a text-response format is genuinely needed later.
 
 ---
 
-## 6. API Routes (current phase — all open/unauthenticated)
+## 6. API Routes (current phase)
 
-| Method | Route | Purpose | Status |
+| Method | Route | Purpose | Auth |
 |---|---|---|---|
-| POST | /viva/sessions | Create session from `{trainee_id, module_id}` directly (stand-in for token entry) | Pending |
-| GET | /viva/{session_id}/system-check | Camera/mic/speaker/network checks | Pending |
-| POST | /viva/{session_id}/next-question | Get next question (text + TTS audio) | Pending |
-| POST | /viva/{session_id}/answer | Submit audio, get transcript + eval, trigger next question or completion | Pending |
-| GET | /viva/{session_id}/report | AI-generated report | Pending |
-| Admin CRUD | /modules, /question-bank | Manage modules and questions — open for now, no admin auth | Pending |
+| POST | /auth/login | Login for any role (trainee/trainer/admin) | Public |
+| POST | /auth/refresh | Refresh access token via cookie | Public (cookie-gated) |
+| POST | /auth/logout | Clear refresh cookie | Authenticated |
+| POST | /admin/users | Create trainer or trainee account | admin (trainer can also create trainee) |
+| GET | /viva/{session_id}/system-check | Camera/mic/speaker/network checks | trainee (own session) |
+| POST | /viva/sessions/start | Creates or resumes a session post-system check | trainee |
+| POST | /viva/{session_id}/next-question | Get next question (text + TTS audio) | trainee (own session) |
+| POST | /viva/{session_id}/answer | Submit audio, get transcript + eval, trigger next question or completion | trainee (own session) |
+| POST | /viva/{session_id}/fraud-flag | Log a fraud flag for the active question | trainee (own session) |
+| GET | /viva/{session_id}/report | Full AI-generated report | trainer, admin |
+| POST | /viva/{session_id}/decision | Trainer sets final pass/fail/hold | trainer, admin |
+| /modules, /question-bank | Manage modules and questions | admin |
 
-**Deferred — do not build yet:** `/viva/entry?token=...` (token verification), `/auth/admin/login`, `/admin/users`, `/viva/{session_id}/decision` (trainer decision — needs a trainer identity to attribute it to)
+**Deferred — do not build yet:** `/viva/entry?token=...` (token-based trainee entry, replaces direct login later)
 
 ---
 
-## 7. Dependencies (planned)
+## 7. Dependencies
 
-- Backend: fastapi, uvicorn, sqlalchemy, asyncpg/psycopg2, pydantic, openai-whisper or faster-whisper, google-generativeai (Gemini), a TTS library (TBD). **Not needed yet:** python-jose/JWT libraries — hold off until auth phase.
-- Frontend: react, vite, axios, react-router, face-detection lib (face-api.js or MediaPipe) for fraud check
+- Backend: fastapi, uvicorn, sqlalchemy, asyncpg/psycopg2, pydantic, passlib[bcrypt] (password hashing), python-jose (JWT issue/verify), openai-whisper or faster-whisper, google-generativeai (Gemini), a TTS library (TBD)
+- Frontend: react, vite, axios, react-router, face-api.js or MediaPipe (NO_FACE detection only — see fraud detection scope)
 
 ---
 
@@ -111,19 +143,17 @@ _(none yet — brand new build)_
 ## 9. Pending Tasks / Open Questions
 
 **Current phase (active work):**
+- [ ] Implement `core/security.py` — password hashing (passlib/bcrypt), JWT issue/verify
+- [ ] Implement `/auth/login`, `/auth/refresh`, `/auth/logout`
+- [ ] Implement `require_role()` dependency for route guards
+- [ ] Implement trainee session-resolution logic (`GET /viva/session/current`) — resume in-progress or create new
+- [ ] Decide: one-by-one trainee account creation UI first, or build CSV bulk-import from the start given cohort sizes
 - [ ] Pick actual TTS engine (Whisper is STT-only)
-- [ ] Confirm face-detection library for fraud check (frontend-side)
 - [ ] Finalize evaluation rubric prompt for Gemini (Technical Knowledge, Communication, Confidence, Clarity, Logical Reasoning, Response Quality)
-- [ ] Seed question_bank content per module with AE trainers (even dummy data to start)
+- [ ] Seed question_bank content per module with AE trainers
 
 **Deferred to integration phase (do NOT start until explicitly revisited):**
-- [ ] Auth: token format + signing method from the existing platform (HMAC vs RSA, claims included)
-- [ ] Auth: trainer/admin login, `users` table, seeded admin via env vars
-- [ ] Trainer decision workflow (`/viva/{session_id}/decision`)
-- [ ] `audit_logs` (needs auth to have an actor)
+- [ ] Token-based trainee entry from the main platform (replaces direct login as trainee's way in — session-resolution logic downstream stays the same)
 - [ ] How/when viva results get pushed to or pulled by the main platform
+- [ ] `audit_logs` table
 - [ ] Decide hosting/infra
-## Recent Updates (2026-08-11)
-- **AI Evaluation Endpoints**: Added POST /viva/{session_id}/evaluate and GET /viva/{session_id}/report.
-- **Session API**: Added GET /viva to list all sessions.
-- **AI Service Location**: Added ackend/ai/evaluator.py utilizing Gemini 2.5 Flash for grading responses.

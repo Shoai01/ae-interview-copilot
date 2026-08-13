@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Typography, Button, Paper, Avatar, Stack, CircularProgress } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
