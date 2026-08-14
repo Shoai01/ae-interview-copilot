@@ -216,13 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-/reference_docs
+reference_docs/
 
 
 # --- Frontend ---
 # Logs
 frontend/logs/
-npm-debug.log*
+npm-debug.log*s
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
