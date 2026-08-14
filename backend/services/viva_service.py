@@ -16,10 +16,47 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
 
     if existing_session:
         db_session = existing_session
-    else:
-        db_session = viva_repository.create_session(db, trainee.id, trainee.module_id)
+        total_questions = len(db_session.questions)
+        answered_count = sum(1 for q in db_session.questions if q.answered_at is not None)
+        
+        if total_questions > 0 and answered_count >= total_questions:
+            # Session was completed but state wasn't updated properly, fix it and start new
+            from repositories import viva_repository
+            viva_repository.end_session(db, db_session, datetime.datetime.utcnow())
+            existing_session = None # Fall through to create new session
+        else:
+            # If the session got stuck without questions, generate them now
+            if total_questions == 0:
+                from services.knowledge_service import generate_dynamic_questions_for_session
+                dynamic_questions = generate_dynamic_questions_for_session(db, trainee.module_id, count=5)
+                for i, qb_item in enumerate(dynamic_questions):
+                    viva_repository.create_viva_question(
+                        db=db, session_id=db_session.id, question_bank_id=qb_item.id, question_order=i+1
+                    )
+                total_questions = len(dynamic_questions) if dynamic_questions else 0
 
-    total_questions = viva_repository.count_active_questions(db, db_session.module_id)
+    if not existing_session:
+        # Create the session first
+        db_session = viva_repository.create_session(db, trainee.id, trainee.module_id)
+        
+        # Phase 2: Dynamically generate 5 questions tailored to this session from FAISS
+        from services.knowledge_service import generate_dynamic_questions_for_session
+        dynamic_questions = generate_dynamic_questions_for_session(db, trainee.module_id, count=5)
+        
+        # Link exactly these 5 questions to the session
+        for i, qb_item in enumerate(dynamic_questions):
+            viva_repository.create_viva_question(
+                db=db,
+                session_id=db_session.id,
+                question_bank_id=qb_item.id,
+                question_order=i+1
+            )
+            
+        total_questions = len(dynamic_questions) if dynamic_questions else 0
+
+    if total_questions == 0:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Could not generate questions. AI generation failed, or there are no valid documents uploaded for this module.")
 
     return viva_schemas.SessionResponse(
         id=db_session.id,
@@ -37,36 +74,30 @@ def get_next_question(db: Session, session_id: int) -> viva_schemas.NextQuestion
     if not session:
         return None
 
-    asked_question_ids = [vq.question_bank_id for vq in session.questions]
-
-    if session.questions:
-        last_vq = max(session.questions, key=lambda x: x.question_order)
-        if last_vq.answered_at is None:
-            total_questions = viva_repository.count_active_questions(db, session.module_id)
-            return viva_schemas.NextQuestionResponse(
-                viva_question_id=last_vq.id,
-                text=last_vq.question_bank.text,
-                question_type="VOICE", # Fixed since we removed question_type from DB
-                is_last_question=(last_vq.question_order >= total_questions),
-                current_question_index=last_vq.question_order,
-                total_questions=total_questions
-            )
-
-    next_qb_item = viva_repository.get_next_active_question(db, session.module_id, asked_question_ids)
-    total_questions = viva_repository.count_active_questions(db, session.module_id)
-
-    if not next_qb_item:
+    if not session.questions:
         return None
 
-    question_order = len(asked_question_ids) + 1
-    viva_question = viva_repository.create_viva_question(db, session.id, next_qb_item.id, question_order)
+    # Find the first question (ordered by question_order) that hasn't been answered yet
+    sorted_questions = sorted(session.questions, key=lambda x: x.question_order)
+    
+    current_vq = None
+    for vq in sorted_questions:
+        if vq.answered_at is None:
+            current_vq = vq
+            break
+            
+    if not current_vq:
+        # All questions have been answered
+        return None
+
+    total_questions = len(sorted_questions)
 
     return viva_schemas.NextQuestionResponse(
-        viva_question_id=viva_question.id,
-        text=next_qb_item.text,
+        viva_question_id=current_vq.id,
+        text=current_vq.question_bank.text,
         question_type="VOICE",
-        is_last_question=(question_order >= total_questions),
-        current_question_index=question_order,
+        is_last_question=(current_vq.question_order >= total_questions),
+        current_question_index=current_vq.question_order,
         total_questions=total_questions
     )
 
@@ -82,7 +113,7 @@ def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSum
     if not session:
         return None
         
-    total_questions = viva_repository.count_active_questions(db, session.module_id)
+    total_questions = len(session.questions)
     
     answered_questions = [q for q in session.questions if q.answered_at is not None]
     questions_answered = len(answered_questions)

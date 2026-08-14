@@ -20,3 +20,10 @@ def create_user(db: Session, user: UserCreate, created_by_id: int) -> User:
     db.commit()
     db.refresh(db_user)
     return db_user
+
+def get_all_users(db: Session, current_user_role: UserRole) -> list[User]:
+    # Trainers might only need to see trainees, but for now let's return all non-admins if trainer, or all if admin
+    if current_user_role == UserRole.ADMIN:
+        return db.query(User).all()
+    else:
+        return db.query(User).filter(User.role == UserRole.TRAINEE).all()

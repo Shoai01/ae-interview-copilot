@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 
 from core.database import get_db
 from schemas import admin as admin_schemas
 from schemas import user as user_schemas
-from services import admin_service, user_service
+from services import admin_service, user_service, knowledge_service
 from core.deps import require_role
 from models.domain import UserRole, User
 
@@ -27,6 +27,10 @@ def create_user(user: user_schemas.UserCreate, db: Session = Depends(get_db), cu
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
         
     return user_service.create_user(db, user=user, created_by_id=current_user.id)
+
+@router.get("/users", response_model=List[user_schemas.UserResponse])
+def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    return user_service.get_all_users(db, current_user.role)
 
 @router.get("/modules", response_model=List[admin_schemas.ModuleResponse])
 def get_all_modules(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE]))):
@@ -53,3 +57,30 @@ def delete_question(question_id: int, db: Session = Depends(get_db), current_use
     if not success:
         raise HTTPException(status_code=404, detail="Question not found")
     return None
+
+@router.post("/modules/{module_id}/upload-docs")
+async def upload_knowledge_document(
+    module_id: int, 
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))
+):
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+    
+    file_content = await file.read()
+    
+    try:
+        chunks_created = knowledge_service.process_and_store_pdf(
+            db=db, 
+            module_id=module_id, 
+            file_content=file_content, 
+            source_filename=file.filename
+        )
+        return {"message": f"Successfully processed {file.filename}", "chunks_created": chunks_created}
+    except Exception as e:
+        import traceback
+        with open("upload_error.log", "w") as f:
+            traceback.print_exc(file=f)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")

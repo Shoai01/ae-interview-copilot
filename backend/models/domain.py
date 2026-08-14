@@ -74,6 +74,7 @@ class QuestionBank(Base):
     module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=False)
     text = Column(String, nullable=False)
     difficulty = Column(SQLEnum(DifficultyLevel), nullable=False)
+    question_type = Column(String, nullable=False, default="VOICE")
     is_active = Column(Boolean, default=True)
 
     module = relationship("TrainingModule", back_populates="questions")

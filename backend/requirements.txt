@@ -10,3 +10,8 @@ passlib[bcrypt]
 python-jose[cryptography]
 python-multipart
 slowapi
+pymupdf
+langchain-text-splitters
+faiss-cpu
+langchain-community
+langchain-google-genai

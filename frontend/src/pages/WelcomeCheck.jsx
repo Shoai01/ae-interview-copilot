@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Card, CardContent, Stack, Button, Chip } from '@mui/material';
+import { Box, Typography, Card, CardContent, Stack, Button, Chip, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
@@ -15,6 +15,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SyncIcon from '@mui/icons-material/Sync';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { vivaService, adminService } from '../services/api';
 import { globalState } from '../store';
 import { useAuth } from '../store/AuthContext';
@@ -33,7 +34,7 @@ const StatusIcon = ({ status }) => {
 export default function WelcomeCheck() {
   const navigate = useNavigate();
   const videoRef = useRef(null);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const [checks, setChecks] = useState({
     camera: 'checking',
@@ -47,7 +48,6 @@ export default function WelcomeCheck() {
   const [traineeName, setTraineeName] = useState("Loading...");
   const [modules, setModules] = useState([]);
   const [selectedModuleId, setSelectedModuleId] = useState(null);
-  const [questionCount, setQuestionCount] = useState(null);
 
   useEffect(() => {
     // Fetch Trainee Details
@@ -125,8 +125,11 @@ export default function WelcomeCheck() {
     };
   }, [user]);
 
+  const [isStartingSession, setIsStartingSession] = useState(false);
+
   const handleStart = async () => {
     try {
+      setIsStartingSession(true);
       try {
         await document.documentElement.requestFullscreen();
       } catch {
@@ -148,6 +151,7 @@ export default function WelcomeCheck() {
       });
     } catch (err) {
       console.error("Failed to create session:", err);
+      setIsStartingSession(false);
     }
   };
 
@@ -155,28 +159,34 @@ export default function WelcomeCheck() {
   const readyCount = Object.values(checks).filter(status => status === 'passed').length;
   const selectedModule = modules.find(m => m.id === selectedModuleId) || null;
 
-  // Fetch question count when selected module changes
-  useEffect(() => {
-    if (!selectedModuleId) return;
-    const fetchCount = async () => {
-      try {
-        const questions = await adminService.getQuestions(selectedModuleId);
-        setQuestionCount(questions.filter(q => q.is_active !== false).length);
-      } catch {
-        setQuestionCount(null);
-      }
-    };
-    fetchCount();
-  }, [selectedModuleId]);
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
 
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       {/* Header */}
-      <Box component="header" sx={{ width: '100%', px: 4, py: 2, display: 'flex', alignItems: 'center', height: 64, position: 'sticky', top: 0, zIndex: 50, bgcolor: 'background.default' }}>
+      <Box component="header" sx={{ width: '100%', px: 4, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, position: 'sticky', top: 0, zIndex: 50, bgcolor: 'background.default' }}>
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', color: '#1a202c', fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>
           Viva Copilot<Typography component="span" variant="h6" color="primary.main" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>.</Typography>
         </Typography>
+        <Button 
+          variant="outlined" 
+          size="small" 
+          onClick={handleLogout}
+          startIcon={<LogoutIcon fontSize="small" />}
+          sx={{ 
+            color: 'text.secondary', 
+            borderColor: 'rgba(0,0,0,0.12)', 
+            textTransform: 'none', 
+            fontWeight: 500,
+            '&:hover': { borderColor: 'rgba(0,0,0,0.24)', bgcolor: 'rgba(0,0,0,0.02)' }
+          }}
+        >
+          Sign Out
+        </Button>
       </Box>
 
       {/* Main Content */}
@@ -231,7 +241,7 @@ export default function WelcomeCheck() {
                     <FormatListNumberedOutlinedIcon sx={{ color: '#009ade', fontSize: '22px' }} />
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#0d1c2e', mb: 0.5 }}>Questions</Typography>
-                      <Typography variant="body2" sx={{ color: '#535f74', lineHeight: 1.6 }}>{questionCount ? `${questionCount} dynamic questions` : 'Dynamic questions'} tailored to your {selectedModule?.name || ''} profile.</Typography>
+                      <Typography variant="body2" sx={{ color: '#535f74', lineHeight: 1.6 }}>Dynamic questions tailored to your {selectedModule?.name || ''} profile.</Typography>
                     </Box>
                   </Box>
                   
@@ -259,7 +269,7 @@ export default function WelcomeCheck() {
                 </Box>
 
                 {/* Live Video Preview Box */}
-                <Box sx={{ width: '100%', height: 160, bgcolor: '#000', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+                <Box sx={{ width: '100%', height: 160, bgcolor: '#000', borderRadius: 4, overflow: 'hidden', position: 'relative', boxShadow: 'inset 0px 4px 20px rgba(0,0,0,0.5)' }}>
                   <video 
                     ref={videoRef} 
                     autoPlay 
@@ -324,24 +334,32 @@ export default function WelcomeCheck() {
           <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 2, gap: 1.5 }}>
             <Button 
               variant="contained" 
-              disabled={!isReady}
+              disabled={!isReady || isStartingSession}
               sx={{ 
                 bgcolor: '#F26522', 
                 color: '#fff',
                 textTransform: 'none',
-                fontWeight: 500,
+                fontWeight: 600,
                 fontSize: '16px',
-                px: 4, 
+                px: 5, 
                 py: 1.5, 
-                borderRadius: 2,
-                boxShadow: 'none',
-                '&:hover': { bgcolor: '#d95a1e', boxShadow: 'none' },
-                '&.Mui-disabled': { bgcolor: 'rgba(0,0,0,0.12)', color: 'rgba(0,0,0,0.26)' }
+                borderRadius: 3,
+                boxShadow: '0px 8px 24px rgba(242, 101, 34, 0.3)',
+                transition: 'all 0.3s ease',
+                '&:hover': { bgcolor: '#d95a1e', boxShadow: '0px 12px 28px rgba(242, 101, 34, 0.4)', transform: 'translateY(-2px)' },
+                '&.Mui-disabled': { bgcolor: 'rgba(0,0,0,0.06)', color: 'rgba(0,0,0,0.26)', boxShadow: 'none' }
               }}
-              endIcon={<ArrowForwardIcon />}
+              endIcon={!isStartingSession && <ArrowForwardIcon />}
               onClick={handleStart}
             >
-              I Accept & Start Viva
+              {isStartingSession ? (
+                <>
+                  <CircularProgress size={20} sx={{ color: 'inherit', mr: 1.5 }} />
+                  AI is preparing your interview questions...
+                </>
+              ) : (
+                "I Accept & Start Viva"
+              )}
             </Button>
             {!isReady && (
               <Typography variant="body2" sx={{ color: '#dc2626', fontSize: '13px', fontWeight: 500 }}>

@@ -181,7 +181,7 @@ export function useSpeechRecognition() {
       setIsRecording(false);
       
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try { mediaRecorderRef.current.stop(); } catch (_) { /* ignore */ }
+        try { mediaRecorderRef.current.stop(); } catch (err) { console.log(err); }
       }
 
       // Flush any remaining live text into final text using refs
@@ -214,7 +214,7 @@ export function useSpeechRecognition() {
       
       // Stop the MediaRecorder first so no more audio is sent
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try { mediaRecorderRef.current.stop(); } catch (_) { /* ignore */ }
+        try { mediaRecorderRef.current.stop(); } catch (err) { console.log(err); }
       }
 
       // Send CloseStream to Deepgram and wait for the socket to close

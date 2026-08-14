@@ -1,16 +1,12 @@
 import React from 'react';
-import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Button, IconButton, InputBase, Avatar, Menu, MenuItem } from '@mui/material';
+import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Button, IconButton, InputBase } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import MicIcon from '@mui/icons-material/Mic';
 import SourceIcon from '@mui/icons-material/Source';
-import InsightsIcon from '@mui/icons-material/Insights';
-import SettingsIcon from '@mui/icons-material/Settings';
-import HelpIcon from '@mui/icons-material/Help';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import MenuIcon from '@mui/icons-material/Menu';
 import PeopleIcon from '@mui/icons-material/People';
 import { useAuth } from '../store/AuthContext';
@@ -19,13 +15,9 @@ const drawerWidth = 280;
 
 export default function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [anchorEl, setAnchorEl] = React.useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, user } = useAuth();
-
-  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
-  const handleMenuClose = () => setAnchorEl(null);
+  const { logout } = useAuth();
 
   const handleLogout = async () => {
     await logout();
@@ -37,8 +29,6 @@ export default function Layout({ children }) {
     { text: 'Sessions', icon: <MicIcon />, path: '/hr/sessions' },
     { text: 'Question Bank', icon: <SourceIcon />, path: '/hr/questions' },
     { text: 'Users & Access', icon: <PeopleIcon />, path: '/hr/users' },
-    { text: 'Analytics', icon: <InsightsIcon />, path: '/hr/analytics' },
-    { text: 'Settings', icon: <SettingsIcon />, path: '/hr/settings' },
   ];
 
   const drawerContent = (
@@ -103,12 +93,7 @@ export default function Layout({ children }) {
       {/* Footer Navigation */}
       <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
         <List disablePadding>
-          <ListItem disablePadding>
-            <ListItemButton sx={{ borderRadius: 2, py: 1 }}>
-              <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><HelpIcon /></ListItemIcon>
-              <ListItemText primary="Help Center" primaryTypographyProps={{ variant: 'body2', color: 'text.secondary', fontWeight: 500 }} />
-            </ListItemButton>
-          </ListItem>
+
           <ListItem disablePadding>
             <ListItemButton sx={{ borderRadius: 2, py: 1 }} onClick={handleLogout}>
               <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><LogoutIcon /></ListItemIcon>
@@ -121,7 +106,7 @@ export default function Layout({ children }) {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ display: 'flex', width: '100vw', minHeight: '100vh', bgcolor: 'background.default' }}>
       
       {/* Mobile Drawer */}
       <Drawer
@@ -152,7 +137,7 @@ export default function Layout({ children }) {
       </Drawer>
       
       {/* Main Content Area */}
-      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', width: { lg: `calc(100% - ${drawerWidth}px)` } }}>
+      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         
         {/* Top App Bar */}
         <Box component="header" sx={{ 
@@ -183,35 +168,12 @@ export default function Layout({ children }) {
               <SearchIcon sx={{ color: 'text.secondary', fontSize: 20, mr: 1 }} />
               <InputBase placeholder="Search sessions..." sx={{ ml: 1, flex: 1, fontSize: 14 }} />
             </Box>
-            <IconButton>
-              <NotificationsIcon sx={{ color: 'text.secondary' }} />
-            </IconButton>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }} onClick={handleMenuOpen}>
-              <Avatar 
-                sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: '16px' }}
-              >
-                {user?.role ? user.role.charAt(0).toUpperCase() : 'U'}
-              </Avatar>
-              <Typography variant="body2" sx={{ display: { xs: 'none', md: 'block' }, fontWeight: 600, color: 'text.primary' }}>
-                {user?.username || 'User'}
-              </Typography>
-            </Box>
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(anchorEl)}
-              onClose={handleMenuClose}
-              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-            >
-              <MenuItem onClick={handleMenuClose}>Profile</MenuItem>
-              <MenuItem onClick={handleLogout}>Logout</MenuItem>
-            </Menu>
           </Box>
         </Box>
 
         {/* Page Content Canvas */}
-        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, lg: 4 } }}>
-          <Box sx={{ maxWidth: 1440, mx: 'auto' }}>
+        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, lg: 4 }, display: 'block', width: '100%' }}>
+          <Box sx={{ width: '100%', display: 'block' }}>
             {children}
           </Box>
         </Box>

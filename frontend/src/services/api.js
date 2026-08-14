@@ -29,7 +29,13 @@ export const adminService = {
     return response.data;
   },
   getQuestions: async (moduleId) => {
-    const response = await api.get(`/admin/questions?module_id=${moduleId}`);
+    const response = await api.get('/admin/questions', { params: { module_id: moduleId } });
+    return response.data;
+  },
+  uploadKnowledgeDocument: async (moduleId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/admin/modules/${moduleId}/upload-docs`, formData);
     return response.data;
   },
   createQuestion: async (questionData) => {
@@ -46,6 +52,10 @@ export const adminService = {
   },
   createUser: async (userData) => {
     const response = await api.post('/admin/users', userData);
+    return response.data;
+  },
+  getUsers: async () => {
+    const response = await api.get('/admin/users');
     return response.data;
   }
 };

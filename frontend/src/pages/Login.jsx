@@ -53,7 +53,11 @@ export default function Login() {
                 navigate('/hr/dashboard');
             }
         } catch (err) {
-            setError(err.response?.data?.detail || 'Invalid username or password');
+            if (err.response?.status === 429) {
+                setError("Too many login attempts. Please try again in a minute.");
+            } else {
+                setError(err.response?.data?.detail || 'Invalid username or password');
+            }
         } finally {
             setLoading(false);
         }
@@ -70,11 +74,14 @@ export default function Login() {
                 justifyContent: 'center',
                 px: { xs: 4, sm: 8, lg: 12 },
                 py: { xs: 8, lg: 10 },
-                bgcolor: 'background.default',
+                background: 'linear-gradient(to bottom right, #FFDBCE, #D7E3FC)',
                 position: 'relative',
-                borderRight: '1px solid rgba(0,0,0,0.05)'
+                borderRight: '1px solid rgba(0,0,0,0.05)',
+                overflow: 'hidden'
             }}>
-                <Box sx={{ maxWidth: 500 }}>
+                <Box sx={{ position: 'absolute', top: '-10%', right: '-10%', width: 500, height: 500, bgcolor: 'rgba(242, 101, 34, 0.2)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
+                <Box sx={{ position: 'absolute', bottom: '-10%', left: '-10%', width: 400, height: 400, bgcolor: 'rgba(0, 154, 222, 0.15)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
+                <Box sx={{ maxWidth: 500, position: 'relative', zIndex: 1 }}>
                     <Typography variant="h2" color="text.primary" sx={{ fontWeight: 700, mb: 3, lineHeight: 1.2 }}>
                         AI-powered interviews, <Box component="span" color="primary.main">evaluated in real time</Box>
                     </Typography>
@@ -100,11 +107,8 @@ export default function Login() {
                 position: 'relative',
                 py: { xs: 8, lg: 0 },
                 px: { xs: 4, sm: 8 },
-                background: 'linear-gradient(to bottom right, #FFDBCE, #D7E3FC)'
+                bgcolor: 'background.default'
             }}>
-                <Box sx={{ position: 'absolute', top: '-10%', right: '-10%', width: 500, height: 500, bgcolor: 'rgba(242, 101, 34, 0.2)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
-                <Box sx={{ position: 'absolute', bottom: '-10%', left: '-10%', width: 400, height: 400, bgcolor: 'rgba(0, 154, 222, 0.15)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
-
                 <Box sx={{ 
                     maxWidth: 420, 
                     width: '100%', 
@@ -152,7 +156,16 @@ export default function Login() {
                                         '& .MuiOutlinedInput-root': {
                                             bgcolor: 'white',
                                             borderRadius: 2,
+                                            transition: 'all 0.2s ease',
                                             '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
+                                            '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.2)' },
+                                            '&.Mui-focused fieldset': { 
+                                                borderColor: 'primary.main',
+                                                borderWidth: '1px',
+                                            },
+                                            '&.Mui-focused': {
+                                                boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.15)',
+                                            }
                                         }
                                     }}
                                 />
@@ -189,7 +202,16 @@ export default function Login() {
                                         '& .MuiOutlinedInput-root': {
                                             bgcolor: 'white',
                                             borderRadius: 2,
+                                            transition: 'all 0.2s ease',
                                             '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
+                                            '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.2)' },
+                                            '&.Mui-focused fieldset': { 
+                                                borderColor: 'primary.main',
+                                                borderWidth: '1px',
+                                            },
+                                            '&.Mui-focused': {
+                                                boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.15)',
+                                            }
                                         }
                                     }}
                                 />

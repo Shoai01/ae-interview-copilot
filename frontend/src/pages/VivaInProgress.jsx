@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Typography, IconButton, Paper, Button, TextField, CircularProgress, Collapse } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CodeIcon from '@mui/icons-material/Code';
@@ -75,7 +75,7 @@ export default function VivaInProgress() {
   // Show finalText, and append liveText (greyed-out interim) separately.
   const displayValue = finalText + (liveText ? (finalText ? ' ' : '') + liveText : '');
 
-  const fetchQuestion = async () => {
+  const fetchQuestion = useCallback(async () => {
     try {
       setLoading(true);
       const question = await vivaService.getNextQuestion(sessionId);
@@ -86,13 +86,14 @@ export default function VivaInProgress() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionId, resetTranscript]);
 
   useEffect(() => {
     if (!sessionId) {
       navigate('/');
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchQuestion();
     
     if (globalState.mediaStream && videoRef.current) {
@@ -102,7 +103,7 @@ export default function VivaInProgress() {
     return () => {
       cancelSpeech();
     };
-  }, [sessionId, navigate]);
+  }, [sessionId, navigate, fetchQuestion, cancelSpeech]);
 
   useEffect(() => {
     if (currentQuestion && currentQuestion.text && !loading) {
@@ -158,9 +159,6 @@ export default function VivaInProgress() {
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default', position: 'relative', overflow: 'hidden' }}>
-      
-      <Box sx={{ position: 'fixed', top: '-10%', left: '-10%', width: '40%', height: '40%', bgcolor: '#dce9ff', borderRadius: '50%', filter: 'blur(100px)', opacity: 0.5, zIndex: 0 }} />
-      <Box sx={{ position: 'fixed', bottom: '-10%', right: '-10%', width: '40%', height: '40%', bgcolor: '#d5e3fc', borderRadius: '50%', filter: 'blur(100px)', opacity: 0.4, zIndex: 0 }} />
 
       <Box component="header" sx={{ position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 40, px: 3, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
         
@@ -191,12 +189,12 @@ export default function VivaInProgress() {
         </Paper>
 
         <Box sx={{ 
-          width: 200, 
-          height: 200, 
+          width: 240, 
+          height: 180, 
           borderRadius: 4, 
-          border: '2px solid rgba(0,0,0,0.08)', 
+          border: '1px solid rgba(255,255,255,0.4)', 
           overflow: 'hidden', 
-          boxShadow: 3, 
+          boxShadow: '0 8px 32px rgba(0,0,0,0.15)', 
           pointerEvents: 'auto', 
           position: 'relative', 
           bgcolor: '#000',
@@ -211,7 +209,10 @@ export default function VivaInProgress() {
             muted 
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
-          <Box sx={{ position: 'absolute', bottom: 12, right: 12, width: 14, height: 14, bgcolor: '#10b981', borderRadius: '50%', border: '2px solid white', boxShadow: 1 }} />
+          <Box sx={{ position: 'absolute', bottom: 12, right: 12, display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', px: 1, py: 0.5, borderRadius: 2 }}>
+            <Box sx={{ width: 8, height: 8, bgcolor: '#10b981', borderRadius: '50%', boxShadow: '0 0 8px #10b981' }} />
+            <Typography variant="caption" sx={{ color: 'white', fontWeight: 600, fontSize: '10px', letterSpacing: 0.5 }}>LIVE</Typography>
+          </Box>
         </Box>
       </Box>
 

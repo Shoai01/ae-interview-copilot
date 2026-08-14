@@ -9,10 +9,12 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import { useNavigate } from 'react-router-dom';
 import { vivaService } from '../services/api';
 
-export default function TrainerDashboard() {
+export default function TrainerSessions() {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterModule, setFilterModule] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -28,6 +30,15 @@ export default function TrainerDashboard() {
     fetchSessions();
   }, []);
 
+  const uniqueModules = [...new Set(sessions.map(s => s.module_name))].filter(Boolean);
+  const uniqueStatuses = [...new Set(sessions.map(s => s.status))].filter(Boolean);
+
+  const filteredSessions = sessions.filter(session => {
+    const matchModule = filterModule === '' || session.module_name === filterModule;
+    const matchStatus = filterStatus === '' || session.status === filterStatus;
+    return matchModule && matchStatus;
+  });
+
   return (
     <Layout>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -35,30 +46,31 @@ export default function TrainerDashboard() {
         {/* Page Header & Filters */}
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
           <Box>
-            <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', fontFamily: 'Syne, sans-serif', mb: 0.5 }}>
+            <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', fontFamily: 'Syne, sans-serif', mb: 0.5, letterSpacing: '-0.02em' }}>
               Viva Sessions
             </Typography>
-            <Typography variant="body1" color="text.secondary">
+            <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
               Review AI evaluations and finalize trainee outcomes.
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Select size="small" defaultValue="" displayEmpty sx={{ minWidth: 180, bgcolor: 'background.paper', borderRadius: 2 }}>
-              <MenuItem value="" disabled>Filter by Module</MenuItem>
-              <MenuItem value="sales">Sales Objection Handling</MenuItem>
-              <MenuItem value="support">Customer Support Esc.</MenuItem>
-              <MenuItem value="compliance">Compliance Audit Q3</MenuItem>
+            <Select size="small" value={filterModule} onChange={(e) => setFilterModule(e.target.value)} displayEmpty sx={{ minWidth: 180, bgcolor: 'background.paper', borderRadius: 2, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main', borderWidth: 1, boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.1)' } }}>
+              <MenuItem value="">All Modules</MenuItem>
+              {uniqueModules.map(mod => (
+                <MenuItem key={mod} value={mod}>{mod}</MenuItem>
+              ))}
             </Select>
-            <Select size="small" defaultValue="" displayEmpty sx={{ minWidth: 140, bgcolor: 'background.paper', borderRadius: 2 }}>
-              <MenuItem value="" disabled>Status</MenuItem>
-              <MenuItem value="pending">Pending Review</MenuItem>
-              <MenuItem value="reviewed">Reviewed</MenuItem>
+            <Select size="small" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} displayEmpty sx={{ minWidth: 140, bgcolor: 'background.paper', borderRadius: 2, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main', borderWidth: 1, boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.1)' } }}>
+              <MenuItem value="">All Statuses</MenuItem>
+              {uniqueStatuses.map(status => (
+                <MenuItem key={status} value={status}>{status}</MenuItem>
+              ))}
             </Select>
           </Box>
         </Box>
 
         {/* Data Table */}
-        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden', minHeight: 400 }}>
+        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'rgba(0,0,0,0.08)', borderRadius: 3, overflow: 'hidden', minHeight: 400 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
               <CircularProgress />
@@ -66,35 +78,36 @@ export default function TrainerDashboard() {
           ) : (
             <>
               <Table sx={{ minWidth: 800 }} aria-label="sessions table">
-                <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                <TableHead sx={{ bgcolor: '#fafafa' }}>
                   <TableRow>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Trainee Name</TableCell>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Employee ID</TableCell>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Module</TableCell>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>AI Rec.</TableCell>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Status</TableCell>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Date</TableCell>
-                    <TableCell align="right" sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px' }}>Action</TableCell>
+                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Trainee Name</TableCell>
+                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Employee ID</TableCell>
+                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Module</TableCell>
+                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>AI Rec.</TableCell>
+                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Status</TableCell>
+                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Date</TableCell>
+                    <TableCell align="right" sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {sessions.length === 0 ? (
+                  {filteredSessions.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
                         No sessions found. Complete an interview to see it here!
                       </TableCell>
                     </TableRow>
-                  ) : sessions.map((row) => (
+                  ) : filteredSessions.map((row) => (
                     <TableRow 
                       key={row.id} 
                       hover 
                       sx={{ 
                         '&:last-child td, &:last-child th': { border: 0 },
-                        '&:hover .action-btn': { opacity: 1 } 
+                        transition: 'background-color 0.2s ease',
+                        '&:hover': { bgcolor: 'rgba(0,154,222,0.02)' }
                       }}
                     >
-                      <TableCell sx={{ fontWeight: 500 }}>{row.trainee_name}</TableCell>
-                      <TableCell color="text.secondary">{row.employee_id}</TableCell>
+                      <TableCell sx={{ fontWeight: 500 }}>{row.trainee_name || 'Unknown'}</TableCell>
+                      <TableCell sx={{ color: 'text.secondary' }}>{row.employee_id || 'N/A'}</TableCell>
                       <TableCell>
                         <Box sx={{ display: 'inline-flex', px: 1, py: 0.5, bgcolor: '#F1F5F9', borderRadius: 1, fontSize: '12px', fontWeight: 500, color: '#3c475b' }}>
                           {row.module_name}
@@ -131,12 +144,16 @@ export default function TrainerDashboard() {
                       <TableCell sx={{ color: 'text.secondary' }}>{row.date}</TableCell>
                       <TableCell align="right">
                         <Button 
-                          className="action-btn"
-                          variant="contained" 
+                          variant="outlined" 
                           color="primary" 
                           size="small"
                           onClick={() => navigate(`/hr/review/${row.id}`)}
-                          sx={{ opacity: 0, transition: 'opacity 0.2s', boxShadow: 'none' }}
+                          sx={{ 
+                            borderRadius: 2, 
+                            fontWeight: 600, 
+                            textTransform: 'none',
+                            '&:hover': { bgcolor: 'primary.main', color: 'white' }
+                          }}
                         >
                           Review
                         </Button>
@@ -149,7 +166,7 @@ export default function TrainerDashboard() {
               {/* Pagination Footer */}
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'rgba(0,0,0,0.01)' }}>
                 <Typography variant="body2" color="text.secondary">
-                  Showing {sessions.length} entries
+                  Showing {filteredSessions.length} entries
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <Button disabled size="small" sx={{ minWidth: 'auto', p: 0.5, color: 'text.secondary' }}>

@@ -117,8 +117,8 @@ export function useFraudDetection(sessionId, activeQuestionId) {
               inAbsenceEvent = false;
               setDetectorStatus(prev => ({ ...prev, facePresent: true }));
             }
-          } catch (_) {
-            // skip cycle
+          } catch (e) {
+            console.log(e);
           }
         }, 4000);
       } catch (err) {
@@ -144,7 +144,9 @@ export function useFraudDetection(sessionId, activeQuestionId) {
     let debounceTimer = null;
     let hasFiredForThisHide = false;
 
-    addLog('SYSTEM', 'Tab switch detector active', 'info');
+    setTimeout(() => {
+      addLog('SYSTEM', 'Tab switch detector active', 'info');
+    }, 0);
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -198,12 +200,14 @@ export function useFraudDetection(sessionId, activeQuestionId) {
   // ---------------------------------------------------------------
   useEffect(() => {
     let wasFullscreen = !!document.fullscreenElement;
-    setDetectorStatus(prev => ({ ...prev, fullscreen: wasFullscreen ? 'active' : 'inactive' }));
+    setTimeout(() => {
+      setDetectorStatus(prev => ({ ...prev, fullscreen: wasFullscreen ? 'active' : 'inactive' }));
+    }, 0);
 
     if (wasFullscreen) {
-      addLog('SYSTEM', 'Fullscreen active — monitoring for exits', 'info');
+      setTimeout(() => addLog('SYSTEM', 'Fullscreen active — monitoring for exits', 'info'), 0);
     } else {
-      addLog('SYSTEM', 'Not in fullscreen — FULLSCREEN_EXIT detection skipped', 'warn');
+      setTimeout(() => addLog('SYSTEM', 'Not in fullscreen — FULLSCREEN_EXIT detection skipped', 'warn'), 0);
     }
 
     const handleFullscreenChange = () => {

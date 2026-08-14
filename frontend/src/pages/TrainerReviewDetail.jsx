@@ -66,10 +66,10 @@ export default function TrainerReviewDetail() {
 
   return (
     <Layout>
-      <Box sx={{ pb: 12 }}>
+      <Box sx={{ pb: 28 }}>
         {/* Back Navigation */}
         <Box 
-          onClick={() => navigate('/hr/dashboard')}
+          onClick={() => navigate('/hr/sessions')}
           sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, color: 'text.secondary', cursor: 'pointer', mb: 2, '&:hover': { color: 'text.primary' } }}
         >
           <ArrowBackIcon fontSize="small" />
@@ -77,9 +77,9 @@ export default function TrainerReviewDetail() {
         </Box>
 
         {/* Header Card: Trainee Info */}
-        <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider', display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
+        <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'rgba(0,0,0,0.08)', display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ width: 64, height: 64, bgcolor: 'rgba(242, 101, 34, 0.08)', color: 'primary.main', fontWeight: 600, fontSize: 24 }}>
+            <Avatar sx={{ width: 64, height: 64, background: 'linear-gradient(135deg, rgba(242, 101, 34, 0.15) 0%, rgba(0, 154, 222, 0.15) 100%)', color: 'primary.main', fontWeight: 700, fontSize: 24 }}>
               {avatarLetter}
             </Avatar>
             <Box>
@@ -103,7 +103,7 @@ export default function TrainerReviewDetail() {
 
         {/* AI Summary Card */}
         {report ? (
-          <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid', borderColor: 'divider', borderLeft: '4px solid', borderLeftColor: 'primary.main' }}>
+          <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid', borderColor: 'rgba(0, 154, 222, 0.2)', background: 'linear-gradient(135deg, rgba(0,154,222,0.03) 0%, rgba(242,101,34,0.03) 100%)' }}>
             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
               <PsychologyIcon color="primary" sx={{ mt: 0.5 }} />
               <Box>
@@ -146,22 +146,24 @@ export default function TrainerReviewDetail() {
                 <Typography variant="subtitle1" fontWeight={600}>{index + 1}. {q.text}</Typography>
                 <Typography variant="caption" color="text.secondary">{formatDuration(q.duration)}</Typography>
               </Box>
-              <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider', mb: 3 }}>
-                <Typography variant="body2">
+              <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 2, border: '1px solid', borderColor: 'rgba(0,0,0,0.06)', mb: 3 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
                   "{q.transcript || "(No transcript available)"}"
                 </Typography>
                 {q.evaluation?.ai_feedback && (
-                  <Typography variant="caption" sx={{ display: 'block', mt: 2, pt: 1, borderTop: '1px dashed rgba(0,0,0,0.1)', color: 'primary.main', fontWeight: 500 }}>
-                    Feedback: {q.evaluation.ai_feedback}
-                  </Typography>
+                  <Box sx={{ mt: 2, p: 1.5, bgcolor: 'rgba(0, 154, 222, 0.04)', borderRadius: 1.5, borderLeft: '3px solid', borderLeftColor: 'secondary.main' }}>
+                    <Typography variant="caption" sx={{ color: 'secondary.dark', fontWeight: 600 }}>
+                      AI Feedback: {q.evaluation.ai_feedback}
+                    </Typography>
+                  </Box>
                 )}
               </Box>
               
               {q.evaluation ? (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  <ScoreBar label="Communication" score={q.evaluation.score_communication || 0} percentage={(q.evaluation.score_communication || 0) * 10} color="#006492" />
-                  <ScoreBar label="Technical" score={q.evaluation.score_technical || 0} percentage={(q.evaluation.score_technical || 0) * 10} color="#a63b00" />
-                  <ScoreBar label="Confidence" score={q.evaluation.score_confidence || 0} percentage={(q.evaluation.score_confidence || 0) * 10} color="#006492" />
+                  <ScoreBar label="Communication" score={q.evaluation.score_communication || 0} percentage={(q.evaluation.score_communication || 0) * 10} color="#009ADE" />
+                  <ScoreBar label="Technical" score={q.evaluation.score_technical || 0} percentage={(q.evaluation.score_technical || 0) * 10} color="#F26522" />
+                  <ScoreBar label="Confidence" score={q.evaluation.score_confidence || 0} percentage={(q.evaluation.score_confidence || 0) * 10} color="#009ADE" />
                 </Box>
               ) : (
                 <Typography variant="caption" color="text.secondary">No evaluation scores available.</Typography>
@@ -170,22 +172,16 @@ export default function TrainerReviewDetail() {
           ))
         )}
 
-      </Box>
-
-      {/* Fixed Decision Panel */}
+      {/* Decision Panel */}
       <Box sx={{ 
-        position: 'fixed', 
-        bottom: 0, 
-        left: { xs: 0, lg: 280 }, 
-        right: 0, 
-        bgcolor: 'background.paper', 
-        borderTop: '1px solid', 
-        borderColor: 'divider', 
+        mt: 4,
         p: { xs: 2, md: 3 },
-        boxShadow: '0px -4px 20px rgba(0,0,0,0.05)',
-        zIndex: 20
+        borderRadius: 3,
+        border: '1px solid', 
+        borderColor: 'rgba(0,0,0,0.08)',
+        bgcolor: '#fff'
       }}>
-        <Box sx={{ maxWidth: 800, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Box>
             <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>Trainer Notes</Typography>
             <Box 
@@ -207,21 +203,22 @@ export default function TrainerReviewDetail() {
           </Box>
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 2 }}>
             <Stack direction="row" spacing={2} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-              <Button variant="outlined" color="secondary" sx={{ flex: 1 }}>Hold</Button>
-              <Button variant="outlined" color="error" sx={{ flex: 1 }}>Fail</Button>
-              <Button variant="outlined" color="success" sx={{ flex: 1 }}>Pass</Button>
+              <Button variant="outlined" color="secondary" sx={{ flex: 1, borderRadius: 2, fontWeight: 600 }}>Hold</Button>
+              <Button variant="outlined" color="error" sx={{ flex: 1, borderRadius: 2, fontWeight: 600 }}>Fail</Button>
+              <Button variant="outlined" color="success" sx={{ flex: 1, borderRadius: 2, fontWeight: 600 }}>Pass</Button>
             </Stack>
             <Button 
               variant="contained" 
               color="primary" 
               endIcon={<SendIcon />}
-              sx={{ boxShadow: 'none' }}
-              onClick={() => navigate('/hr/dashboard')}
+              sx={{ boxShadow: '0 4px 14px rgba(242, 101, 34, 0.4)', borderRadius: 2, px: 3, fontWeight: 600, '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.6)' } }}
+              onClick={() => navigate('/hr/sessions')}
             >
               Submit Decision
             </Button>
           </Box>
         </Box>
+      </Box>
       </Box>
     </Layout>
   );
@@ -230,7 +227,7 @@ export default function TrainerReviewDetail() {
 function ScoreBar({ label, score, percentage, color }) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      <Typography variant="caption" color="text.secondary" sx={{ width: 80, fontWeight: 500 }}>{label}</Typography>
+      <Typography variant="caption" color="text.secondary" sx={{ minWidth: 100, fontWeight: 500, flexShrink: 0 }}>{label}</Typography>
       <Box sx={{ width: 96, height: 8, bgcolor: 'rgba(0,0,0,0.04)', borderRadius: 4, overflow: 'hidden' }}>
         <Box sx={{ width: `${Math.min(100, Math.max(0, percentage))}%`, height: '100%', bgcolor: color, borderRadius: 4 }} />
       </Box>

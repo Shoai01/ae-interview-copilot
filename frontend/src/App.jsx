@@ -1,9 +1,9 @@
-import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import WelcomeCheck from './pages/WelcomeCheck';
 import VivaInProgress from './pages/VivaInProgress';
 import VivaComplete from './pages/VivaComplete';
-import TrainerDashboard from './pages/TrainerDashboard';
+import TrainerSessions from './pages/TrainerSessions';
+import TrainerOverview from './pages/TrainerOverview';
 import TrainerReviewDetail from './pages/TrainerReviewDetail';
 import AdminQuestionBank from './pages/AdminQuestionBank';
 import UserManagement from './pages/UserManagement';
@@ -28,7 +28,8 @@ function App() {
 
           {/* Trainer / HR Flows */}
           <Route element={<ProtectedRoute allowedRoles={['TRAINER', 'ADMIN']} />}>
-            <Route path="/hr/dashboard" element={<TrainerDashboard />} />
+            <Route path="/hr/dashboard" element={<TrainerOverview />} />
+            <Route path="/hr/sessions" element={<TrainerSessions />} />
             <Route path="/hr/review/:id" element={<TrainerReviewDetail />} />
             <Route path="/hr/questions" element={<AdminQuestionBank />} />
             <Route path="/hr/users" element={<UserManagement />} />

@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext, useRef } from 'react';
 import api, { authService } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -8,11 +8,15 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Keep latest token in a ref so interceptor always has access to it immediately
+  const tokenRef = useRef(accessToken);
+  tokenRef.current = accessToken;
+
   // Configure axios interceptor for token injection
   useEffect(() => {
     const requestInterceptor = api.interceptors.request.use((config) => {
-      if (accessToken) {
-        config.headers.Authorization = `Bearer ${accessToken}`;
+      if (tokenRef.current) {
+        config.headers.Authorization = `Bearer ${tokenRef.current}`;
       }
       return config;
     });
@@ -20,7 +24,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       api.interceptors.request.eject(requestInterceptor);
     };
-  }, [accessToken]);
+  }, []);
 
   // Configure axios interceptor for 401 handling
   useEffect(() => {
