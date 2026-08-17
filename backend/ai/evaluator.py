@@ -4,9 +4,12 @@ from typing import List
 from google import genai
 from models.domain import AIRecommendationType
 
-# Initialize Gemini Client
-# Assumes GEMINI_API_KEY is in the environment
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY") or "mock_key")
+# Initialize Gemini Client using Vertex AI
+# Requires GOOGLE_APPLICATION_CREDENTIALS in env
+client = genai.Client(
+    vertexai=True,
+    location="us-central1"
+)
 
 class QuestionEvaluationResult(BaseModel):
     viva_question_id: int

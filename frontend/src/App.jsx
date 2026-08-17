@@ -7,13 +7,16 @@ import TrainerOverview from './pages/TrainerOverview';
 import TrainerReviewDetail from './pages/TrainerReviewDetail';
 import AdminQuestionBank from './pages/AdminQuestionBank';
 import UserManagement from './pages/UserManagement';
+import KnowledgeBase from './pages/KnowledgeBase';
 import Login from './pages/Login';
 import { AuthProvider } from './store/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-right" toastOptions={{ style: { fontFamily: 'DM Sans, sans-serif' } }} />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />
@@ -32,6 +35,7 @@ function App() {
             <Route path="/hr/sessions" element={<TrainerSessions />} />
             <Route path="/hr/review/:id" element={<TrainerReviewDetail />} />
             <Route path="/hr/questions" element={<AdminQuestionBank />} />
+            <Route path="/hr/knowledge" element={<KnowledgeBase />} />
             <Route path="/hr/users" element={<UserManagement />} />
           </Route>
         </Routes>

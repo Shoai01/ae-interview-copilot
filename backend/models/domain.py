@@ -66,6 +66,18 @@ class TrainingModule(Base):
     users = relationship("User", back_populates="module")
     questions = relationship("QuestionBank", back_populates="module")
     sessions = relationship("VivaSession", back_populates="module")
+    knowledge_docs = relationship("KnowledgeDocument", back_populates="module")
+
+class KnowledgeDocument(Base):
+    __tablename__ = "knowledge_documents"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=False)
+    filename = Column(String, nullable=False)
+    extracted_text = Column(Text, nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+    module = relationship("TrainingModule", back_populates="knowledge_docs")
 
 class QuestionBank(Base):
     __tablename__ = "question_bank"

@@ -22,3 +22,16 @@ class QuestionResponse(BaseModel):
     is_active: bool
     
     model_config = ConfigDict(from_attributes=True)
+
+from datetime import datetime
+
+class KnowledgeDocumentResponse(BaseModel):
+    id: int
+    module_id: int
+    filename: str
+    uploaded_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class KnowledgeDocumentDetailResponse(KnowledgeDocumentResponse):
+    extracted_text: str

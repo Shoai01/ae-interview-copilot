@@ -38,6 +38,18 @@ export const adminService = {
     const response = await api.post(`/admin/modules/${moduleId}/upload-docs`, formData);
     return response.data;
   },
+  getKnowledgeDocuments: async (moduleId) => {
+    const response = await api.get(`/admin/modules/${moduleId}/docs`);
+    return response.data;
+  },
+  getKnowledgeDocumentDetail: async (docId) => {
+    const response = await api.get(`/admin/docs/${docId}`);
+    return response.data;
+  },
+  deleteKnowledgeDocument: async (docId) => {
+    await api.delete(`/admin/docs/${docId}`);
+    return true;
+  },
   createQuestion: async (questionData) => {
     const response = await api.post('/admin/questions', questionData);
     return response.data;

@@ -30,6 +30,12 @@ def save_question(db: Session, question: domain.QuestionBank) -> domain.Question
     db.refresh(question)
     return question
 
+from sqlalchemy.exc import IntegrityError
+
 def delete_question(db: Session, question: domain.QuestionBank) -> None:
-    db.delete(question)
-    db.commit()
+    try:
+        db.delete(question)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise ValueError("Cannot delete this question because it is referenced in past interview sessions. Please deactivate it instead.")

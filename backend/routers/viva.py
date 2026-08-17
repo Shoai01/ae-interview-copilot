@@ -4,7 +4,7 @@ from typing import List
 
 from core.database import get_db
 from schemas import viva as viva_schemas
-from services import viva_service
+from services import viva_service, user_service
 from core.deps import get_current_user, require_role
 from models.domain import User, UserRole
 
@@ -65,7 +65,7 @@ def get_session_report_route(session_id: int, db: Session = Depends(get_db), cur
 
 @router.get("/trainee/{user_id}", response_model=viva_schemas.TraineeResponse)
 def get_trainee(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    user = db.query(User).filter(User.id == user_id).first()
+    user = user_service.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return viva_schemas.TraineeResponse(id=user.id, name=user.full_name or user.username)

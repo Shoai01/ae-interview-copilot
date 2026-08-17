@@ -14,6 +14,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DownloadIcon from '@mui/icons-material/Download';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import SyncIcon from '@mui/icons-material/Sync';
 
 export default function UserManagement() {
   const { user } = useAuth();
@@ -37,29 +38,30 @@ export default function UserManagement() {
     module_id: ''
   });
 
+  const fetchUsersData = async () => {
+    try {
+      const mods = await adminService.getModules();
+      setModules(mods);
+      if (mods.length > 0) {
+        setFormData(prev => ({ ...prev, module_id: mods[0].id }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch modules:", err);
+    }
+    
+    setLoadingUsers(true);
+    try {
+      const fetchedUsers = await adminService.getUsers();
+      setUsers(fetchedUsers);
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const mods = await adminService.getModules();
-        setModules(mods);
-        if (mods.length > 0) {
-          setFormData(prev => ({ ...prev, module_id: mods[0].id }));
-        }
-      } catch (err) {
-        console.error("Failed to fetch modules:", err);
-      }
-      
-      setLoadingUsers(true);
-      try {
-        const fetchedUsers = await adminService.getUsers();
-        setUsers(fetchedUsers);
-      } catch (err) {
-        console.error("Failed to fetch users:", err);
-      } finally {
-        setLoadingUsers(false);
-      }
-    };
-    fetchInitialData();
+    fetchUsersData();
   }, []);
 
   const handleChange = (e) => {
@@ -147,9 +149,14 @@ export default function UserManagement() {
         {/* Header Section */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
-            <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', fontFamily: 'Syne, sans-serif', mb: 0.5, letterSpacing: '-0.02em', fontSize: '32px' }}>
-              Manage Users
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', fontFamily: 'Syne, sans-serif', letterSpacing: '-0.02em', fontSize: '32px' }}>
+                Manage Users
+              </Typography>
+              <IconButton onClick={fetchUsersData} size="small" disabled={loadingUsers} sx={{ color: 'primary.main', '&:hover': { bgcolor: 'rgba(242,101,34,0.1)' } }}>
+                <SyncIcon sx={{ animation: loadingUsers ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
+              </IconButton>
+            </Box>
             <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '15px' }}>
               View and manage system access for trainers and trainees.
             </Typography>

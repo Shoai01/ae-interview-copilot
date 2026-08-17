@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress } from '@mui/material';
+import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Snackbar, Alert } from '@mui/material';
 import Layout from '../components/Layout';
 import AddIcon from '@mui/icons-material/Add';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import SearchIcon from '@mui/icons-material/Search';
 import MicIcon from '@mui/icons-material/Mic';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -21,10 +20,15 @@ export default function AdminQuestionBank() {
   const [open, setOpen] = useState(false);
   const [newQuestion, setNewQuestion] = useState({ text: '', question_type: 'VOICE', difficulty: 'MEDIUM' });
 
-  // Upload State
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadFile, setUploadFile] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
+
+
+  // Snackbar State
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+  const showSnackbar = (message, severity = 'info') => setSnackbar({ open: true, message, severity });
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') return;
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
 
   const fetchModules = async () => {
     try {
@@ -87,24 +91,11 @@ export default function AdminQuestionBank() {
       setQuestions(prev => prev.filter(q => q.id !== questionId));
     } catch (err) {
       console.error("Failed to delete question:", err);
+      showSnackbar(err.response?.data?.detail || "Failed to delete question. It might be in use by past sessions.", "error");
     }
   };
 
-  const handleUpload = async () => {
-    if (!uploadFile || !activeModuleId) return;
-    setIsUploading(true);
-    try {
-      await adminService.uploadKnowledgeDocument(activeModuleId, uploadFile);
-      alert('Knowledge base updated successfully!');
-      setUploadOpen(false);
-      setUploadFile(null);
-    } catch (err) {
-      console.error("Failed to upload document:", err);
-      alert('Upload failed.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
+
 
   const filteredQuestions = questions.filter(q => q.text.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -119,9 +110,6 @@ export default function AdminQuestionBank() {
             <Typography variant="body1" color="text.secondary" sx={{ mt: 1, fontFamily: 'DM Sans, sans-serif' }}>Manage AI assessment scenarios, textbook contexts, and evaluation criteria.</Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button variant="outlined" color="secondary" startIcon={<UploadFileIcon />} sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600 }} onClick={() => setUploadOpen(true)}>
-              Upload Knowledge (PDF)
-            </Button>
             <Button variant="contained" color="primary" startIcon={<AddIcon />} sx={{ boxShadow: '0 4px 14px rgba(242, 101, 34, 0.4)', borderRadius: 2, px: 3, py: 1, fontWeight: 600, '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.6)' } }} onClick={() => setOpen(true)}>
               Add Question
             </Button>
@@ -275,34 +263,13 @@ export default function AdminQuestionBank() {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* Upload Knowledge Dialog */}
-      <Dialog open={uploadOpen} onClose={() => !isUploading && setUploadOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-        <DialogTitle sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700 }}>Upload Knowledge Base</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Upload a PDF textbook or manual. The AI will chunk this document and use it as context to dynamically generate new viva questions for Trainees assigned to {modules.find(m => m.id === activeModuleId)?.name}.
-          </Typography>
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={(e) => setUploadFile(e.target.files[0])}
-            disabled={isUploading}
-            style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '8px' }}
-          />
-        </DialogContent>
-        <DialogActions sx={{ p: 3, pt: 0 }}>
-          <Button onClick={() => setUploadOpen(false)} color="inherit" sx={{ fontWeight: 600 }} disabled={isUploading}>Cancel</Button>
-          <Button 
-            onClick={handleUpload} 
-            variant="contained" 
-            color="secondary" 
-            sx={{ fontWeight: 600, borderRadius: 2, px: 3 }}
-            disabled={!uploadFile || isUploading}
-          >
-            {isUploading ? <CircularProgress size={24} color="inherit" /> : 'Process & Store'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+
+      
+      <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Layout>
   );
 }

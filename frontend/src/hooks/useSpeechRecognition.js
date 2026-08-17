@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { globalState } from '../store';
+import toast from 'react-hot-toast';
 
 export function useSpeechRecognition() {
   const [liveText, setLiveText] = useState('');
@@ -37,21 +38,21 @@ export function useSpeechRecognition() {
     
     const apiKey = import.meta.env.VITE_DEEPGRAM_API_KEY;
     if (!apiKey || apiKey === 'your_deepgram_api_key_here') {
-      alert("Please configure VITE_DEEPGRAM_API_KEY in frontend/.env!");
+      toast.error("Please configure VITE_DEEPGRAM_API_KEY in frontend/.env!");
       return;
     }
 
     // Verify we have audio tracks available
     if (!globalState.mediaStream) {
       console.error("[Deepgram] No mediaStream available in globalState");
-      alert("No microphone stream found. Please go back and allow microphone access.");
+      toast.error("No microphone stream found. Please go back and allow microphone access.");
       return;
     }
 
     const audioTracks = globalState.mediaStream.getAudioTracks();
     if (audioTracks.length === 0) {
       console.error("[Deepgram] mediaStream has no audio tracks");
-      alert("No audio track found in the microphone stream.");
+      toast.error("No audio track found in the microphone stream.");
       return;
     }
 

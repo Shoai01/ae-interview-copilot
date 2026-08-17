@@ -1,10 +1,10 @@
 import os
 import fitz  # PyMuPDF
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_google_vertexai import VertexAIEmbeddings
 from langchain_community.vectorstores import FAISS
 import random
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai import ChatVertexAI
 from langchain_core.prompts import PromptTemplate
 from models import domain
 
@@ -12,11 +12,19 @@ from models import domain
 FAISS_INDEX_PATH = "faiss_index"
 
 def get_embeddings_model():
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError("GEMINI_API_KEY not configured for embeddings.")
-    # Use LangChain's Google GenAI embeddings wrapper
-    return GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2", google_api_key=api_key)
+    # Use LangChain's Vertex AI embeddings wrapper
+    # Project is inferred from GOOGLE_APPLICATION_CREDENTIALS
+    return VertexAIEmbeddings(model_name="text-embedding-004")
+
+def get_knowledge_documents(db, module_id: int):
+    return db.query(domain.KnowledgeDocument).filter(domain.KnowledgeDocument.module_id == module_id).all()
+
+def get_knowledge_document(db, doc_id: int):
+    return db.query(domain.KnowledgeDocument).filter(domain.KnowledgeDocument.id == doc_id).first()
+
+def delete_knowledge_document(db, doc: domain.KnowledgeDocument):
+    db.delete(doc)
+    db.commit()
 
 def process_and_store_pdf(db=None, module_id=None, file_content: bytes = None, source_filename: str = ""):
     # 1. Extract Text from PDF using PyMuPDF from memory stream
@@ -83,8 +91,7 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5):
     selected_docs = random.sample(docs, min(count, len(docs)))
     
     # Initialize LLM
-    api_key = os.environ.get("GEMINI_API_KEY")
-    llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=api_key, temperature=0.7)
+    llm = ChatVertexAI(model_name="gemini-2.5-flash", temperature=0.7)
     
     prompt = PromptTemplate.from_template(
         "You are a friendly technical interviewer. Based on the following knowledge base extract, generate exactly ONE simple, conversational interview question to ask a candidate.\n\n"

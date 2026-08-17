@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from core.database import get_db
 from schemas.auth import LoginRequest, LoginResponse
 from services.auth_service import authenticate_user
+from services import user_service
 from core.security import create_access_token, create_refresh_token, verify_token
 from core.rate_limit import limiter
 
@@ -65,8 +66,7 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user ID in token")
         
-    from models.domain import User
-    user = db.query(User).filter(User.id == user_id).first()
+    user = user_service.get_user_by_id(db, user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
 

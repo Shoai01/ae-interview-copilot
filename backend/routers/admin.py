@@ -8,6 +8,7 @@ from schemas import user as user_schemas
 from services import admin_service, user_service, knowledge_service
 from core.deps import require_role
 from models.domain import UserRole, User
+from models import domain
 
 router = APIRouter(
     prefix="/admin",
@@ -53,10 +54,13 @@ def toggle_question_status(question_id: int, db: Session = Depends(get_db), curr
 
 @router.delete("/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_question(question_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
-    success = admin_service.delete_question(db, question_id=question_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Question not found")
-    return None
+    try:
+        success = admin_service.delete_question(db, question_id=question_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Question not found")
+        return None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/modules/{module_id}/upload-docs")
 async def upload_knowledge_document(
@@ -84,3 +88,45 @@ async def upload_knowledge_document(
             traceback.print_exc(file=f)
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+
+@router.get("/modules/{module_id}/docs", response_model=List[admin_schemas.KnowledgeDocumentResponse])
+def get_knowledge_documents(
+    module_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))
+):
+    docs = knowledge_service.get_knowledge_documents(db, module_id)
+    return docs
+
+@router.get("/docs/{doc_id}", response_model=admin_schemas.KnowledgeDocumentDetailResponse)
+def get_knowledge_document(
+    doc_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))
+):
+    doc = knowledge_service.get_knowledge_document(db, doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc
+
+@router.delete("/docs/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_knowledge_document(
+    doc_id: int, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))
+):
+    doc = knowledge_service.get_knowledge_document(db, doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+        
+    knowledge_service.delete_knowledge_document(db, doc)
+    
+    # Rebuild the FAISS index to reflect the deletion
+    try:
+        knowledge_service.rebuild_faiss_index(db)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        # Even if rebuild fails, the doc is deleted from db. We log the error.
+        
+    return None

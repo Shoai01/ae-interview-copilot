@@ -18,6 +18,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import LogoutIcon from '@mui/icons-material/Logout';
 import { vivaService, adminService } from '../services/api';
 import { globalState } from '../store';
+import toast from 'react-hot-toast';
 import { useAuth } from '../store/AuthContext';
 
 const StatusIcon = ({ status }) => {
@@ -151,6 +152,7 @@ export default function WelcomeCheck() {
       });
     } catch (err) {
       console.error("Failed to create session:", err);
+      toast.error(err.response?.data?.detail || "Failed to start session");
       setIsStartingSession(false);
     }
   };

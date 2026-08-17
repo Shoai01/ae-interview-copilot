@@ -217,6 +217,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 reference_docs/
+vertex-key.json
 
 
 # --- Frontend ---

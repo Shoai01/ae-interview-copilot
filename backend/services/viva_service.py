@@ -21,7 +21,6 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
         
         if total_questions > 0 and answered_count >= total_questions:
             # Session was completed but state wasn't updated properly, fix it and start new
-            from repositories import viva_repository
             viva_repository.end_session(db, db_session, datetime.datetime.utcnow())
             existing_session = None # Fall through to create new session
         else:
