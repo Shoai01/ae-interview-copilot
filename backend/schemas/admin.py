@@ -35,3 +35,7 @@ class KnowledgeDocumentResponse(BaseModel):
 
 class KnowledgeDocumentDetailResponse(KnowledgeDocumentResponse):
     extracted_text: str
+
+class UploadDocsResponse(BaseModel):
+    message: str
+    chunks_created: int

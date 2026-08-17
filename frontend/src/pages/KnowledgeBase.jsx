@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
-import Layout from '../components/Layout';
+import Layout from '@/components/Layout';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DescriptionIcon from '@mui/icons-material/Description';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import toast from 'react-hot-toast';
-import { adminService } from '../services/api';
+import { adminService } from '@/services/api';
 
 export default function KnowledgeBase() {
   const [modules, setModules] = useState([]);
@@ -133,10 +133,11 @@ export default function KnowledgeBase() {
               </IconButton>
             </Box>
             
-            <input 
+            <Box 
+              component="input"
               type="file" 
               accept=".pdf" 
-              style={{ display: 'none' }} 
+              sx={{ display: 'none' }} 
               ref={fileInputRef} 
               onChange={handleFileChange} 
             />

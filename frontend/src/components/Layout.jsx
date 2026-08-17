@@ -10,7 +10,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
 import PeopleIcon from '@mui/icons-material/People';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import { useAuth } from '../store/AuthContext';
+import { useAuth } from '@/store/AuthContext';
 
 const drawerWidth = 280;
 

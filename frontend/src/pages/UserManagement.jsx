@@ -6,9 +6,9 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   IconButton, Avatar, Switch, InputAdornment
 } from '@mui/material';
-import Layout from '../components/Layout';
-import { adminService } from '../services/api';
-import { useAuth } from '../store/AuthContext';
+import Layout from '@/components/Layout';
+import { adminService } from '@/services/api';
+import { useAuth } from '@/store/AuthContext';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';

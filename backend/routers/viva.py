@@ -24,12 +24,12 @@ def get_next_question(session_id: int, db: Session = Depends(get_db), current_us
         raise HTTPException(status_code=404, detail="No more questions available")
     return question
 
-@router.post("/{session_id}/answer", status_code=status.HTTP_200_OK)
+@router.post("/{session_id}/answer", response_model=viva_schemas.StatusResponse, status_code=status.HTTP_200_OK)
 def submit_answer(session_id: int, answer_data: viva_schemas.AnswerSubmit, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
     success = viva_service.submit_answer(db, session_id, answer_data)
     if not success:
         raise HTTPException(status_code=404, detail="Question not found in session")
-    return {"status": "success"}
+    return viva_schemas.StatusResponse(status="success")
 
 @router.get("/{session_id}/summary", response_model=viva_schemas.SessionSummaryResponse)
 def get_session_summary_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -42,19 +42,19 @@ def get_session_summary_route(session_id: int, db: Session = Depends(get_db), cu
 def list_sessions(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     return viva_service.get_all_sessions(db)
 
-@router.post("/{session_id}/fraud-flag", status_code=status.HTTP_201_CREATED)
+@router.post("/{session_id}/fraud-flag", response_model=viva_schemas.StatusResponse, status_code=status.HTTP_201_CREATED)
 def report_fraud_flag(session_id: int, flag_data: viva_schemas.FraudFlagCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
     result = viva_service.create_fraud_flag(db, session_id, flag_data)
     if not result:
         raise HTTPException(status_code=404, detail="Session or question not found")
-    return {"status": "flagged"}
+    return viva_schemas.StatusResponse(status="flagged")
 
-@router.post("/{session_id}/evaluate", status_code=status.HTTP_200_OK)
+@router.post("/{session_id}/evaluate", response_model=viva_schemas.StatusResponse, status_code=status.HTTP_200_OK)
 def evaluate_session_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     success = viva_service.evaluate_session(db, session_id)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")
-    return {"status": "Evaluation completed"}
+    return viva_schemas.StatusResponse(status="Evaluation completed")
 
 @router.get("/{session_id}/report", response_model=viva_schemas.SessionFullReportResponse)
 def get_session_report_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

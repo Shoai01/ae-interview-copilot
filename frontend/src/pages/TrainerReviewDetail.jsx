@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Box, Typography, Button, Paper, Avatar, Stack, CircularProgress, Grid } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
-import Layout from '../components/Layout';
+import Layout from '@/components/Layout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SendIcon from '@mui/icons-material/Send';
-import { vivaService } from '../services/api';
+import { vivaService } from '@/services/api';
 
 export default function TrainerReviewDetail() {
   const navigate = useNavigate();

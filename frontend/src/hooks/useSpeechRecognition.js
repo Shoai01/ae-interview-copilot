@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { globalState } from '../store';
+import { globalState } from '@/store';
 import toast from 'react-hot-toast';
 
 export function useSpeechRecognition() {

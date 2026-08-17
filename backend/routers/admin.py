@@ -62,7 +62,7 @@ def delete_question(question_id: int, db: Session = Depends(get_db), current_use
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/modules/{module_id}/upload-docs")
+@router.post("/modules/{module_id}/upload-docs", response_model=admin_schemas.UploadDocsResponse)
 async def upload_knowledge_document(
     module_id: int, 
     file: UploadFile = File(...), 
@@ -81,7 +81,7 @@ async def upload_knowledge_document(
             file_content=file_content, 
             source_filename=file.filename
         )
-        return {"message": f"Successfully processed {file.filename}", "chunks_created": chunks_created}
+        return admin_schemas.UploadDocsResponse(message=f"Successfully processed {file.filename}", chunks_created=chunks_created)
     except Exception as e:
         import traceback
         with open("upload_error.log", "w") as f:

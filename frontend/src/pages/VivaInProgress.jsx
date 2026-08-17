@@ -9,11 +9,11 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import SendIcon from '@mui/icons-material/Send';
 import PersonIcon from '@mui/icons-material/Person';
-import { vivaService } from '../services/api';
-import { globalState } from '../store';
-import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
-import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
-import { useFraudDetection } from '../hooks/useFraudDetection';
+import { vivaService } from '@/services/api';
+import { globalState } from '@/store';
+import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
+import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis';
+import { useFraudDetection } from '@/hooks/useFraudDetection';
 
 export default function VivaInProgress() {
   const navigate = useNavigate();
@@ -202,12 +202,13 @@ export default function VivaInProgress() {
           alignItems: 'center',
           justifyContent: 'center'
         }}>
-          <video 
+          <Box
+            component="video"
             ref={videoRef} 
             autoPlay 
             playsInline 
             muted 
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
           <Box sx={{ position: 'absolute', bottom: 12, right: 12, display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', px: 1, py: 0.5, borderRadius: 2 }}>
             <Box sx={{ width: 8, height: 8, bgcolor: '#10b981', borderRadius: '50%', boxShadow: '0 0 8px #10b981' }} />

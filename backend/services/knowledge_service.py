@@ -121,7 +121,6 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5):
                 module_id=module_id,
                 text=question_text,
                 difficulty=random.choice(difficulties), # Randomly assign or could ask LLM
-                question_type="VOICE",
                 is_active=True
             )
             db.add(qb_item)
@@ -149,7 +148,6 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5):
                 module_id=module_id,
                 text=question_text,
                 difficulty=random.choice(difficulties),
-                question_type="VOICE",
                 is_active=True
             )
             db.add(qb_item)

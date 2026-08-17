@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack, CircularProgress, IconButton } from '@mui/material';
-import Layout from '../components/Layout';
+import Layout from '@/components/Layout';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -8,7 +8,7 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import SyncIcon from '@mui/icons-material/Sync';
 import { useNavigate } from 'react-router-dom';
-import { vivaService } from '../services/api';
+import { vivaService } from '@/services/api';
 
 export default function TrainerSessions() {
   const navigate = useNavigate();

@@ -13,7 +13,7 @@ import MailOutlinedIcon from '@mui/icons-material/MailOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
-import { useAuth } from '../store/AuthContext';
+import { useAuth } from '@/store/AuthContext';
 
 export default function Login() {
     const navigate = useNavigate();

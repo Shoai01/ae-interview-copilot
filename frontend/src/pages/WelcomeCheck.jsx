@@ -16,10 +16,10 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import SyncIcon from '@mui/icons-material/Sync';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { vivaService, adminService } from '../services/api';
-import { globalState } from '../store';
+import { vivaService, adminService } from '@/services/api';
+import { globalState } from '@/store';
 import toast from 'react-hot-toast';
-import { useAuth } from '../store/AuthContext';
+import { useAuth } from '@/store/AuthContext';
 
 const StatusIcon = ({ status }) => {
   if (status === 'passed') return <CheckCircleIcon sx={{ color: '#16a34a', fontSize: '20px' }} />;
@@ -272,12 +272,13 @@ export default function WelcomeCheck() {
 
                 {/* Live Video Preview Box */}
                 <Box sx={{ width: '100%', height: 160, bgcolor: '#000', borderRadius: 4, overflow: 'hidden', position: 'relative', boxShadow: 'inset 0px 4px 20px rgba(0,0,0,0.5)' }}>
-                  <video 
+                  <Box
+                    component="video"
                     ref={videoRef} 
                     autoPlay 
                     playsInline 
                     muted 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                   {!stream && (
                     <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

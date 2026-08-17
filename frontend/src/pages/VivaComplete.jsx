@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Box, Typography, Card, CardContent, Divider, CircularProgress, Button } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { vivaService } from '../services/api';
-import { useAuth } from '../store/AuthContext';
+import { vivaService } from '@/services/api';
+import { useAuth } from '@/store/AuthContext';
 
 export default function VivaComplete() {
   const location = useLocation();

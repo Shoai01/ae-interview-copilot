@@ -1,5 +1,5 @@
 import { Box, Typography, Grid, Paper, Stack, Button, Table, TableBody, TableCell, TableHead, TableRow, IconButton, Avatar, Chip, keyframes } from '@mui/material';
-import Layout from '../components/Layout';
+import Layout from '@/components/Layout';
 import GroupIcon from '@mui/icons-material/Group';
 import GradeIcon from '@mui/icons-material/Grade';
 import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
@@ -72,7 +72,7 @@ export default function TrainerOverview() {
           <Paper elevation={0} sx={cardSx}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
               <Box sx={iconWrapperSx}><GroupIcon /></Box>
-              <Chip size="small" icon={<TrendingUpIcon style={{ fontSize: 14 }}/>} label="+12%" sx={{ bgcolor: '#ecfdf5', color: '#059669', fontWeight: 700, '& .MuiChip-icon': { color: '#059669' } }} />
+              <Chip size="small" icon={<TrendingUpIcon sx={{ fontSize: 14 }}/>} label="+12%" sx={{ bgcolor: '#ecfdf5', color: '#059669', fontWeight: 700, '& .MuiChip-icon': { color: '#059669' } }} />
             </Box>
             <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5 }}>
               Total Interviews

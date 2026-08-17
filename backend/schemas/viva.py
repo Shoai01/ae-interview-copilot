@@ -26,6 +26,9 @@ class NextQuestionResponse(BaseModel):
 class TraineeResponse(BaseModel):
     id: int
     name: str
+
+class StatusResponse(BaseModel):
+    status: str
     
     model_config = ConfigDict(from_attributes=True)
 

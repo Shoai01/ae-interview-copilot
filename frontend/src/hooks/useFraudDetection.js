@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { vivaService } from '../services/api';
-import { globalState } from '../store';
+import { vivaService } from '@/services/api';
+import { globalState } from '@/store';
 
 /**
  * Background fraud detection hook for the Viva session.
