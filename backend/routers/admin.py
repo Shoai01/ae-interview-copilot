@@ -15,6 +15,10 @@ router = APIRouter(
     tags=["admin"]
 )
 
+@router.get("/dashboard", response_model=admin_schemas.DashboardResponse)
+def get_dashboard_metrics(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    return admin_service.get_dashboard_metrics(db)
+
 @router.post("/users", response_model=user_schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: user_schemas.UserCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     # Only Admin can create Trainers. Trainer can create Trainees.

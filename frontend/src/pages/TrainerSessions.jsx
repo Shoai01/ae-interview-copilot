@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack, CircularProgress, IconButton } from '@mui/material';
+import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack, CircularProgress, IconButton, TablePagination } from '@mui/material';
 import Layout from '@/components/Layout';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -16,6 +16,8 @@ export default function TrainerSessions() {
   const [loading, setLoading] = useState(true);
   const [filterModule, setFilterModule] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -41,6 +43,15 @@ export default function TrainerSessions() {
     const matchStatus = filterStatus === '' || session.status === filterStatus;
     return matchModule && matchStatus;
   });
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   return (
     <Layout>
@@ -106,7 +117,7 @@ export default function TrainerSessions() {
                         No sessions found. Complete an interview to see it here!
                       </TableCell>
                     </TableRow>
-                  ) : filteredSessions.map((row) => (
+                  ) : filteredSessions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row) => (
                     <TableRow 
                       key={row.id} 
                       hover 
@@ -174,19 +185,15 @@ export default function TrainerSessions() {
               </Table>
               
               {/* Pagination Footer */}
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'rgba(0,0,0,0.01)' }}>
-                <Typography variant="body2" color="text.secondary">
-                  Showing {filteredSessions.length} entries
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button disabled size="small" sx={{ minWidth: 'auto', p: 0.5, color: 'text.secondary' }}>
-                    <KeyboardArrowLeftIcon />
-                  </Button>
-                  <Button disabled size="small" sx={{ minWidth: 'auto', p: 0.5, color: 'text.secondary' }}>
-                    <KeyboardArrowRightIcon />
-                  </Button>
-                </Box>
-              </Box>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25]}
+                component="div"
+                count={filteredSessions.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+              />
             </>
           )}
         </TableContainer>

@@ -108,7 +108,7 @@ export default function Layout({ children }) {
   );
 
   return (
-    <Box sx={{ display: 'flex', width: '100vw', minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ display: 'flex', width: '100%', minHeight: '100vh', bgcolor: 'background.default' }}>
       
       {/* Mobile Drawer */}
       <Drawer

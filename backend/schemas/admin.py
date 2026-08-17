@@ -39,3 +39,30 @@ class KnowledgeDocumentDetailResponse(KnowledgeDocumentResponse):
 class UploadDocsResponse(BaseModel):
     message: str
     chunks_created: int
+
+class TrendData(BaseModel):
+    label: str
+    average_score: float
+    count: int
+
+class CompetencyData(BaseModel):
+    module_name: str
+    average_score: float
+
+class RecentActivity(BaseModel):
+    session_id: int
+    trainee_name: str
+    trainee_initials: str
+    module_name: str
+    date: str
+    score: Optional[float]
+    status: str
+
+class DashboardResponse(BaseModel):
+    total_interviews: int
+    avg_performance_score: float
+    active_sessions: int
+    completion_rate: float
+    trends: list[TrendData]
+    top_competencies: list[CompetencyData]
+    recent_activity: list[RecentActivity]

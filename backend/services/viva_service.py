@@ -28,6 +28,20 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
             if total_questions == 0:
                 from services.knowledge_service import generate_dynamic_questions_for_session
                 dynamic_questions = generate_dynamic_questions_for_session(db, trainee.module_id, count=5)
+                
+                if len(dynamic_questions) < 5:
+                    print(f"Partial generation: Requested 5, generated {len(dynamic_questions)}. Falling back to predefined to fill gap.")
+                    from sqlalchemy.sql.expression import func
+                    needed = 5 - len(dynamic_questions)
+                    exclude_ids = [q.id for q in dynamic_questions]
+                    fallback_questions = db.query(domain.QuestionBank).filter(
+                        domain.QuestionBank.module_id == trainee.module_id,
+                        domain.QuestionBank.is_active == True,
+                        ~domain.QuestionBank.id.in_(exclude_ids) if exclude_ids else True
+                    ).order_by(func.random()).limit(needed).all()
+                    
+                    dynamic_questions.extend(fallback_questions)
+                    
                 for i, qb_item in enumerate(dynamic_questions):
                     viva_repository.create_viva_question(
                         db=db, session_id=db_session.id, question_bank_id=qb_item.id, question_order=i+1
@@ -42,6 +56,20 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
         from services.knowledge_service import generate_dynamic_questions_for_session
         dynamic_questions = generate_dynamic_questions_for_session(db, trainee.module_id, count=5)
         
+        if len(dynamic_questions) < 5:
+            # Surface partial generation explicitly
+            print(f"Partial generation: Requested 5, generated {len(dynamic_questions)}. Falling back to predefined to fill gap.")
+            from sqlalchemy.sql.expression import func
+            needed = 5 - len(dynamic_questions)
+            exclude_ids = [q.id for q in dynamic_questions]
+            fallback_questions = db.query(domain.QuestionBank).filter(
+                domain.QuestionBank.module_id == trainee.module_id,
+                domain.QuestionBank.is_active == True,
+                ~domain.QuestionBank.id.in_(exclude_ids) if exclude_ids else True
+            ).order_by(func.random()).limit(needed).all()
+            
+            dynamic_questions.extend(fallback_questions)
+
         # Link exactly these 5 questions to the session
         for i, qb_item in enumerate(dynamic_questions):
             viva_repository.create_viva_question(
@@ -55,7 +83,8 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
 
     if total_questions == 0:
         from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Could not generate questions. AI generation failed, or there are no valid documents uploaded for this module.")
+        raise HTTPException(status_code=400, detail="Could not generate questions. AI generation failed, and there are no predefined questions available for this module.")
+
 
     return viva_schemas.SessionResponse(
         id=db_session.id,

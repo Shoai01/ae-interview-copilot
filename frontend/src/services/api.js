@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Ensure your backend runs on this port or update it accordingly.
-const API_BASE_URL = 'http://localhost:8000';
+// Dynamically determine the backend URL based on the current hostname
+const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -26,6 +26,10 @@ export const authService = {
 export const adminService = {
   getModules: async () => {
     const response = await api.get('/admin/modules');
+    return response.data;
+  },
+  getDashboardMetrics: async () => {
+    const response = await api.get('/admin/dashboard');
     return response.data;
   },
   getQuestions: async (moduleId) => {

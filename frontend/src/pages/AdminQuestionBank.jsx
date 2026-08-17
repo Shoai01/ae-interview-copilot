@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Snackbar, Alert } from '@mui/material';
 import Layout from '@/components/Layout';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -13,6 +13,8 @@ export default function AdminQuestionBank() {
   const [activeModuleId, setActiveModuleId] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   
   // Dialog State
   const [open, setOpen] = useState(false);
@@ -56,8 +58,18 @@ export default function AdminQuestionBank() {
     if (activeModuleId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchQuestions(activeModuleId);
+      setPage(0);
     }
   }, [activeModuleId]);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
 
 
@@ -96,6 +108,7 @@ export default function AdminQuestionBank() {
 
 
   const filteredQuestions = questions.filter(q => q.text.toLowerCase().includes(searchQuery.toLowerCase()));
+  const paginatedQuestions = filteredQuestions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
     <Layout>
@@ -183,10 +196,10 @@ export default function AdminQuestionBank() {
                         <Typography color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>No questions found.</Typography>
                       </TableCell>
                     </TableRow>
-                  ) : filteredQuestions.map((q, index) => (
+                  ) : paginatedQuestions.map((q, index) => (
                     <TableRow key={q.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 }, transition: 'background-color 0.2s ease', '&:hover': { bgcolor: 'rgba(0,154,222,0.02)' } }}>
                       <TableCell sx={{ py: 2, color: 'text.secondary', fontWeight: 600, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                        {index + 1}
+                        {page * rowsPerPage + index + 1}
                       </TableCell>
                       <TableCell sx={{ maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', py: 2, color: 'text.primary', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
                         {q.text}
@@ -215,6 +228,15 @@ export default function AdminQuestionBank() {
                 </TableBody>
               </Table>
             </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={filteredQuestions.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+            />
           </Paper>
 
         </Box>

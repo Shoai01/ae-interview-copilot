@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import Layout from '@/components/Layout';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -15,6 +15,8 @@ export default function KnowledgeBase() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [viewingDoc, setViewingDoc] = useState(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const fileInputRef = useRef(null);
 
   const fetchModules = async () => {
@@ -46,8 +48,18 @@ export default function KnowledgeBase() {
   useEffect(() => {
     if (activeModuleId) {
       fetchDocuments(activeModuleId);
+      setPage(0);
     }
   }, [activeModuleId]);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
@@ -173,7 +185,7 @@ export default function KnowledgeBase() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {documents.map(doc => (
+                  {documents.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(doc => (
                     <TableRow key={doc.id} hover>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -203,6 +215,15 @@ export default function KnowledgeBase() {
                 </TableBody>
               </Table>
             </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={documents.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+            />
           </Paper>
 
         </Box>

@@ -4,6 +4,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_vertexai import VertexAIEmbeddings
 from langchain_community.vectorstores import FAISS
 import random
+import numpy as np
 from langchain_google_vertexai import ChatVertexAI
 from langchain_core.prompts import PromptTemplate
 from models import domain
@@ -72,12 +73,26 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5):
         print(f"No knowledge base found. Falling back to default questions if any.")
         return []
 
-    embeddings_model = get_embeddings_model()
     try:
+        embeddings_model = get_embeddings_model()
         vector_store = FAISS.load_local(FAISS_INDEX_PATH, embeddings_model, allow_dangerous_deserialization=True)
     except Exception as e:
-        print("Failed to load FAISS index:", e)
+        print("Failed to initialize embeddings or load FAISS index:", e)
         return []
+
+    def cosine_similarity(v1, v2):
+        if np.linalg.norm(v1) == 0 or np.linalg.norm(v2) == 0: return 0.0
+        return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+
+    # Pre-embed existing questions for semantic deduplication
+    existing_qbs = db.query(domain.QuestionBank).filter(domain.QuestionBank.module_id == module_id).all()
+    existing_texts = [qb.text for qb in existing_qbs]
+    existing_embeddings = []
+    if existing_texts:
+        try:
+            existing_embeddings = embeddings_model.embed_documents(existing_texts)
+        except Exception as e:
+            print("Failed to pre-embed existing questions:", e)
 
     # Get all docs matching module_id
     docstore = vector_store.docstore._dict
@@ -90,71 +105,166 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5):
     # Randomly select chunks
     selected_docs = random.sample(docs, min(count, len(docs)))
     
+    # Fetch the module name to pass to the prompt
+    module = db.query(domain.TrainingModule).filter(domain.TrainingModule.id == module_id).first()
+    module_name = module.name if module else "General"
+
     # Initialize LLM
     llm = ChatVertexAI(model_name="gemini-2.5-flash", temperature=0.7)
     
     prompt = PromptTemplate.from_template(
-        "You are a friendly technical interviewer. Based on the following knowledge base extract, generate exactly ONE simple, conversational interview question to ask a candidate.\n\n"
+        "You are a friendly technical interviewer. Based on the following knowledge base extract, generate exactly ONE simple, conversational interview question to ask a candidate. "
+        "The candidate is being interviewed for the '{module_name}' training module. Ensure the question's depth is appropriate for this level. "
+        "You must also judge the difficulty of the question based on the concept (EASY, MEDIUM, or HARD).\n\n"
         "CRITICAL RULES:\n"
         "- The question MUST be short, natural, and easy to understand when spoken aloud.\n"
         "- DO NOT combine multiple questions into one. Ask about ONE specific concept only.\n"
-        "- Keep the question under 20 words.\n\n"
+        "- Keep the question under 20 words.\n"
+        "- Do NOT ask about any concepts covered in the previous questions listed below.\n\n"
+        "PREVIOUS QUESTIONS IN THIS SESSION:\n{previous_questions}\n\n"
         "Extract:\n{context}\n\n"
-        "Return ONLY the question text. Do not include answers, preambles, or difficulty."
+        "Return your response EXACTLY in this format, with no other text:\n"
+        "DIFFICULTY: [EASY, MEDIUM, or HARD]\n"
+        "QUESTION: [Your generated question here]"
     )
     
     generated_questions = []
-    difficulties = [domain.DifficultyLevel.EASY, domain.DifficultyLevel.MEDIUM, domain.DifficultyLevel.HARD]
+    seen_texts_with_embs = []
+    previous_questions_list = []
     
+    def process_and_add_question(text: str, difficulty: domain.DifficultyLevel) -> bool:
+        # Basic cleanup
+        if text.startswith("Question:"):
+            text = text.replace("Question:", "").strip()
+            
+        # Validation Checks
+        if not text.endswith("?"):
+            print(f"Validation failed: Question does not end with '?': {text}")
+            return False
+            
+        word_count = len(text.split())
+        if word_count > 25:
+            print(f"Validation failed: Question too long ({word_count} words): {text}")
+            return False
+            
+        lower_text = text.lower()
+        if "answer:" in lower_text or "here is" in lower_text or "sure" in lower_text:
+            print(f"Validation failed: Question contains preamble or answer leak: {text}")
+            return False
+            
+        text_lower = lower_text
+        
+        # Exact string match fallback
+        if any(seen_text.lower() == text_lower for seen_text, _ in seen_texts_with_embs):
+            return False
+
+        # Semantic duplicate check
+        try:
+            new_emb = embeddings_model.embed_query(text)
+            
+            # Check against seen_texts in this session
+            for seen_text, seen_emb in seen_texts_with_embs:
+                if cosine_similarity(new_emb, seen_emb) > 0.85:
+                    return False
+                    
+            # Check against DB
+            for i, db_emb in enumerate(existing_embeddings):
+                if cosine_similarity(new_emb, db_emb) > 0.85:
+                    # Semantic duplicate found in DB! Re-use it
+                    existing_qb = existing_qbs[i]
+                    if existing_qb not in generated_questions:
+                        generated_questions.append(existing_qb)
+                        previous_questions_list.append(existing_qb.text)
+                    seen_texts_with_embs.append((text, new_emb))
+                    return True
+                    
+            seen_texts_with_embs.append((text, new_emb))
+        except Exception as e:
+            print("Semantic check failed, falling back to exact match:", e)
+            seen_texts_with_embs.append((text, []))
+            
+            existing_qb = db.query(domain.QuestionBank).filter(
+                domain.QuestionBank.module_id == module_id,
+                domain.QuestionBank.text.ilike(text)
+            ).first()
+            if existing_qb:
+                generated_questions.append(existing_qb)
+                previous_questions_list.append(existing_qb.text)
+                return True
+            
+        # Create new entry if it doesn't exist
+        qb_item = domain.QuestionBank(
+            module_id=module_id,
+            text=text,
+            difficulty=difficulty,
+            is_active=True
+        )
+        db.add(qb_item)
+        db.commit()
+        db.refresh(qb_item)
+        generated_questions.append(qb_item)
+        previous_questions_list.append(qb_item.text)
+        return True
+
     for doc in selected_docs:
         try:
             chain = prompt | llm
-            response = chain.invoke({"context": doc.page_content})
-            question_text = response.content.strip()
+            prev_q_str = "\n".join([f"- {q}" for q in previous_questions_list]) if previous_questions_list else "None"
+            response = chain.invoke({"context": doc.page_content, "module_name": module_name, "previous_questions": prev_q_str})
+            output = response.content.strip()
             
-            # Basic cleanup if model outputted quotes or "Question:"
-            if question_text.startswith("Question:"):
-                question_text = question_text.replace("Question:", "").strip()
+            q_text = ""
+            q_diff = domain.DifficultyLevel.MEDIUM
             
-            # Save to QuestionBank
-            qb_item = domain.QuestionBank(
-                module_id=module_id,
-                text=question_text,
-                difficulty=random.choice(difficulties), # Randomly assign or could ask LLM
-                is_active=True
-            )
-            db.add(qb_item)
-            db.commit()
-            db.refresh(qb_item)
-            generated_questions.append(qb_item)
-            
+            for line in output.split('\n'):
+                line = line.strip()
+                if line.upper().startswith("DIFFICULTY:"):
+                    diff_str = line.split(":", 1)[1].strip().upper()
+                    if diff_str in ["EASY", "MEDIUM", "HARD"]:
+                        q_diff = domain.DifficultyLevel(diff_str)
+                elif line.upper().startswith("QUESTION:"):
+                    q_text = line.split(":", 1)[1].strip()
+                    
+            if not q_text:
+                q_text = output.replace("Question:", "").strip()
+                
+            process_and_add_question(q_text, q_diff)
         except Exception as e:
             print("Failed to generate question from chunk:", e)
+            db.rollback()
             continue
             
-    # If we still need more questions (e.g. docs was smaller than count), we could sample again.
+    # If we still need more questions (e.g. docs was smaller than count or duplicates skipped), retry
     retries = 0
     max_retries = 10
     while len(generated_questions) < count and docs and retries < max_retries:
         doc = random.choice(docs)
         try:
             chain = prompt | llm
-            response = chain.invoke({"context": doc.page_content})
-            question_text = response.content.strip()
-            if question_text.startswith("Question:"):
-                question_text = question_text.replace("Question:", "").strip()
-                
-            qb_item = domain.QuestionBank(
-                module_id=module_id,
-                text=question_text,
-                difficulty=random.choice(difficulties),
-                is_active=True
-            )
-            db.add(qb_item)
-            db.commit()
-            db.refresh(qb_item)
-            generated_questions.append(qb_item)
+            prev_q_str = "\n".join([f"- {q}" for q in previous_questions_list]) if previous_questions_list else "None"
+            response = chain.invoke({"context": doc.page_content, "module_name": module_name, "previous_questions": prev_q_str})
+            output = response.content.strip()
+            
+            q_text = ""
+            q_diff = domain.DifficultyLevel.MEDIUM
+            
+            for line in output.split('\n'):
+                line = line.strip()
+                if line.upper().startswith("DIFFICULTY:"):
+                    diff_str = line.split(":", 1)[1].strip().upper()
+                    if diff_str in ["EASY", "MEDIUM", "HARD"]:
+                        q_diff = domain.DifficultyLevel(diff_str)
+                elif line.upper().startswith("QUESTION:"):
+                    q_text = line.split(":", 1)[1].strip()
+                    
+            if not q_text:
+                q_text = output.replace("Question:", "").strip()
+            
+            added = process_and_add_question(q_text, q_diff)
+            if not added:
+                retries += 1
         except Exception:
+            db.rollback()
             retries += 1
             continue
             

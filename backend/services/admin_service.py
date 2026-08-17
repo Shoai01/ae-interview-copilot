@@ -26,3 +26,6 @@ def delete_question(db: Session, question_id: int) -> bool:
         admin_repository.delete_question(db, question)
         return True
     return False
+
+def get_dashboard_metrics(db: Session) -> dict:
+    return admin_repository.get_dashboard_metrics(db)

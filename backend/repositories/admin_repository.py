@@ -38,3 +38,96 @@ def delete_question(db: Session, question: domain.QuestionBank) -> None:
     except IntegrityError:
         db.rollback()
         raise ValueError("Cannot delete this question because it is referenced in past interview sessions. Please deactivate it instead.")
+
+from sqlalchemy import func, desc
+
+def get_dashboard_metrics(db: Session) -> dict:
+    total_interviews = db.query(domain.VivaSession).count()
+    
+    avg_score = db.query(func.avg(domain.VivaReport.aggregate_score)).scalar()
+    avg_performance_score = round(avg_score, 1) if avg_score else 0.0
+    
+    active_sessions = db.query(domain.VivaSession).filter(domain.VivaSession.status == domain.SessionStatus.IN_PROGRESS).count()
+    
+    completed_sessions = db.query(domain.VivaSession).filter(domain.VivaSession.status == domain.SessionStatus.COMPLETED).count()
+    completion_rate = (completed_sessions / total_interviews * 100) if total_interviews > 0 else 0.0
+    completion_rate = round(completion_rate, 1)
+    
+    # Trends (mocking logic by grouping by day - SQLite compatible)
+    # Actually, a simple grouping might be complex cross-DB. Let's return 7 days of dummy data for trends 
+    # OR we can just query all completed sessions and group them manually in python
+    completed_reports = db.query(domain.VivaSession.start_time, domain.VivaReport.aggregate_score)\
+        .join(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)\
+        .filter(domain.VivaSession.status == domain.SessionStatus.COMPLETED).all()
+        
+    # Python-side aggregation for trends (safe for all DB dialects for small datasets)
+    from collections import defaultdict
+    trend_dict = defaultdict(list)
+    for start_time, score in completed_reports:
+        if start_time and score is not None:
+            day_str = start_time.strftime("%b %d")
+            trend_dict[day_str].append(score)
+            
+    trends = []
+    # If no data, provide empty
+    for day_str, scores in list(trend_dict.items())[-7:]: # last 7 entries
+        trends.append({
+            "label": day_str,
+            "average_score": round(sum(scores) / len(scores), 1),
+            "count": len(scores)
+        })
+        
+    # Top Competencies
+    module_scores = db.query(
+        domain.TrainingModule.name,
+        func.avg(domain.VivaReport.aggregate_score).label("avg_score")
+    )\
+    .select_from(domain.VivaSession)\
+    .join(domain.TrainingModule, domain.VivaSession.module_id == domain.TrainingModule.id)\
+    .join(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)\
+    .group_by(domain.TrainingModule.name)\
+    .order_by(desc("avg_score"))\
+    .limit(4).all()
+    
+    top_competencies = [
+        {"module_name": m_name, "average_score": round(m_score, 1)}
+        for m_name, m_score in module_scores if m_score is not None
+    ]
+    
+    # Recent Activity
+    recent_sessions = db.query(
+        domain.VivaSession,
+        domain.User.full_name,
+        domain.User.username,
+        domain.TrainingModule.name.label("module_name"),
+        domain.VivaReport.aggregate_score
+    )\
+    .join(domain.User, domain.VivaSession.trainee_id == domain.User.id)\
+    .join(domain.TrainingModule, domain.VivaSession.module_id == domain.TrainingModule.id)\
+    .outerjoin(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)\
+    .order_by(domain.VivaSession.start_time.desc())\
+    .limit(5).all()
+    
+    recent_activity = []
+    for sess, f_name, u_name, m_name, score in recent_sessions:
+        name = f_name or u_name
+        initials = "".join([part[0] for part in name.split()[:2]]).upper() if name else "??"
+        recent_activity.append({
+            "session_id": sess.id,
+            "trainee_name": name,
+            "trainee_initials": initials,
+            "module_name": m_name,
+            "date": sess.start_time.strftime("%b %d, %Y") if sess.start_time else "Unknown",
+            "score": round(score, 1) if score is not None else None,
+            "status": sess.status.value
+        })
+        
+    return {
+        "total_interviews": total_interviews,
+        "avg_performance_score": avg_performance_score,
+        "active_sessions": active_sessions,
+        "completion_rate": completion_rate,
+        "trends": trends,
+        "top_competencies": top_competencies,
+        "recent_activity": recent_activity
+    }
