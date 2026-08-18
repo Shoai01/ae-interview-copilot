@@ -24,7 +24,7 @@ export default function TrainerSessions() {
   const [openAssignModal, setOpenAssignModal] = useState(false);
   const [trainees, setTrainees] = useState([]);
   const [modulesList, setModulesList] = useState([]);
-  const [assignForm, setAssignForm] = useState({ traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15 });
+  const [assignForm, setAssignForm] = useState({ traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15, questionCount: '' });
   const [assigning, setAssigning] = useState(false);
 
   const fetchSessions = async () => {
@@ -78,7 +78,8 @@ export default function TrainerSessions() {
         payload.trainee_identifier,
         payload.trainee_full_name,
         payload.module_id,
-        payload.duration_minutes
+        payload.duration_minutes,
+        assignForm.questionCount
       );
       
       if (res.new_user_password) {
@@ -117,23 +118,30 @@ export default function TrainerSessions() {
     setPage(0);
   };
 
+  
+  const selectedModule = modulesList.find(m => m.id === assignForm.moduleId);
+  const maxAvailable = selectedModule?.max_questions_per_set || null;
+  const helperText = maxAvailable 
+    ? `Max available in a single set: ${maxAvailable}. Leave empty to auto-calculate.`
+    : `Leave empty to auto-calculate based on duration`;
+
   return (
     <Layout>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'calc(100vh - 120px)', bgcolor: '#f8f9ff', p: { xs: 2, md: 4 } }}>
         
         {/* Page Header & Filters */}
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', fontFamily: 'Syne, sans-serif', letterSpacing: '-0.02em' }}>
+                <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0d1c2e', mb: 1 }}>
                   Viva Sessions
                 </Typography>
-                <IconButton onClick={fetchSessions} size="small" disabled={loading} sx={{ color: 'primary.main', '&:hover': { bgcolor: 'rgba(242,101,34,0.1)' } }}>
+                <IconButton onClick={fetchSessions} size="medium" disabled={loading} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
                   <SyncIcon sx={{ animation: loading ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
                 </IconButton>
               </Box>
-              <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="body1" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#535f74' }}>
                 Review and evaluate completed candidate interviews.
               </Typography>
             </Box>
@@ -141,19 +149,18 @@ export default function TrainerSessions() {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button 
               variant="contained" 
-              color="primary"
               onClick={() => setOpenAssignModal(true)}
-              sx={{ boxShadow: 'none', borderRadius: 2, px: 3, fontWeight: 600, textTransform: 'none' }}
+              sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, bgcolor: '#f26522', color: '#fff', fontFamily: 'DM Sans, sans-serif', '&:hover': { bgcolor: '#d9581b' }, boxShadow: 'none', textTransform: 'none' }}
             >
               Assign Session
             </Button>
-            <Select size="small" value={filterModule} onChange={(e) => setFilterModule(e.target.value)} displayEmpty sx={{ minWidth: 180, bgcolor: 'background.paper', borderRadius: 2, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main', borderWidth: 1, boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.1)' } }}>
+            <Select size="small" value={filterModule} onChange={(e) => setFilterModule(e.target.value)} displayEmpty sx={{ minWidth: 180, bgcolor: '#ffffff', borderRadius: 2, fontFamily: 'DM Sans, sans-serif', '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#f26522', borderWidth: 1, boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.1)' } }}>
               <MenuItem value="">All Modules</MenuItem>
               {uniqueModules.map(mod => (
                 <MenuItem key={mod} value={mod}>{mod}</MenuItem>
               ))}
             </Select>
-            <Select size="small" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} displayEmpty sx={{ minWidth: 140, bgcolor: 'background.paper', borderRadius: 2, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main', borderWidth: 1, boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.1)' } }}>
+            <Select size="small" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} displayEmpty sx={{ minWidth: 140, bgcolor: '#ffffff', borderRadius: 2, fontFamily: 'DM Sans, sans-serif', '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#f26522', borderWidth: 1, boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.1)' } }}>
               <MenuItem value="">All Statuses</MenuItem>
               {uniqueStatuses.map(status => (
                 <MenuItem key={status} value={status}>{status}</MenuItem>
@@ -163,7 +170,8 @@ export default function TrainerSessions() {
         </Box>
 
         {/* Data Table */}
-        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'rgba(0,0,0,0.08)', borderRadius: 3, overflow: 'hidden', minHeight: 400 }}>
+        <Paper elevation={0} sx={{ bgcolor: '#ffffff', borderRadius: 3, border: '1px solid rgba(225,191,179,0.5)', overflow: 'hidden', minHeight: 400, display: 'flex', flexDirection: 'column' }}>
+          <TableContainer>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
               <CircularProgress />
@@ -171,15 +179,15 @@ export default function TrainerSessions() {
           ) : (
             <>
               <Table sx={{ minWidth: 800 }} aria-label="sessions table">
-                <TableHead sx={{ bgcolor: '#fafafa' }}>
-                  <TableRow>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Trainee Name</TableCell>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Employee ID</TableCell>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Module</TableCell>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>AI Rec.</TableCell>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Status</TableCell>
-                    <TableCell sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Date</TableCell>
-                    <TableCell align="right" sx={{ textTransform: 'uppercase', color: 'text.secondary', fontWeight: 600, fontSize: '12px', py: 2, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>Action</TableCell>
+                <TableHead>
+                  <TableRow sx={{ bgcolor: '#fafbfd' }}>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Trainee Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Employee ID</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Module</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>AI Rec.</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Date</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -196,17 +204,17 @@ export default function TrainerSessions() {
                       sx={{ 
                         '&:last-child td, &:last-child th': { border: 0 },
                         transition: 'background-color 0.2s ease',
-                        '&:hover': { bgcolor: 'rgba(0,154,222,0.02)' }
+                        '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.04)' }
                       }}
                     >
-                      <TableCell sx={{ fontWeight: 500 }}>{row.trainee_name || 'Unknown'}</TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>{row.employee_id || 'N/A'}</TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'inline-flex', px: 1, py: 0.5, bgcolor: '#F1F5F9', borderRadius: 1, fontSize: '12px', fontWeight: 500, color: '#3c475b' }}>
+                      <TableCell sx={{ fontWeight: 600, color: '#0d1c2e', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(225,191,179,0.3)' }}>{row.trainee_name || 'Unknown'}</TableCell>
+                      <TableCell sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(225,191,179,0.3)' }}>{row.employee_id || 'N/A'}</TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                        <Box sx={{ display: 'inline-flex', px: 1, py: 0.5, bgcolor: 'rgba(242, 101, 34, 0.08)', borderRadius: 1, fontSize: '12px', fontWeight: 600, color: '#f26522' }}>
                           {row.module_name}
                         </Box>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
                         {row.ai_recommendation ? (
                           <Stack direction="row" alignItems="center" spacing={1}>
                             {row.ai_recommendation === 'PASS' && <CheckCircleIcon sx={{ fontSize: 18, color: '#059669' }} />}
@@ -220,7 +228,7 @@ export default function TrainerSessions() {
                           <Typography variant="body2" color="text.secondary">Evaluating...</Typography>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
                         <Chip 
                           label={row.status} 
                           size="small" 
@@ -234,8 +242,8 @@ export default function TrainerSessions() {
                           }} 
                         />
                       </TableCell>
-                      <TableCell sx={{ color: 'text.secondary' }}>{row.date}</TableCell>
-                      <TableCell align="right">
+                      <TableCell sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(225,191,179,0.3)' }}>{row.date}</TableCell>
+                      <TableCell align="right" sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
                         <Button 
                           variant="outlined" 
                           color="primary" 
@@ -255,20 +263,23 @@ export default function TrainerSessions() {
                   ))}
                 </TableBody>
               </Table>
-              
-              {/* Pagination Footer */}
-              <TablePagination
-                rowsPerPageOptions={[5, 10, 25]}
-                component="div"
-                count={filteredSessions.length}
-                rowsPerPage={rowsPerPage}
-                page={page}
-                onPageChange={handleChangePage}
-                onRowsPerPageChange={handleChangeRowsPerPage}
-              />
             </>
           )}
-        </TableContainer>
+          </TableContainer>
+          
+          {!loading && (
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={filteredSessions.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              sx={{ borderTop: '1px solid rgba(225,191,179,0.5)', bgcolor: '#fafbfd' }}
+            />
+          )}
+        </Paper>
 
       </Box>
 
@@ -341,6 +352,21 @@ export default function TrainerSessions() {
               onChange={(e) => setAssignForm({ ...assignForm, durationMinutes: parseInt(e.target.value) || 15 })}
               inputProps={{ min: 5, max: 120 }}
             />
+            <TextField 
+              label="Question Count (Optional)" 
+              type="number" 
+              fullWidth 
+              value={assignForm.questionCount}
+              onChange={(e) => {
+                let val = parseInt(e.target.value);
+                if (maxAvailable && val > maxAvailable) val = maxAvailable;
+                setAssignForm({ ...assignForm, questionCount: val || e.target.value });
+              }}
+              inputProps={{ min: 1, max: maxAvailable }}
+              placeholder="e.g. 5"
+              helperText={helperText}
+            />
+
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2, bgcolor: '#f8fafc' }}>

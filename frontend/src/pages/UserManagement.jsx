@@ -4,7 +4,7 @@ import {
   Select, MenuItem, Alert, CircularProgress, Stack, Grid,
   Table, TableBody, TableCell, TableHead, TableRow, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  IconButton, Avatar, Switch, InputAdornment
+  IconButton, Avatar, Switch, InputAdornment, Paper, TableContainer
 } from '@mui/material';
 import Layout from '@/components/Layout';
 import { adminService } from '@/services/api';
@@ -132,34 +132,31 @@ export default function UserManagement() {
 
   return (
     <Layout>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 1200, mx: 'auto', width: '100%' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'calc(100vh - 120px)', bgcolor: '#f8f9ff', p: { xs: 2, md: 4 } }}>
         
         {/* Header Section */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', fontFamily: 'Syne, sans-serif', letterSpacing: '-0.02em', fontSize: '32px' }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0d1c2e', mb: 1 }}>
                 Manage Users
               </Typography>
-              <IconButton onClick={fetchUsersData} size="small" disabled={loadingUsers} sx={{ color: 'primary.main', '&:hover': { bgcolor: 'rgba(242,101,34,0.1)' } }}>
+              <IconButton onClick={fetchUsersData} size="medium" disabled={loadingUsers} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
                 <SyncIcon sx={{ animation: loadingUsers ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
               </IconButton>
             </Box>
-            <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '15px' }}>
+            <Typography variant="body1" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#535f74' }}>
               View and manage system access for trainers and trainees.
             </Typography>
           </Box>
           <Box>
             <Button 
               variant="contained" 
-              color="primary"
               startIcon={<PersonAddIcon />}
               onClick={() => { setOpenDialog(true); setSuccessMsg(''); setErrorMsg(''); }}
               sx={{ 
-                px: 3, py: 1.2, borderRadius: 2, textTransform: 'none', 
-                fontWeight: 600, fontFamily: 'DM Sans, sans-serif',
-                boxShadow: '0 4px 14px rgba(242, 101, 34, 0.3)', 
-                '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.5)' } 
+                borderRadius: 2, px: 3, py: 1, fontWeight: 600, bgcolor: '#f26522', color: '#fff', 
+                fontFamily: 'DM Sans, sans-serif', '&:hover': { bgcolor: '#d9581b' }, boxShadow: 'none', textTransform: 'none' 
               }}
             >
               Add User
@@ -168,11 +165,11 @@ export default function UserManagement() {
         </Box>
 
         {/* Toolbar */}
-        <Box sx={{ 
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-          bgcolor: 'white', p: 2, borderRadius: 3,
-          border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0px 4px 20px rgba(0,0,0,0.02)'
-        }}>
+        <Paper elevation={0} sx={{ bgcolor: '#ffffff', borderRadius: 3, border: '1px solid rgba(225,191,179,0.5)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ 
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+            p: 2, borderBottom: '1px solid rgba(225,191,179,0.5)', bgcolor: '#ffffff'
+          }}>
           <TextField 
             placeholder="Search by name, username, or ID..."
             size="small"
@@ -214,7 +211,7 @@ export default function UserManagement() {
         </Box>
 
         {/* Users Table */}
-        <Card sx={{ borderRadius: 3, border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0px 10px 40px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+        <TableContainer>
           {loadingUsers ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
               <CircularProgress color="primary" />
@@ -281,7 +278,8 @@ export default function UserManagement() {
               </TableBody>
             </Table>
           )}
-        </Card>
+        </TableContainer>
+        </Paper>
 
       </Box>
 

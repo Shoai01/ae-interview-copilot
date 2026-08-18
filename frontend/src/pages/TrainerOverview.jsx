@@ -50,9 +50,9 @@ export default function TrainerOverview() {
   const cardSx = {
     p: 3, 
     borderRadius: 3, 
-    border: '1px solid rgba(0,0,0,0.04)', 
-    boxShadow: '0px 4px 20px rgba(0,0,0,0.02)',
-    bgcolor: 'white',
+    border: '1px solid rgba(225,191,179,0.5)', 
+    boxShadow: 'none',
+    bgcolor: '#ffffff',
     height: '100%',
     display: 'flex',
     flexDirection: 'column'
@@ -92,12 +92,12 @@ export default function TrainerOverview() {
 
   return (
     <Layout>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'calc(100vh - 120px)', bgcolor: '#f8f9ff', p: { xs: 2, md: 4 } }}>
         
         {/* Page Header */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 1 }}>
           <Box>
-            <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary', fontFamily: 'Syne, sans-serif', mb: 0.5, letterSpacing: '-0.02em', fontSize: '32px' }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0d1c2e', mb: 1 }}>
               Dashboard Overview
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '16px' }}>

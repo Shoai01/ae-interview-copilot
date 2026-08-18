@@ -65,6 +65,7 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate, curren
         trainee_id=trainee.id,
         module_id=session_data.module_id,
         duration_minutes=session_data.duration_minutes,
+        question_count=session_data.question_count,
         status=domain.SessionStatus.PENDING,
         start_time=datetime.datetime.utcnow()
     )
@@ -151,26 +152,45 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
         db_session.start_time = datetime.datetime.utcnow()
         db.commit()
         
-        # Phase 2: Dynamically generate 5 questions tailored to this session from FAISS
-        from services.knowledge_service import generate_dynamic_questions_for_session
-        dynamic_questions = generate_dynamic_questions_for_session(db, db_session.module_id, count=5)
+        # Phase 2: Pull questions from a pre-defined Set (Deterministic Pooling)
+        # Find all distinct set_names for this module
+        from sqlalchemy.sql.expression import func
+        distinct_sets = db.query(domain.QuestionBank.set_name).filter(
+            domain.QuestionBank.module_id == db_session.module_id,
+            domain.QuestionBank.is_active == True
+        ).distinct().all()
         
-        if len(dynamic_questions) < 5:
-            # Surface partial generation explicitly
-            print(f"Partial generation: Requested 5, generated {len(dynamic_questions)}. Falling back to predefined to fill gap.")
-            from sqlalchemy.sql.expression import func
-            needed = 5 - len(dynamic_questions)
-            exclude_ids = [q.id for q in dynamic_questions]
-            fallback_questions = db.query(domain.QuestionBank).filter(
-                domain.QuestionBank.module_id == db_session.module_id,
-                domain.QuestionBank.is_active == True,
-                ~domain.QuestionBank.id.in_(exclude_ids) if exclude_ids else True
-            ).order_by(func.random()).limit(needed).all()
+        if not distinct_sets:
+            # Revert session state if no questions available
+            db.delete(db_session)
+            db.commit()
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Could not start session. No Question Sets are available for this module.")
             
-            dynamic_questions.extend(fallback_questions)
+        import random
+        # Pick a random set
+        chosen_set = random.choice([s[0] for s in distinct_sets])
+        
+        # Get all questions from the chosen set
+        available_questions = db.query(domain.QuestionBank).filter(
+            domain.QuestionBank.module_id == db_session.module_id,
+            domain.QuestionBank.set_name == chosen_set,
+            domain.QuestionBank.is_active == True
+        ).order_by(func.random()).all()
+        
+        if getattr(db_session, 'question_count', None) and db_session.question_count > 0:
+            needed = db_session.question_count
+        else:
+            needed = db_session.duration_minutes // 3 # approx 3 mins per question
+            if needed < 5: needed = 5
+            
+        if needed > len(available_questions):
+            needed = len(available_questions)
+            
+        selected_questions = available_questions[:needed]
 
-        # Link exactly these 5 questions to the session
-        for i, qb_item in enumerate(dynamic_questions):
+        # Link the selected questions to the session
+        for i, qb_item in enumerate(selected_questions):
             viva_repository.create_viva_question(
                 db=db,
                 session_id=db_session.id,
@@ -178,7 +198,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
                 question_order=i+1
             )
             
-        total_questions = len(dynamic_questions) if dynamic_questions else 0
+        total_questions = len(selected_questions)
 
     if total_questions == 0:
         from fastapi import HTTPException

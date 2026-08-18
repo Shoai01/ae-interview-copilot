@@ -6,19 +6,38 @@ class ModuleResponse(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
+    max_questions_per_set: Optional[int] = None
     
     model_config = ConfigDict(from_attributes=True)
+
+class QuestionBankBase(BaseModel):
+    module_id: int
+    text: str
+    difficulty: DifficultyLevel
+    set_name: Optional[str] = "Default Set"
+    is_active: Optional[bool] = True
 
 class QuestionCreate(BaseModel):
     module_id: int
     text: str
     difficulty: DifficultyLevel
+    set_name: Optional[str] = "Default Set"
+
+class QuestionUpdate(BaseModel):
+    text: Optional[str] = None
+    difficulty: Optional[DifficultyLevel] = None
+    set_name: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class SetRename(BaseModel):
+    new_set_name: str
 
 class QuestionResponse(BaseModel):
     id: int
     module_id: int
     text: str
     difficulty: DifficultyLevel
+    set_name: Optional[str] = None
     is_active: bool
     
     model_config = ConfigDict(from_attributes=True)

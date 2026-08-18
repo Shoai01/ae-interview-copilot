@@ -29,3 +29,15 @@ def delete_question(db: Session, question_id: int) -> bool:
 
 def get_dashboard_metrics(db: Session) -> dict:
     return admin_repository.get_dashboard_metrics(db)
+
+def update_question(db: Session, question_id: int, update_data: admin_schemas.QuestionUpdate) -> domain.QuestionBank:
+    question = admin_repository.get_question_by_id(db, question_id)
+    if question:
+        return admin_repository.update_question(db, question, update_data.model_dump(exclude_unset=True))
+    return None
+
+def rename_set(db: Session, module_id: int, old_set_name: str, new_set_name: str) -> None:
+    admin_repository.rename_set_questions(db, module_id, old_set_name, new_set_name)
+
+def delete_set(db: Session, module_id: int, set_name: str) -> None:
+    admin_repository.delete_set_questions(db, module_id, set_name)

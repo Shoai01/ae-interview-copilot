@@ -117,7 +117,7 @@ def rebuild_faiss_index(db):
         vector_store.save_local(FAISS_INDEX_PATH)
 
 
-def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5):
+def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, set_name: str = "AI Generated Set"):
     """
     Dynamically generates questions using the FAISS index for a specific module.
     Saves them to QuestionBank and returns the list of generated QuestionBank objects.
@@ -328,6 +328,7 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5):
             module_id=module_id,
             text=text,
             difficulty=difficulty,
+            set_name=set_name,
             is_active=True
         )
         db.add(qb_item)

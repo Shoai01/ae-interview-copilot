@@ -66,7 +66,7 @@ export default function TrainerReviewDetail() {
 
   return (
     <Layout>
-      <Box sx={{ pb: 28 }}>
+      <Box sx={{ pb: 44 }}>
         {/* Back Navigation */}
         <Box 
           onClick={() => navigate('/hr/sessions')}
@@ -175,58 +175,70 @@ export default function TrainerReviewDetail() {
             )}
           </Grid>
 
-          {/* Decision Panel */}
-          <Grid item xs={12}>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif', borderBottom: '1px solid', borderColor: 'divider', pb: 1, mb: 2 }}>
-                Final Decision
-              </Typography>
-              <Paper elevation={0} sx={{ 
-                p: { xs: 2, md: 3 },
-                borderRadius: 3,
-                border: '1px solid', 
-                borderColor: 'rgba(0,0,0,0.08)',
-                bgcolor: '#fff'
-              }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>Trainer Notes</Typography>
-                    <Box 
-                      component="textarea" 
-                      placeholder="Add final remarks..." 
-                      rows={4} 
-                      sx={{ 
-                        width: '100%', 
-                        p: 1.5, 
-                        borderRadius: 2, 
-                        border: '1px solid', 
-                        borderColor: 'divider', 
-                        fontFamily: 'inherit',
-                        fontSize: 14,
-                        resize: 'none',
-                        '&:focus': { outline: 'none', borderColor: 'primary.main' } 
-                      }} 
-                    />
-                  </Box>
-                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mt: 1 }}>
-                    <Button variant="outlined" color="secondary" sx={{ flex: 1, borderRadius: 2, fontWeight: 600, py: 1 }}>Hold</Button>
-                    <Button variant="outlined" color="error" sx={{ flex: 1, borderRadius: 2, fontWeight: 600, py: 1 }}>Fail</Button>
-                    <Button variant="outlined" color="success" sx={{ flex: 1, borderRadius: 2, fontWeight: 600, py: 1 }}>Pass</Button>
-                    <Button 
-                      variant="contained" 
-                      color="primary" 
-                      endIcon={<SendIcon />}
-                      sx={{ flex: 2, boxShadow: '0 4px 14px rgba(242, 101, 34, 0.4)', borderRadius: 2, px: 3, py: 1.5, fontWeight: 600, '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.6)' } }}
-                      onClick={() => navigate('/hr/sessions')}
-                    >
-                      Submit Decision
-                    </Button>
-                  </Box>
-                </Box>
-              </Paper>
-            </Box>
-          </Grid>
         </Grid>
+      </Box>
+
+      {/* Sticky Decision Panel */}
+      <Box sx={{
+        position: 'fixed',
+        bottom: 0,
+        left: { xs: 0, lg: 280 },
+        right: 0,
+        zIndex: 1000,
+        p: { xs: 2, lg: 4 },
+        borderTop: '1px solid',
+        borderColor: 'divider',
+        bgcolor: '#f8fafc',
+        boxShadow: '0 -10px 40px rgba(0,0,0,0.05)'
+      }}>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif', borderBottom: '1px solid', borderColor: 'divider', pb: 1, mb: 2 }}>
+            Final Decision
+          </Typography>
+          <Paper elevation={0} sx={{ 
+            p: { xs: 2, md: 3 },
+            borderRadius: 3,
+            border: '1px solid', 
+            borderColor: 'rgba(0,0,0,0.08)',
+            bgcolor: '#fff'
+          }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box>
+                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>Trainer Notes</Typography>
+                <Box 
+                  component="textarea" 
+                  placeholder="Add final remarks..." 
+                  rows={4} 
+                  sx={{ 
+                    width: '100%', 
+                    p: 1.5, 
+                    borderRadius: 2, 
+                    border: '1px solid', 
+                    borderColor: 'divider', 
+                    fontFamily: 'inherit',
+                    fontSize: 14,
+                    resize: 'none',
+                    '&:focus': { outline: 'none', borderColor: 'primary.main' } 
+                  }} 
+                />
+              </Box>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mt: 1 }}>
+                <Button variant="outlined" color="secondary" sx={{ flex: 1, borderRadius: 2, fontWeight: 600, py: 1 }}>Hold</Button>
+                <Button variant="outlined" color="error" sx={{ flex: 1, borderRadius: 2, fontWeight: 600, py: 1 }}>Fail</Button>
+                <Button variant="outlined" color="success" sx={{ flex: 1, borderRadius: 2, fontWeight: 600, py: 1 }}>Pass</Button>
+                <Button 
+                  variant="contained" 
+                  color="primary" 
+                  endIcon={<SendIcon />}
+                  sx={{ flex: 2, boxShadow: '0 4px 14px rgba(242, 101, 34, 0.4)', borderRadius: 2, px: 3, py: 1.5, fontWeight: 600, '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.6)' } }}
+                  onClick={() => navigate('/hr/sessions')}
+                >
+                  Submit Decision
+                </Button>
+              </Box>
+            </Box>
+          </Paper>
+        </Box>
       </Box>
     </Layout>
   );

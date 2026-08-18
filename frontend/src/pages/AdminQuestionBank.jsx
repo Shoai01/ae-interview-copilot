@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Snackbar, Alert, Chip } from '@mui/material';
 import Layout from '@/components/Layout';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
 import SignalCellularAlt2BarIcon from '@mui/icons-material/SignalCellularAlt2Bar';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { adminService } from '@/services/api';
 
 export default function AdminQuestionBank() {
@@ -13,12 +15,28 @@ export default function AdminQuestionBank() {
   const [activeModuleId, setActiveModuleId] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeSet, setActiveSet] = useState('All Sets');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   
   // Dialog State
   const [open, setOpen] = useState(false);
-  const [newQuestion, setNewQuestion] = useState({ text: '', difficulty: 'MEDIUM' });
+  const [newQuestion, setNewQuestion] = useState({ text: '', difficulty: 'MEDIUM', setNameSelection: '' });
+  const [openGenerate, setOpenGenerate] = useState(false);
+  const [generateConfig, setGenerateConfig] = useState({ count: 15 });
+  const [isGenerating, setIsGenerating] = useState(false);
+  // Edit Question State
+  const [editMode, setEditMode] = useState(false);
+  const [editQuestionId, setEditQuestionId] = useState(null);
+
+  // Set Management State
+  
+  // Delete Confirmation State
+  const [deleteConfirm, setDeleteConfirm] = useState({ open: false, type: '', id: null, name: '' });
+
+  const [openRenameSet, setOpenRenameSet] = useState(false);
+  const [renameSetInput, setRenameSetInput] = useState('');
+
 
 
 
@@ -59,6 +77,7 @@ export default function AdminQuestionBank() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchQuestions(activeModuleId);
       setPage(0);
+      setActiveSet('All Sets');
     }
   }, [activeModuleId]);
 
@@ -73,15 +92,98 @@ export default function AdminQuestionBank() {
 
 
 
-  const handleCreate = async () => {
+  const handleOpenEdit = (q) => {
+    setEditMode(true);
+    setEditQuestionId(q.id);
+    setNewQuestion({ text: q.text, difficulty: q.difficulty, setNameSelection: q.set_name || 'Default Set' });
+    setOpen(true);
+  };
+
+  const handleOpenCreate = () => {
+    setEditMode(false);
+    setEditQuestionId(null);
+    setNewQuestion({ text: '', difficulty: 'MEDIUM', setNameSelection: '' });
+    setOpen(true);
+  };
+
+  const handleSaveQuestion = async () => {
     try {
       if (!newQuestion.text.trim()) return;
-      await adminService.createQuestion({ ...newQuestion, module_id: activeModuleId });
+      const finalSetName = newQuestion.setNameSelection === '+ Auto-Create New Set' ? nextAvailableSetName : newQuestion.setNameSelection;
+      
+      if (editMode) {
+        await adminService.updateQuestion(editQuestionId, { ...newQuestion, set_name: finalSetName });
+        showSnackbar("Question updated successfully!", "success");
+      } else {
+        await adminService.createQuestion({ ...newQuestion, set_name: finalSetName, module_id: activeModuleId });
+        showSnackbar("Question created successfully!", "success");
+      }
       setOpen(false);
-      setNewQuestion({ text: '', difficulty: 'MEDIUM' });
       fetchQuestions(activeModuleId);
     } catch (err) {
-      console.error("Failed to create question:", err);
+      console.error("Failed to save question:", err);
+      showSnackbar("Failed to save question.", "error");
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    const { type, id, name } = deleteConfirm;
+    setDeleteConfirm({ open: false, type: '', id: null, name: '' });
+    
+    if (type === 'SET') {
+      try {
+        await adminService.deleteSet(activeModuleId, name);
+        showSnackbar(`Set "${name}" deleted. (If questions were in use, they were deactivated instead).`, "success");
+        if (activeSet === name) setActiveSet('All Sets');
+        fetchQuestions(activeModuleId);
+      } catch (err) {
+        console.error("Failed to delete set:", err);
+        showSnackbar("Failed to delete set.", "error");
+      }
+    } else if (type === 'QUESTION') {
+      try {
+        await adminService.deleteQuestion(id);
+        setQuestions(prev => prev.filter(q => q.id !== id));
+        showSnackbar("Question deleted.", "success");
+      } catch (err) {
+        console.error("Failed to delete question:", err);
+        showSnackbar(err.response?.data?.detail || "Failed to delete question. It might be in use.", "error");
+      }
+    }
+  };
+
+  const handleDeleteSet = () => {
+    if (activeSet === 'All Sets' || activeSet === 'Default Set') return;
+    setDeleteConfirm({ open: true, type: 'SET', id: null, name: activeSet });
+  };
+
+  const handleRenameSet = async () => {
+    if (!renameSetInput.trim() || activeSet === 'All Sets' || activeSet === 'Default Set') return;
+    
+    try {
+      await adminService.renameSet(activeModuleId, activeSet, renameSetInput.trim());
+      showSnackbar(`Set renamed to "${renameSetInput.trim()}"`, "success");
+      setActiveSet(renameSetInput.trim());
+      setOpenRenameSet(false);
+      fetchQuestions(activeModuleId);
+    } catch (err) {
+      console.error("Failed to rename set:", err);
+      showSnackbar("Failed to rename set.", "error");
+    }
+  };
+
+  const handleGenerateAISet = async () => {
+    try {
+      setIsGenerating(true);
+      await adminService.generateSetViaAI(activeModuleId, nextAvailableSetName, generateConfig.count);
+      setOpenGenerate(false);
+      showSnackbar(`Successfully generated ${generateConfig.count} questions for ${nextAvailableSetName}!`, "success");
+      fetchQuestions(activeModuleId);
+    } catch (err) {
+      console.error("Failed to generate set:", err);
+      showSnackbar(err.response?.data?.detail || "Failed to generate AI set.", "error");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -95,139 +197,240 @@ export default function AdminQuestionBank() {
     }
   };
 
-  const handleDelete = async (questionId) => {
-    try {
-      await adminService.deleteQuestion(questionId);
-      setQuestions(prev => prev.filter(q => q.id !== questionId));
-    } catch (err) {
-      console.error("Failed to delete question:", err);
-      showSnackbar(err.response?.data?.detail || "Failed to delete question. It might be in use by past sessions.", "error");
+  const handleDelete = (questionId) => { setDeleteConfirm({ open: true, type: 'QUESTION', id: questionId, name: '' }); };
+
+
+
+  const uniqueSets = ['All Sets', ...new Set(questions.map(q => q.set_name || 'Default Set'))];
+  const existingSetsOnly = uniqueSets.filter(s => s !== 'All Sets' && s !== 'Default Set');
+  
+  // Calculate next available set name
+  let nextAvailableSetName = 'Module_Set_A';
+  if (activeModuleId) {
+    const activeModule = modules.find(m => m.id === activeModuleId);
+    if (activeModule) {
+      const prefix = activeModule.name.replace(/[^a-zA-Z0-9]/g, '_') + "_Set_";
+      const matchingSets = existingSetsOnly.filter(s => s.startsWith(prefix));
+      
+      if (matchingSets.length === 0) {
+        nextAvailableSetName = prefix + "A";
+      } else {
+        const suffixes = matchingSets.map(s => s.substring(prefix.length));
+        const letterToNum = (str) => {
+          let out = 0, len = str.length;
+          for (let pos = 0; pos < len; pos++) {
+            out += (str.charCodeAt(pos) - 64) * Math.pow(26, len - pos - 1);
+          }
+          return out;
+        };
+        const numToLetter = (num) => {
+          let out = "";
+          while (num > 0) {
+            let rem = (num - 1) % 26;
+            out = String.fromCharCode(65 + rem) + out;
+            num = Math.floor((num - 1) / 26);
+          }
+          return out;
+        };
+        
+        const nums = suffixes.map(letterToNum).filter(n => !isNaN(n));
+        const maxNum = nums.length > 0 ? Math.max(...nums) : 0;
+        nextAvailableSetName = prefix + numToLetter(maxNum + 1);
+      }
     }
-  };
+  }
 
-
-
-  const filteredQuestions = questions.filter(q => q.text.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredQuestions = questions.filter(q => {
+    const matchesSearch = q.text.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSet = activeSet === 'All Sets' || (q.set_name || 'Default Set') === activeSet;
+    return matchesSearch && matchesSet;
+  });
   const paginatedQuestions = filteredQuestions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
     <Layout>
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, height: { md: 'calc(100vh - 120px)' } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'calc(100vh - 120px)', bgcolor: '#f8f9ff', p: { xs: 2, md: 4 } }}>
         
-        {/* Left Sidebar: Modules */}
-        <Box sx={{ width: { xs: '100%', md: 280 }, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Typography variant="overline" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block', pl: 1 }}>Training Modules</Typography>
-          {modules.map(mod => (
-            <Paper 
-              key={mod.id} 
-              elevation={0}
-              onClick={() => setActiveModuleId(mod.id)}
-              sx={{ 
-                p: 2, 
-                cursor: 'pointer',
-                borderRadius: 3,
-                border: '1px solid',
-                borderColor: activeModuleId === mod.id ? 'primary.main' : 'rgba(0,0,0,0.06)',
-                bgcolor: activeModuleId === mod.id ? 'rgba(242, 101, 34, 0.04)' : 'background.paper',
-                transition: 'all 0.2s ease',
-                '&:hover': { borderColor: 'primary.main', transform: 'translateY(-2px)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }
-              }}
+        {/* Header & Actions */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'flex-end' }, justifyContent: 'space-between', gap: 2 }}>
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0d1c2e', mb: 1 }}>
+              Question Bank
+            </Typography>
+            <Typography variant="body1" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#535f74' }}>
+              Manage and organize your AI training scenarios.
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2, mt: { xs: 2, md: 0 } }}>
+            <Button 
+              variant="outlined" 
+              startIcon={<AutoAwesomeIcon />} 
+              sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, color: '#f26522', borderColor: '#f26522', fontFamily: 'DM Sans, sans-serif', '&:hover': { bgcolor: '#ffdbce', borderColor: '#f26522' } }} 
+              onClick={() => setOpenGenerate(true)}
+              disabled={!activeModuleId}
             >
-              <Typography variant="subtitle2" fontWeight={600} sx={{ color: activeModuleId === mod.id ? 'primary.main' : 'text.primary' }}>
-                {mod.name}
-              </Typography>
-            </Paper>
-          ))}
+              Generate Set via AI
+            </Button>
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />} 
+              sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, bgcolor: '#f26522', color: '#fff', fontFamily: 'DM Sans, sans-serif', '&:hover': { bgcolor: '#d9581b' }, boxShadow: 'none' }} 
+              onClick={handleOpenCreate}
+              disabled={!activeModuleId}
+            >
+              Add Question
+            </Button>
+          </Box>
         </Box>
 
-        {/* Right Content: Questions */}
-        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          
-          {/* Header */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>
-                Question Bank
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontFamily: 'DM Sans, sans-serif' }}>
-                Manage AI assessment scenarios and evaluation criteria.
-              </Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <Paper elevation={0} sx={{ display: 'flex', alignItems: 'center', p: 0.5, border: '1px solid', borderColor: 'rgba(0,0,0,0.12)', borderRadius: 2, width: 250, transition: 'all 0.2s ease', '&:focus-within': { borderColor: 'primary.main', boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.1)' } }}>
-                <SearchIcon sx={{ color: 'text.secondary', ml: 1, fontSize: 20 }} />
-                <InputBase 
-                  placeholder="Search questions..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  sx={{ ml: 1, flex: 1, fontSize: 14, fontFamily: 'DM Sans, sans-serif' }} 
-                />
-              </Paper>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                startIcon={<AddIcon />} 
-                sx={{ boxShadow: '0 4px 14px rgba(242, 101, 34, 0.4)', borderRadius: 2, px: 3, py: 1, fontWeight: 600, '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.6)' } }} 
-                onClick={() => setOpen(true)}
+        {/* Filters & Search */}
+        <Paper elevation={0} sx={{ bgcolor: '#ffffff', borderRadius: 3, border: '1px solid rgba(225,191,179,0.5)', overflow: 'hidden' }}>
+          {/* Module Tabs */}
+          <Box sx={{ display: 'flex', borderBottom: '1px solid rgba(225,191,179,0.5)', overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
+            {modules.map(mod => (
+              <Button
+                key={mod.id} 
+                onClick={() => setActiveModuleId(mod.id)}
+                sx={{ 
+                  px: 4, py: 2, 
+                  minWidth: 'auto',
+                  borderRadius: 0,
+                  borderBottom: activeModuleId === mod.id ? '2px solid #f26522' : '2px solid transparent',
+                  color: activeModuleId === mod.id ? '#f26522' : '#535f74',
+                  fontWeight: activeModuleId === mod.id ? 700 : 500,
+                  textTransform: 'none',
+                  fontFamily: 'DM Sans, sans-serif',
+                  transition: 'all 0.2s ease',
+                  '&:hover': { color: '#f26522' }
+                }}
               >
-                Add Question
+                {mod.name}
               </Button>
-            </Box>
+            ))}
           </Box>
 
-          {/* Data Table */}
-          <Paper elevation={0} sx={{ flexGrow: 1, borderRadius: 3, border: '1px solid', borderColor: 'rgba(0,0,0,0.08)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            <TableContainer sx={{ flexGrow: 1 }}>
-              <Table stickyHeader sx={{ minWidth: 600 }}>
-                <TableHead>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', py: 2, bgcolor: 'rgba(0,0,0,0.02)', width: 60 }}>#</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', py: 2, bgcolor: 'rgba(0,0,0,0.02)' }}>Question Text</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', py: 2, bgcolor: 'rgba(0,0,0,0.02)' }}>Difficulty</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 600, color: 'text.secondary', py: 2, bgcolor: 'rgba(0,0,0,0.02)' }}>Status</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: 'text.secondary', py: 2, bgcolor: 'rgba(0,0,0,0.02)' }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredQuestions.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
-                        <Typography color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>No questions found.</Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : paginatedQuestions.map((q, index) => (
-                    <TableRow key={q.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 }, transition: 'background-color 0.2s ease', '&:hover': { bgcolor: 'rgba(0,154,222,0.02)' } }}>
-                      <TableCell sx={{ py: 2, color: 'text.secondary', fontWeight: 600, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                        {page * rowsPerPage + index + 1}
-                      </TableCell>
-                      <TableCell sx={{ maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', py: 2, color: 'text.primary', fontWeight: 500, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                        {q.text}
-                      </TableCell>
+          <Box sx={{ p: 2, px: 3, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, gap: 3 }}>
+            {/* Set Chips */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+              {uniqueSets.map(setName => (
+                <Button 
+                  key={setName} 
+                  onClick={() => setActiveSet(setName)}
+                  sx={{ 
+                    px: 2, py: 0.5,
+                    borderRadius: '999px',
+                    border: '1px solid',
+                    borderColor: activeSet === setName ? '#ffdbce' : 'rgba(225,191,179,0.8)',
+                    bgcolor: activeSet === setName ? '#ffdbce' : '#f8f9ff',
+                    color: activeSet === setName ? '#f26522' : '#535f74',
+                    fontWeight: activeSet === setName ? 600 : 500,
+                    textTransform: 'none',
+                    fontFamily: 'DM Sans, sans-serif',
+                    fontSize: '0.875rem',
+                    transition: 'all 0.2s ease',
+                    '&:hover': { bgcolor: activeSet === setName ? '#ffdbce' : '#d5e3fc' }
+                  }}
+                >
+                  {setName}
+                </Button>
+              ))}
+              {activeSet !== 'All Sets' && activeSet !== 'Default Set' && (
+                <Box sx={{ display: 'flex', ml: 1, gap: 0.5 }}>
+                  <IconButton size="small" onClick={() => { setRenameSetInput(activeSet); setOpenRenameSet(true); }} sx={{ color: '#f26522' }} title="Rename Set">
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" onClick={handleDeleteSet} sx={{ color: '#ba1a1a' }} title="Delete Set">
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+              )}
+            </Box>
 
-                      <TableCell sx={{ py: 2, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
-                          {q.difficulty === 'HARD' ? (
-                            <SignalCellularAltIcon sx={{ fontSize: 18, color: 'error.main' }} />
-                          ) : (
-                            <SignalCellularAlt2BarIcon sx={{ fontSize: 18, color: 'primary.main' }} />
-                          )}
-                          <Typography variant="caption" sx={{ color: q.difficulty === 'HARD' ? 'error.main' : 'primary.main', fontWeight: 700, letterSpacing: 0.5 }}>{q.difficulty}</Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell align="center" sx={{ py: 2, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                        <Switch checked={q.is_active} onChange={() => handleToggle(q.id)} size="small" color="primary" />
-                      </TableCell>
-                      <TableCell align="right" sx={{ py: 2, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                        <IconButton size="small" onClick={() => handleDelete(q.id)} sx={{ color: 'text.secondary', '&:hover': { color: 'error.main', bgcolor: 'rgba(239,68,68,0.08)' } }}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            {/* Search Bar */}
+            <Box sx={{ position: 'relative', width: { xs: '100%', md: 280 } }}>
+              <SearchIcon sx={{ color: '#535f74', position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 20, pointerEvents: 'none' }} />
+              <InputBase 
+                placeholder="Search questions..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                sx={{ 
+                  width: '100%', pl: 5, pr: 2, py: 1, 
+                  bgcolor: '#f8f9ff', 
+                  border: '1px solid rgba(225,191,179,0.8)', 
+                  borderRadius: 2, 
+                  fontFamily: 'DM Sans, sans-serif', 
+                  fontSize: '0.875rem',
+                  color: '#0d1c2e',
+                  transition: 'all 0.2s ease',
+                  '&:focus-within': { borderColor: '#f26522', boxShadow: '0 0 0 2px rgba(242,101,34,0.1)' } 
+                }} 
+              />
+            </Box>
+          </Box>
+        </Paper>
+
+        {/* Data Table */}
+        <Paper elevation={0} sx={{ flexGrow: 1, borderRadius: 3, border: '1px solid rgba(225,191,179,0.5)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <TableContainer sx={{ flexGrow: 1 }}>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow>
+                  <TableCell align="center" sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', width: 60, textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>#</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Question Text</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Set Name</TableCell>
+                  <TableCell align="left" sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Difficulty</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Status</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredQuestions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 8, borderBottom: 'none' }}>
+                      <Typography sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif' }}>No questions found.</Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedQuestions.map((q, index) => (
+                  <TableRow key={q.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 }, transition: 'background-color 0.2s ease', '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.04)' } }}>
+                    <TableCell align="center" sx={{ py: 2, color: '#535f74', fontWeight: 500, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                      {page * rowsPerPage + index + 1}
+                    </TableCell>
+                    <TableCell sx={{ maxWidth: 300, py: 2, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                      <Typography sx={{ color: '#0d1c2e', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'DM Sans, sans-serif', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{q.text}</Typography>
+                    </TableCell>
+                    <TableCell sx={{ py: 2, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                      <Box sx={{ display: 'inline-flex', px: 1, py: 0.5, borderRadius: 1, bgcolor: '#cae6ff', color: '#002d45', fontSize: '0.625rem', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+                        {q.set_name || 'Default Set'}
+                      </Box>
+                    </TableCell>
+                    <TableCell align="left" sx={{ py: 2, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ 
+                          width: 8, height: 8, borderRadius: '50%',
+                          ...(q.difficulty === 'EASY' && { bgcolor: '#10b981' }),
+                          ...(q.difficulty === 'MEDIUM' && { bgcolor: '#f59e0b' }),
+                          ...(q.difficulty === 'HARD' && { bgcolor: '#ef4444' })
+                        }} />
+                        <Typography variant="caption" sx={{ color: '#535f74', fontWeight: 500, fontFamily: 'DM Sans, sans-serif' }}>{q.difficulty === 'EASY' ? 'Easy' : q.difficulty === 'MEDIUM' ? 'Medium' : 'Hard'}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell align="center" sx={{ py: 2, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                      <Switch checked={q.is_active} onChange={() => handleToggle(q.id)} size="small" sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#f26522' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#f26522' } }} />
+                    </TableCell>
+                    <TableCell align="right" sx={{ py: 2, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                      <IconButton size="small" onClick={() => handleOpenEdit(q)} sx={{ color: '#535f74', '&:hover': { color: '#f26522' }, mr: 1 }}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleDelete(q.id)} sx={{ color: '#535f74', '&:hover': { color: '#ba1a1a' } }}>
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <Box sx={{ borderTop: '1px solid rgba(225,191,179,0.5)', bgcolor: '#eff4ff' }}>
             <TablePagination
               rowsPerPageOptions={[5, 10, 25]}
               component="div"
@@ -236,15 +439,16 @@ export default function AdminQuestionBank() {
               page={page}
               onPageChange={handleChangePage}
               onRowsPerPageChange={handleChangeRowsPerPage}
+              sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif' }}
             />
-          </Paper>
+          </Box>
+        </Paper>
 
-        </Box>
       </Box>
 
-      {/* Add Question Dialog */}
+    {/* Add Question Dialog */}    {/* Add Question Dialog */}    {/* Add Question Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 24px 64px rgba(0,0,0,0.1)' } }}>
-        <DialogTitle sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.5rem', pb: 1, pt: 3 }}>Add New Question</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.5rem', pb: 1, pt: 3 }}>{editMode ? 'Edit Question' : 'Add New Question'}</DialogTitle>
         <DialogContent sx={{ p: 3 }}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
             <TextField 
@@ -257,7 +461,35 @@ export default function AdminQuestionBank() {
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
             <Box sx={{ display: 'flex', gap: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Select Set</InputLabel>
+                <Select
+                  value={newQuestion.setNameSelection}
+                  label="Select Set"
+                  onChange={(e) => setNewQuestion({ ...newQuestion, setNameSelection: e.target.value })}
+                  sx={{ borderRadius: 2 }}
+                >
+                  <MenuItem value="+ Auto-Create New Set" sx={{ fontWeight: 'bold', color: 'primary.main' }}>+ Auto-Create New Set</MenuItem>
+                  {existingSetsOnly.map(set => (
+                    <MenuItem key={set} value={set}>{set}</MenuItem>
+                  ))}
+                  <MenuItem value="Default Set">Default Set</MenuItem>
+                </Select>
+              </FormControl>
+              
+              {newQuestion.setNameSelection === '+ Auto-Create New Set' && (
+                <FormControl fullWidth>
+                  <TextField
+                    label="Auto-Generated Set Name"
+                    value={nextAvailableSetName}
+                    disabled
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                  />
+                </FormControl>
+              )}
+            </Box>
 
+            <Box sx={{ display: 'flex', gap: 2 }}>
               <FormControl fullWidth>
                 <InputLabel>Difficulty</InputLabel>
                 <Select
@@ -276,8 +508,43 @@ export default function AdminQuestionBank() {
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 0 }}>
           <Button onClick={() => setOpen(false)} color="inherit" sx={{ fontWeight: 600, borderRadius: 2 }}>Cancel</Button>
-          <Button onClick={handleCreate} variant="contained" color="primary" disabled={!newQuestion.text.trim()} sx={{ fontWeight: 600, borderRadius: 2, px: 3, boxShadow: 'none' }}>
-            Save Question
+          <Button onClick={handleSaveQuestion} variant="contained" color="primary" disabled={!newQuestion.text.trim() || !newQuestion.setNameSelection} sx={{ fontWeight: 600, borderRadius: 2, px: 3, boxShadow: 'none' }}>
+            {editMode ? 'Update Question' : 'Save Question'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Generate AI Set Dialog */}
+      <Dialog open={openGenerate} onClose={() => !isGenerating && setOpenGenerate(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 24px 64px rgba(0,0,0,0.1)' } }}>
+        <DialogTitle sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.5rem', pb: 1, pt: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <AutoAwesomeIcon color="primary" /> Generate Set via AI
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            The AI will read the uploaded Knowledge Documents for this module and generate a brand new set of questions.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField 
+              label="Auto-Generated Set Name" 
+              fullWidth 
+              value={nextAvailableSetName}
+              disabled
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+            <TextField 
+              label="Number of Questions" 
+              type="number"
+              fullWidth 
+              value={generateConfig.count}
+              onChange={(e) => setGenerateConfig({ ...generateConfig, count: parseInt(e.target.value) || 15 })}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button onClick={() => setOpenGenerate(false)} color="inherit" disabled={isGenerating} sx={{ fontWeight: 600, borderRadius: 2 }}>Cancel</Button>
+          <Button onClick={handleGenerateAISet} variant="contained" color="primary" disabled={isGenerating} sx={{ fontWeight: 600, borderRadius: 2, px: 3, boxShadow: 'none' }}>
+            {isGenerating ? <CircularProgress size={24} color="inherit" /> : 'Generate Now'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -288,6 +555,44 @@ export default function AdminQuestionBank() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+    
+      <Dialog open={openRenameSet} onClose={() => setOpenRenameSet(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 24px 64px rgba(0,0,0,0.1)' } }}>
+        <DialogTitle sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.25rem', pb: 1, pt: 3 }}>Rename Set</DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <TextField 
+            label="New Set Name" 
+            fullWidth 
+            value={renameSetInput}
+            onChange={(e) => setRenameSetInput(e.target.value)}
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 }, mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button onClick={() => setOpenRenameSet(false)} color="inherit" sx={{ fontWeight: 600, borderRadius: 2 }}>Cancel</Button>
+          <Button onClick={handleRenameSet} variant="contained" color="primary" disabled={!renameSetInput.trim() || renameSetInput.trim() === activeSet} sx={{ fontWeight: 600, borderRadius: 2, px: 3, boxShadow: 'none' }}>
+            Rename
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+    
+      <Dialog open={deleteConfirm.open} onClose={() => setDeleteConfirm({ open: false, type: '', id: null, name: '' })} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 24px 64px rgba(0,0,0,0.1)' } }}>
+        <DialogTitle sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.25rem', pb: 1, pt: 3, color: '#ba1a1a' }}>Confirm Deletion</DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Typography variant="body1" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#535f74' }}>
+            {deleteConfirm.type === 'SET' 
+              ? `Are you sure you want to delete the set "${deleteConfirm.name}"? This will attempt to delete all questions within it.` 
+              : `Are you sure you want to delete this question?`}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button onClick={() => setDeleteConfirm({ open: false, type: '', id: null, name: '' })} color="inherit" sx={{ fontWeight: 600, borderRadius: 2 }}>Cancel</Button>
+          <Button onClick={handleConfirmDelete} variant="contained" color="error" sx={{ fontWeight: 600, borderRadius: 2, px: 3, boxShadow: 'none' }}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Layout>
   );
 }

@@ -39,15 +39,41 @@ def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(re
 
 @router.get("/modules", response_model=List[admin_schemas.ModuleResponse])
 def get_all_modules(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE]))):
-    return admin_service.get_modules(db)
+    modules = admin_service.get_modules(db)
+    results = []
+    from sqlalchemy import func
+    for m in modules:
+        counts = db.query(func.count(domain.QuestionBank.id)).filter(
+            domain.QuestionBank.module_id == m.id,
+            domain.QuestionBank.is_active == True
+        ).group_by(domain.QuestionBank.set_name).all()
+        
+        max_count = max([c[0] for c in counts]) if counts else 0
+        
+        m_dict = {
+            "id": m.id,
+            "name": m.name,
+            "description": m.description,
+            "max_questions_per_set": max_count
+        }
+        results.append(m_dict)
+    return results
 
 @router.get("/questions", response_model=List[admin_schemas.QuestionResponse])
 def get_questions(module_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
     return admin_service.get_questions_by_module(db, module_id=module_id)
 
+@router.post("/generate-set", response_model=List[admin_schemas.QuestionResponse])
+def generate_ai_set(module_id: int, set_name: str, count: int = 15, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+    from services.knowledge_service import generate_dynamic_questions_for_session
+    questions = generate_dynamic_questions_for_session(db, module_id, count=count, set_name=set_name)
+    if not questions:
+        raise HTTPException(status_code=400, detail="Could not generate questions. Make sure you have uploaded PDFs for this module.")
+    return questions
+
 @router.post("/questions", response_model=admin_schemas.QuestionResponse, status_code=status.HTTP_201_CREATED)
-def create_question(question: admin_schemas.QuestionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
-    return admin_service.create_question(db, question=question)
+def create_question(question_data: admin_schemas.QuestionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+    return admin_service.create_question(db, question=question_data)
 
 @router.put("/questions/{question_id}/toggle", response_model=admin_schemas.QuestionResponse)
 def toggle_question_status(question_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
@@ -65,6 +91,23 @@ def delete_question(question_id: int, db: Session = Depends(get_db), current_use
         return None
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/questions/{question_id}", response_model=admin_schemas.QuestionResponse)
+def update_question(question_id: int, update_data: admin_schemas.QuestionUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+    updated = admin_service.update_question(db, question_id, update_data)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Question not found")
+    return updated
+
+@router.put("/modules/{module_id}/sets/{set_name}", status_code=status.HTTP_204_NO_CONTENT)
+def rename_set(module_id: int, set_name: str, rename_data: admin_schemas.SetRename, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+    admin_service.rename_set(db, module_id, set_name, rename_data.new_set_name)
+    return None
+
+@router.delete("/modules/{module_id}/sets/{set_name}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_set(module_id: int, set_name: str, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+    admin_service.delete_set(db, module_id, set_name)
+    return None
 
 @router.post("/modules/{module_id}/upload-docs", response_model=admin_schemas.UploadDocsResponse)
 async def upload_knowledge_document(

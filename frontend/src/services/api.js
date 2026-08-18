@@ -58,6 +58,24 @@ export const adminService = {
     const response = await api.post('/admin/questions', questionData);
     return response.data;
   },
+  updateQuestion: async (questionId, questionData) => {
+    const response = await api.put(`/admin/questions/${questionId}`, questionData);
+    return response.data;
+  },
+  renameSet: async (moduleId, oldSetName, newSetName) => {
+    await api.put(`/admin/modules/${moduleId}/sets/${encodeURIComponent(oldSetName)}`, { new_set_name: newSetName });
+    return true;
+  },
+  deleteSet: async (moduleId, setName) => {
+    await api.delete(`/admin/modules/${moduleId}/sets/${encodeURIComponent(setName)}`);
+    return true;
+  },
+  generateSetViaAI: async (moduleId, setName, count = 15) => {
+    const response = await api.post(`/admin/generate-set`, null, {
+      params: { module_id: moduleId, set_name: setName, count }
+    });
+    return response.data;
+  },
   toggleQuestionStatus: async (questionId) => {
     const response = await api.put(`/admin/questions/${questionId}/toggle`);
     return response.data;
@@ -81,7 +99,7 @@ export const vivaService = {
     const response = await api.get(`/viva/trainee/${userId}`);
     return response.data;
   },
-  assignSession: async (traineeId, traineeIdentifier, traineeFullName, moduleId, durationMinutes = 15) => {
+  assignSession: async (traineeId, traineeIdentifier, traineeFullName, moduleId, durationMinutes = 15, questionCount = null) => {
     const payload = {
       module_id: moduleId,
       duration_minutes: durationMinutes
@@ -89,6 +107,7 @@ export const vivaService = {
     if (traineeId) payload.trainee_id = traineeId;
     if (traineeIdentifier) payload.trainee_identifier = traineeIdentifier;
     if (traineeFullName) payload.trainee_full_name = traineeFullName;
+    if (questionCount !== null && questionCount !== "") payload.question_count = parseInt(questionCount);
     
     const response = await api.post('/viva/sessions/assign', payload);
     return response.data;

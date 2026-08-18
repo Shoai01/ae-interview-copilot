@@ -85,6 +85,7 @@ class QuestionBank(Base):
     module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=False)
     text = Column(String, nullable=False)
     difficulty = Column(SQLEnum(DifficultyLevel), nullable=False)
+    set_name = Column(String, nullable=True, default="Default Set")
     is_active = Column(Boolean, default=True)
 
     module = relationship("TrainingModule", back_populates="questions")
@@ -97,6 +98,7 @@ class VivaSession(Base):
     trainee_id = Column(Integer, ForeignKey("users.id"), nullable=False) # Must be a user with role TRAINEE
     module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=False)
     duration_minutes = Column(Integer, default=15) # default session length
+    question_count = Column(Integer, nullable=True) # Optional explicitly set question count
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime, nullable=True)
     status = Column(SQLEnum(SessionStatus), nullable=False, default=SessionStatus.IN_PROGRESS)

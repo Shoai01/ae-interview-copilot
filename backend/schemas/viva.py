@@ -7,6 +7,7 @@ class SessionCreate(BaseModel):
     trainee_full_name: Optional[str] = None
     module_id: int
     duration_minutes: int = 15
+    question_count: Optional[int] = None
 
 class SessionResponse(BaseModel):
     id: int
