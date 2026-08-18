@@ -81,16 +81,24 @@ export const vivaService = {
     const response = await api.get(`/viva/trainee/${userId}`);
     return response.data;
   },
-  assignSession: async (traineeId, moduleId, durationMinutes = 15) => {
-    const response = await api.post('/viva/sessions/assign', {
-      trainee_id: traineeId,
+  assignSession: async (traineeId, traineeIdentifier, traineeFullName, moduleId, durationMinutes = 15) => {
+    const payload = {
       module_id: moduleId,
       duration_minutes: durationMinutes
-    });
+    };
+    if (traineeId) payload.trainee_id = traineeId;
+    if (traineeIdentifier) payload.trainee_identifier = traineeIdentifier;
+    if (traineeFullName) payload.trainee_full_name = traineeFullName;
+    
+    const response = await api.post('/viva/sessions/assign', payload);
     return response.data;
   },
   startSession: async () => {
     const response = await api.post('/viva/sessions/start');
+    return response.data;
+  },
+  getCurrentSession: async () => {
+    const response = await api.get('/viva/sessions/current');
     return response.data;
   },
   getNextQuestion: async (sessionId) => {

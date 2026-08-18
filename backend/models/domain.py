@@ -19,6 +19,7 @@ class SessionStatus(str, enum.Enum):
     PENDING = "PENDING"
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
+    EXPIRED = "EXPIRED"
 
 class FraudFlagType(str, enum.Enum):
     MULTIPLE_FACES = "MULTIPLE_FACES"
@@ -45,12 +46,10 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     full_name = Column(String, nullable=True)
     employee_id = Column(String, nullable=True) # Relevant for trainees
-    module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=True) # Set for trainees at account creation
     is_active = Column(Boolean, default=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True) # Who provisioned this account
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    module = relationship("TrainingModule", back_populates="users", foreign_keys=[module_id])
     creator = relationship("User", remote_side=[id], back_populates="created_users")
     created_users = relationship("User", back_populates="creator")
     sessions = relationship("VivaSession", back_populates="trainee", foreign_keys="VivaSession.trainee_id")
@@ -64,7 +63,6 @@ class TrainingModule(Base):
     name = Column(String, nullable=False) # Foundation | Intermediate | Developer
     description = Column(String, nullable=True)
 
-    users = relationship("User", back_populates="module")
     questions = relationship("QuestionBank", back_populates="module")
     sessions = relationship("VivaSession", back_populates="module")
     knowledge_docs = relationship("KnowledgeDocument", back_populates="module")
@@ -116,7 +114,6 @@ class VivaQuestion(Base):
     question_bank_id = Column(Integer, ForeignKey("question_bank.id"), nullable=False)
     question_order = Column(Integer, nullable=False) # sequence within the session
     transcript = Column(Text, nullable=True) # STT transcript
-    audio_path = Column(String, nullable=True) # path to saved answer audio blob
     asked_at = Column(DateTime, default=datetime.utcnow)
     answered_at = Column(DateTime, nullable=True) # needed to compute response time
 

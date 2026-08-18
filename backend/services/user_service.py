@@ -16,7 +16,6 @@ def create_user(db: Session, user: UserCreate, created_by_id: int) -> User:
         role=user.role,
         full_name=user.full_name,
         employee_id=user.employee_id,
-        module_id=user.module_id,
         created_by=created_by_id
     )
     db.add(db_user)

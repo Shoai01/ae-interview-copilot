@@ -34,20 +34,10 @@ export default function UserManagement() {
     password: '',
     role: user?.role === 'TRAINER' ? 'TRAINEE' : 'TRAINER',
     full_name: '',
-    employee_id: '',
-    module_id: ''
+    employee_id: ''
   });
 
   const fetchUsersData = async () => {
-    try {
-      const mods = await adminService.getModules();
-      setModules(mods);
-      if (mods.length > 0) {
-        setFormData(prev => ({ ...prev, module_id: mods[0].id }));
-      }
-    } catch (err) {
-      console.error("Failed to fetch modules:", err);
-    }
     
     setLoadingUsers(true);
     try {
@@ -81,8 +71,7 @@ export default function UserManagement() {
         password: formData.password,
         role: formData.role,
         full_name: formData.full_name || null,
-        employee_id: formData.employee_id || null,
-        module_id: formData.role === 'TRAINEE' ? parseInt(formData.module_id) : null
+        employee_id: formData.employee_id || null
       };
 
       const createdUser = await adminService.createUser(payload);
@@ -94,8 +83,7 @@ export default function UserManagement() {
         password: '',
         role: user?.role === 'TRAINER' ? 'TRAINEE' : 'TRAINER',
         full_name: '',
-        employee_id: '',
-        module_id: modules.length > 0 ? modules[0].id : ''
+        employee_id: ''
       });
       setTimeout(() => setOpenDialog(false), 1500);
     } catch (err) {
@@ -388,7 +376,7 @@ export default function UserManagement() {
 
               {formData.role === 'TRAINEE' && (
                 <>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={12}>
                     <Typography variant="caption" color="text.secondary" sx={labelSx}>
                       Employee ID
                     </Typography>
@@ -401,25 +389,6 @@ export default function UserManagement() {
                       placeholder="EMP-001"
                       sx={inputSx}
                     />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" color="text.secondary" sx={labelSx}>
-                      Assigned Module *
-                    </Typography>
-                    <Select 
-                      fullWidth 
-                      size="small"
-                      name="module_id"
-                      value={formData.module_id}
-                      onChange={handleChange}
-                      required={formData.role === 'TRAINEE'}
-                      sx={selectSx}
-                    >
-                      {modules.map(mod => (
-                        <MenuItem key={mod.id} value={mod.id}>{mod.name}</MenuItem>
-                      ))}
-                    </Select>
                   </Grid>
                 </>
               )}

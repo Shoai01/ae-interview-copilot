@@ -15,11 +15,18 @@ router = APIRouter(
 
 @router.post("/sessions/assign", response_model=viva_schemas.SessionResponse, status_code=status.HTTP_201_CREATED)
 def assign_session(session_data: viva_schemas.SessionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
-    return viva_service.assign_session(db, session_data)
+    return viva_service.assign_session(db, session_data, current_user_id=current_user.id)
 
 @router.post("/sessions/start", response_model=viva_schemas.SessionResponse, status_code=status.HTTP_201_CREATED)
 def start_session(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
     return viva_service.resolve_or_create_session(db, current_user)
+
+@router.get("/sessions/current", response_model=viva_schemas.SessionResponse)
+def get_current_session(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
+    session = viva_service.get_current_session(db, current_user.id)
+    if not session:
+        raise HTTPException(status_code=404, detail="No active or pending session found")
+    return session
 
 @router.post("/{session_id}/next-question", response_model=viva_schemas.NextQuestionResponse)
 def get_next_question(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):

@@ -4,28 +4,69 @@ from schemas import viva as viva_schemas
 from repositories import viva_repository
 import datetime
 
-def assign_session(db: Session, session_data: viva_schemas.SessionCreate) -> viva_schemas.SessionResponse:
+def assign_session(db: Session, session_data: viva_schemas.SessionCreate, current_user_id: int = 1) -> viva_schemas.SessionResponse:
     from services.user_service import get_user_by_id
-    trainee = get_user_by_id(db, session_data.trainee_id)
-    if not trainee or trainee.role != domain.UserRole.TRAINEE:
+    from models.domain import User, UserRole
+    import random
+    import string
+    
+    trainee = None
+    new_user_password = None
+    
+    if session_data.trainee_id:
+        trainee = get_user_by_id(db, session_data.trainee_id)
+        if not trainee or trainee.role != domain.UserRole.TRAINEE:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="Invalid trainee ID.")
+    elif session_data.trainee_identifier:
+        # Search only by username
+        identifier = session_data.trainee_identifier.strip()
+        trainee = db.query(User).filter(
+            User.username == identifier,
+            User.role == UserRole.TRAINEE
+        ).first()
+        
+        if not trainee:
+            # Auto-create the trainee
+            new_user_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+            from core.security import get_password_hash
+            trainee = User(
+                username=identifier,
+                full_name=session_data.trainee_full_name,
+                password_hash=get_password_hash(new_user_password),
+                role=UserRole.TRAINEE,
+                created_by=current_user_id
+            )
+            db.add(trainee)
+            db.commit()
+            db.refresh(trainee)
+    else:
         from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Invalid trainee ID.")
+        raise HTTPException(status_code=400, detail="Must provide trainee_id or trainee_identifier.")
         
     existing_session = db.query(domain.VivaSession).filter(
-        domain.VivaSession.trainee_id == session_data.trainee_id,
+        domain.VivaSession.trainee_id == trainee.id,
         domain.VivaSession.status.in_([domain.SessionStatus.IN_PROGRESS, domain.SessionStatus.PENDING])
     ).first()
     
+    if existing_session:
+        if existing_session.status == domain.SessionStatus.PENDING and existing_session.start_time:
+            now = datetime.datetime.utcnow()
+            if (now - existing_session.start_time).total_seconds() > 86400: # 24 hours
+                existing_session.status = domain.SessionStatus.EXPIRED
+                db.commit()
+                existing_session = None # It's expired, so they CAN have a new one
+
     if existing_session:
         from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Trainee already has an active or pending session.")
 
     db_session = domain.VivaSession(
-        trainee_id=session_data.trainee_id,
+        trainee_id=trainee.id,
         module_id=session_data.module_id,
         duration_minutes=session_data.duration_minutes,
         status=domain.SessionStatus.PENDING,
-        start_time=None
+        start_time=datetime.datetime.utcnow()
     )
     db.add(db_session)
     db.commit()
@@ -41,12 +82,10 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate) -> viv
         module_name=module.name if module else "Unknown",
         trainee_name=trainee.full_name or trainee.username,
         duration_minutes=db_session.duration_minutes,
-        total_questions=0
+        total_questions=0,
+        new_user_password=new_user_password
     )
 def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas.SessionResponse:
-    if not trainee.module_id:
-        raise ValueError("Trainee does not have an assigned module.")
-
     # Check for existing in-progress session
     existing_session = db.query(domain.VivaSession).filter(
         domain.VivaSession.trainee_id == trainee.id,
@@ -66,7 +105,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
             # If the session got stuck without questions, generate them now
             if total_questions == 0:
                 from services.knowledge_service import generate_dynamic_questions_for_session
-                dynamic_questions = generate_dynamic_questions_for_session(db, trainee.module_id, count=5)
+                dynamic_questions = generate_dynamic_questions_for_session(db, db_session.module_id, count=5)
                 
                 if len(dynamic_questions) < 5:
                     print(f"Partial generation: Requested 5, generated {len(dynamic_questions)}. Falling back to predefined to fill gap.")
@@ -74,7 +113,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
                     needed = 5 - len(dynamic_questions)
                     exclude_ids = [q.id for q in dynamic_questions]
                     fallback_questions = db.query(domain.QuestionBank).filter(
-                        domain.QuestionBank.module_id == trainee.module_id,
+                        domain.QuestionBank.module_id == db_session.module_id,
                         domain.QuestionBank.is_active == True,
                         ~domain.QuestionBank.id.in_(exclude_ids) if exclude_ids else True
                     ).order_by(func.random()).limit(needed).all()
@@ -98,6 +137,15 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
             from fastapi import HTTPException
             raise HTTPException(status_code=400, detail="No session has been assigned to you by an admin or trainer.")
             
+        # Check for 24-hour expiration
+        if pending_session.start_time:
+            now = datetime.datetime.utcnow()
+            if (now - pending_session.start_time).total_seconds() > 86400: # 24 hours
+                pending_session.status = domain.SessionStatus.EXPIRED
+                db.commit()
+                from fastapi import HTTPException
+                raise HTTPException(status_code=400, detail="This session assignment has expired. Please contact your trainer.")
+                
         db_session = pending_session
         db_session.status = domain.SessionStatus.IN_PROGRESS
         db_session.start_time = datetime.datetime.utcnow()
@@ -148,6 +196,34 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
         total_questions=total_questions
     )
 
+def get_current_session(db: Session, trainee_id: int) -> viva_schemas.SessionResponse:
+    # Look for IN_PROGRESS first
+    session = db.query(domain.VivaSession).filter(
+        domain.VivaSession.trainee_id == trainee_id,
+        domain.VivaSession.status == domain.SessionStatus.IN_PROGRESS
+    ).first()
+    
+    if not session:
+        # Fallback to PENDING
+        session = db.query(domain.VivaSession).filter(
+            domain.VivaSession.trainee_id == trainee_id,
+            domain.VivaSession.status == domain.SessionStatus.PENDING
+        ).first()
+        
+    if not session:
+        return None
+        
+    return viva_schemas.SessionResponse(
+        id=session.id,
+        trainee_id=session.trainee_id,
+        module_id=session.module_id,
+        status=session.status.value,
+        module_name=session.module.name if session.module else "Unknown",
+        trainee_name=session.trainee.full_name or session.trainee.username,
+        duration_minutes=session.duration_minutes,
+        total_questions=len(session.questions)
+    )
+
 def get_next_question(db: Session, session_id: int) -> viva_schemas.NextQuestionResponse:
     session = viva_repository.get_session_by_id(db, session_id)
     if not session:
@@ -174,7 +250,6 @@ def get_next_question(db: Session, session_id: int) -> viva_schemas.NextQuestion
     return viva_schemas.NextQuestionResponse(
         viva_question_id=current_vq.id,
         text=current_vq.question_bank.text,
-        question_type="VOICE",
         is_last_question=(current_vq.question_order >= total_questions),
         current_question_index=current_vq.question_order,
         total_questions=total_questions
@@ -312,6 +387,21 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
     )
 
 def get_all_sessions(db: Session):
+    # Auto-expire PENDING sessions older than 24h
+    now = datetime.datetime.utcnow()
+    pending_sessions = db.query(domain.VivaSession).filter(
+        domain.VivaSession.status == domain.SessionStatus.PENDING
+    ).all()
+    
+    dirty = False
+    for ps in pending_sessions:
+        if ps.start_time and (now - ps.start_time).total_seconds() > 86400: # 24 hours
+            ps.status = domain.SessionStatus.EXPIRED
+            dirty = True
+            
+    if dirty:
+        db.commit()
+
     sessions = viva_repository.get_all_sessions(db)
     result = []
     for s in sessions:
@@ -319,6 +409,10 @@ def get_all_sessions(db: Session):
         status = "Pending Review"
         if s.status == domain.SessionStatus.IN_PROGRESS:
             status = "In Progress"
+        elif s.status == domain.SessionStatus.EXPIRED:
+            status = "Expired"
+        elif s.status == domain.SessionStatus.PENDING:
+            status = "Assigned"
         elif s.report and s.report.trainer_decision:
             status = "Reviewed"
             

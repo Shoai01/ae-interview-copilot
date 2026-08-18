@@ -47,8 +47,7 @@ export default function WelcomeCheck() {
 
   const [stream, setStream] = useState(null);
   const [traineeName, setTraineeName] = useState("Loading...");
-  const [modules, setModules] = useState([]);
-  const [selectedModuleId, setSelectedModuleId] = useState(null);
+  const [currentSession, setCurrentSession] = useState(null);
 
   useEffect(() => {
     // Fetch Trainee Details
@@ -65,21 +64,16 @@ export default function WelcomeCheck() {
     };
     fetchTrainee();
 
-    // Fetch available modules
-    const fetchModules = async () => {
+    // Fetch assigned session
+    const fetchSession = async () => {
       try {
-        const mods = await adminService.getModules();
-        setModules(mods);
-        if (user?.moduleId) {
-          setSelectedModuleId(user.moduleId);
-        } else if (mods.length > 0) {
-          setSelectedModuleId(mods[0].id);
-        }
+        const session = await vivaService.getCurrentSession();
+        setCurrentSession(session);
       } catch (err) {
-        console.error("Failed to fetch modules:", err);
+        console.error("Failed to fetch current session:", err);
       }
     };
-    fetchModules();
+    fetchSession();
 
     // Network listener
     const handleOnline = () => setChecks(prev => ({ ...prev, network: 'passed' }));
@@ -159,7 +153,6 @@ export default function WelcomeCheck() {
 
   const isReady = Object.values(checks).every(status => status === 'passed');
   const readyCount = Object.values(checks).filter(status => status === 'passed').length;
-  const selectedModule = modules.find(m => m.id === selectedModuleId) || null;
 
   const handleLogout = async () => {
     await logout();
@@ -198,7 +191,7 @@ export default function WelcomeCheck() {
           {/* Welcome Header */}
           <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
             <Chip 
-              label={selectedModule ? `${selectedModule.name.toUpperCase()} MODULE` : 'LOADING...'}
+              label={currentSession ? `${currentSession.module_name.toUpperCase()} MODULE` : 'LOADING...'}
               size="small"
               sx={{ 
                 bgcolor: '#ffdbce', 
@@ -243,7 +236,7 @@ export default function WelcomeCheck() {
                     <FormatListNumberedOutlinedIcon sx={{ color: '#009ade', fontSize: '22px' }} />
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: '#0d1c2e', mb: 0.5 }}>Questions</Typography>
-                      <Typography variant="body2" sx={{ color: '#535f74', lineHeight: 1.6 }}>Dynamic questions tailored to your {selectedModule?.name || ''} profile.</Typography>
+                      <Typography variant="body2" sx={{ color: '#535f74', lineHeight: 1.6 }}>Dynamic questions tailored to your {currentSession?.module_name || ''} profile.</Typography>
                     </Box>
                   </Box>
                   

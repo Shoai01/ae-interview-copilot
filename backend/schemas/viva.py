@@ -2,7 +2,9 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
 class SessionCreate(BaseModel):
-    trainee_id: int
+    trainee_id: Optional[int] = None
+    trainee_identifier: Optional[str] = None
+    trainee_full_name: Optional[str] = None
     module_id: int
     duration_minutes: int = 15
 
@@ -15,13 +17,13 @@ class SessionResponse(BaseModel):
     trainee_name: str
     duration_minutes: int
     total_questions: int
+    new_user_password: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
 class NextQuestionResponse(BaseModel):
     viva_question_id: int
     text: str
-    question_type: str
     is_last_question: bool
     current_question_index: int
     total_questions: int

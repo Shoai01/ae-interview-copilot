@@ -44,7 +44,7 @@ def login(request: Request, response: Response, login_data: LoginRequest, db: Se
         "id": user.id,
         "role": user.role,
         "username": user.username,
-        "module_id": user.module_id
+        "employee_id": user.employee_id
     }
 
 @router.post("/refresh", response_model=LoginResponse)
@@ -88,7 +88,7 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
         "id": user.id,
         "role": user.role,
         "username": user.username,
-        "module_id": user.module_id
+        "employee_id": user.employee_id
     }
 
 @router.post("/logout")

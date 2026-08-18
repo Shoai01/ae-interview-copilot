@@ -9,7 +9,6 @@ class UserCreate(BaseModel):
     role: UserRole
     full_name: Optional[str] = None
     employee_id: Optional[str] = None
-    module_id: Optional[int] = None
 
 class UserResponse(BaseModel):
     id: int
@@ -17,7 +16,6 @@ class UserResponse(BaseModel):
     role: UserRole
     full_name: Optional[str] = None
     employee_id: Optional[str] = None
-    module_id: Optional[int] = None
     is_active: bool
     created_at: datetime
     

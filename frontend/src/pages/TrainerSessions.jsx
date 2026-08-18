@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack, CircularProgress, IconButton, TablePagination, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel } from '@mui/material';
+import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack, CircularProgress, IconButton, TablePagination, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Autocomplete } from '@mui/material';
 import Layout from '@/components/Layout';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -24,7 +24,7 @@ export default function TrainerSessions() {
   const [openAssignModal, setOpenAssignModal] = useState(false);
   const [trainees, setTrainees] = useState([]);
   const [modulesList, setModulesList] = useState([]);
-  const [assignForm, setAssignForm] = useState({ traineeId: '', moduleId: '', durationMinutes: 15 });
+  const [assignForm, setAssignForm] = useState({ traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15 });
   const [assigning, setAssigning] = useState(false);
 
   const fetchSessions = async () => {
@@ -59,16 +59,38 @@ export default function TrainerSessions() {
   }, []);
 
   const handleAssignSubmit = async () => {
-    if (!assignForm.traineeId || !assignForm.moduleId || !assignForm.durationMinutes) {
+    if ((!assignForm.traineeId && !assignForm.traineeIdentifier) || !assignForm.moduleId || !assignForm.durationMinutes) {
       toast.error("Please fill all fields");
       return;
     }
     setAssigning(true);
     try {
-      await vivaService.assignSession(assignForm.traineeId, assignForm.moduleId, assignForm.durationMinutes);
-      toast.success("Session assigned successfully!");
+      const payload = {
+        trainee_id: assignForm.traineeId || null,
+        trainee_identifier: assignForm.traineeIdentifier || null,
+        trainee_full_name: assignForm.traineeFullName || null,
+        module_id: assignForm.moduleId,
+        duration_minutes: assignForm.durationMinutes
+      };
+      
+      const res = await vivaService.assignSession(
+        payload.trainee_id,
+        payload.trainee_identifier,
+        payload.trainee_full_name,
+        payload.module_id,
+        payload.duration_minutes
+      );
+      
+      if (res.new_user_password) {
+        toast.success(`Account created! Temp password: ${res.new_user_password}`, { duration: 10000 });
+      } else {
+        toast.success("Session assigned successfully!");
+      }
+      
       setOpenAssignModal(false);
+      setAssignForm({ traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15 });
       fetchSessions();
+      fetchAssignData(); // refresh trainees list
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.detail || "Failed to assign session");
@@ -206,9 +228,9 @@ export default function TrainerSessions() {
                           sx={{ 
                             height: 24, 
                             fontSize: '12px',
-                            bgcolor: row.status === 'Reviewed' ? 'rgba(0,0,0,0.04)' : 'transparent',
-                            borderColor: row.status === 'Reviewed' ? 'transparent' : 'divider',
-                            color: 'text.secondary'
+                            bgcolor: row.status === 'Reviewed' ? 'rgba(0,0,0,0.04)' : row.status === 'Expired' ? 'rgba(220,38,38,0.1)' : 'transparent',
+                            borderColor: row.status === 'Reviewed' || row.status === 'Expired' ? 'transparent' : 'divider',
+                            color: row.status === 'Expired' ? '#dc2626' : 'text.secondary'
                           }} 
                         />
                       </TableCell>
@@ -256,16 +278,46 @@ export default function TrainerSessions() {
         <DialogContent dividers>
           <Stack spacing={3} sx={{ mt: 1 }}>
             <FormControl fullWidth>
-              <InputLabel>Trainee</InputLabel>
-              <Select
-                label="Trainee"
-                value={assignForm.traineeId}
-                onChange={(e) => setAssignForm({ ...assignForm, traineeId: e.target.value })}
-              >
-                {trainees.map(t => (
-                  <MenuItem key={t.id} value={t.id}>{t.username} ({t.full_name || 'N/A'})</MenuItem>
-                ))}
-              </Select>
+              <Autocomplete
+                freeSolo
+                options={trainees}
+                getOptionLabel={(option) => {
+                  if (typeof option === 'string') return option;
+                  return `${option.username} (${option.full_name || 'N/A'})`;
+                }}
+                onChange={(event, newValue) => {
+                  if (typeof newValue === 'string') {
+                    setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newValue, traineeFullName: '' });
+                  } else if (newValue && newValue.id) {
+                    setAssignForm({ ...assignForm, traineeId: newValue.id, traineeIdentifier: newValue.username, traineeFullName: newValue.full_name || '' });
+                  } else {
+                    setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: '', traineeFullName: '' });
+                  }
+                }}
+                onInputChange={(event, newInputValue) => {
+                  if (event && event.type === 'change') { // only reset full name if typing manually
+                    setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newInputValue, traineeFullName: '' });
+                  } else {
+                    setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newInputValue });
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    label="Trainee Username" 
+                    helperText="Select an existing trainee or type a new username to auto-create."
+                  />
+                )}
+              />
+            </FormControl>
+            
+            <FormControl fullWidth>
+              <TextField
+                label="Full Name"
+                value={assignForm.traineeFullName}
+                onChange={(e) => setAssignForm({ ...assignForm, traineeFullName: e.target.value })}
+                helperText="Auto-filled for existing users. Type manually if creating a new user."
+              />
             </FormControl>
             
             <FormControl fullWidth>

@@ -12,4 +12,4 @@ class LoginResponse(BaseModel):
     id: int
     role: UserRole
     username: str
-    module_id: Optional[int] = None
+    employee_id: Optional[str] = None
