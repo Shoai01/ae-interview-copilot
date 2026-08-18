@@ -81,6 +81,14 @@ export const vivaService = {
     const response = await api.get(`/viva/trainee/${userId}`);
     return response.data;
   },
+  assignSession: async (traineeId, moduleId, durationMinutes = 15) => {
+    const response = await api.post('/viva/sessions/assign', {
+      trainee_id: traineeId,
+      module_id: moduleId,
+      duration_minutes: durationMinutes
+    });
+    return response.data;
+  },
   startSession: async () => {
     const response = await api.post('/viva/sessions/start');
     return response.data;

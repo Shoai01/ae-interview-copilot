@@ -13,6 +13,10 @@ router = APIRouter(
     tags=["viva"]
 )
 
+@router.post("/sessions/assign", response_model=viva_schemas.SessionResponse, status_code=status.HTTP_201_CREATED)
+def assign_session(session_data: viva_schemas.SessionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    return viva_service.assign_session(db, session_data)
+
 @router.post("/sessions/start", response_model=viva_schemas.SessionResponse, status_code=status.HTTP_201_CREATED)
 def start_session(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
     return viva_service.resolve_or_create_session(db, current_user)

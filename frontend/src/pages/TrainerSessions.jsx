@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack, CircularProgress, IconButton, TablePagination } from '@mui/material';
+import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack, CircularProgress, IconButton, TablePagination, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel } from '@mui/material';
 import Layout from '@/components/Layout';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -8,7 +8,8 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import SyncIcon from '@mui/icons-material/Sync';
 import { useNavigate } from 'react-router-dom';
-import { vivaService } from '@/services/api';
+import { vivaService, adminService } from '@/services/api';
+import toast from 'react-hot-toast';
 
 export default function TrainerSessions() {
   const navigate = useNavigate();
@@ -18,6 +19,13 @@ export default function TrainerSessions() {
   const [filterStatus, setFilterStatus] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Assign Modal State
+  const [openAssignModal, setOpenAssignModal] = useState(false);
+  const [trainees, setTrainees] = useState([]);
+  const [modulesList, setModulesList] = useState([]);
+  const [assignForm, setAssignForm] = useState({ traineeId: '', moduleId: '', durationMinutes: 15 });
+  const [assigning, setAssigning] = useState(false);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -31,9 +39,43 @@ export default function TrainerSessions() {
     }
   };
 
+  const fetchAssignData = async () => {
+    try {
+      const [usersData, modsData] = await Promise.all([
+        adminService.getUsers(),
+        adminService.getModules()
+      ]);
+      setTrainees(usersData.filter(u => u.role === 'TRAINEE'));
+      setModulesList(modsData);
+    } catch (e) {
+      console.error("Failed to fetch data for assign modal:", e);
+      toast.error("Could not load trainees or modules.");
+    }
+  };
+
   useEffect(() => {
     fetchSessions();
+    fetchAssignData();
   }, []);
+
+  const handleAssignSubmit = async () => {
+    if (!assignForm.traineeId || !assignForm.moduleId || !assignForm.durationMinutes) {
+      toast.error("Please fill all fields");
+      return;
+    }
+    setAssigning(true);
+    try {
+      await vivaService.assignSession(assignForm.traineeId, assignForm.moduleId, assignForm.durationMinutes);
+      toast.success("Session assigned successfully!");
+      setOpenAssignModal(false);
+      fetchSessions();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.detail || "Failed to assign session");
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const uniqueModules = [...new Set(sessions.map(s => s.module_name))].filter(Boolean);
   const uniqueStatuses = [...new Set(sessions.map(s => s.status))].filter(Boolean);
@@ -75,6 +117,14 @@ export default function TrainerSessions() {
             </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="contained" 
+              color="primary"
+              onClick={() => setOpenAssignModal(true)}
+              sx={{ boxShadow: 'none', borderRadius: 2, px: 3, fontWeight: 600, textTransform: 'none' }}
+            >
+              Assign Session
+            </Button>
             <Select size="small" value={filterModule} onChange={(e) => setFilterModule(e.target.value)} displayEmpty sx={{ minWidth: 180, bgcolor: 'background.paper', borderRadius: 2, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main', borderWidth: 1, boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.1)' } }}>
               <MenuItem value="">All Modules</MenuItem>
               {uniqueModules.map(mod => (
@@ -199,6 +249,60 @@ export default function TrainerSessions() {
         </TableContainer>
 
       </Box>
+
+      {/* Assign Session Modal */}
+      <Dialog open={openAssignModal} onClose={() => setOpenAssignModal(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, pb: 1 }}>Assign New Viva Session</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            <FormControl fullWidth>
+              <InputLabel>Trainee</InputLabel>
+              <Select
+                label="Trainee"
+                value={assignForm.traineeId}
+                onChange={(e) => setAssignForm({ ...assignForm, traineeId: e.target.value })}
+              >
+                {trainees.map(t => (
+                  <MenuItem key={t.id} value={t.id}>{t.username} ({t.full_name || 'N/A'})</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <FormControl fullWidth>
+              <InputLabel>Module</InputLabel>
+              <Select
+                label="Module"
+                value={assignForm.moduleId}
+                onChange={(e) => setAssignForm({ ...assignForm, moduleId: e.target.value })}
+              >
+                {modulesList.map(m => (
+                  <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <TextField 
+              label="Duration (minutes)" 
+              type="number" 
+              fullWidth 
+              value={assignForm.durationMinutes}
+              onChange={(e) => setAssignForm({ ...assignForm, durationMinutes: parseInt(e.target.value) || 15 })}
+              inputProps={{ min: 5, max: 120 }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, bgcolor: '#f8fafc' }}>
+          <Button onClick={() => setOpenAssignModal(false)} sx={{ color: 'text.secondary', fontWeight: 600 }}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleAssignSubmit} 
+            disabled={assigning}
+            sx={{ fontWeight: 600, px: 3, borderRadius: 2 }}
+          >
+            {assigning ? 'Assigning...' : 'Confirm Assignment'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Layout>
   );
 }

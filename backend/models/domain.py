@@ -16,6 +16,7 @@ class DifficultyLevel(str, enum.Enum):
     HARD = "HARD"
 
 class SessionStatus(str, enum.Enum):
+    PENDING = "PENDING"
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
 

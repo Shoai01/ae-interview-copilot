@@ -44,23 +44,10 @@ export default function Layout({ children }) {
           <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', lineHeight: 1.2 }}>
             Viva Copilot<Typography component="span" sx={{ color: 'primary.main', fontWeight: 700 }}>.</Typography>
           </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-            AI Voice Enterprise
-          </Typography>
+
         </Box>
       </Box>
 
-      {/* Primary CTA */}
-      <Box sx={{ px: 2, mb: 3 }}>
-        <Button 
-          variant="contained" 
-          fullWidth 
-          startIcon={<AddIcon />}
-          sx={{ bgcolor: 'primary.main', color: '#fff', py: 1, borderRadius: 2, boxShadow: 'none' }}
-        >
-          New Session
-        </Button>
-      </Box>
 
       {/* Main Navigation */}
       <List sx={{ px: 2, flex: 1, overflowY: 'auto' }}>

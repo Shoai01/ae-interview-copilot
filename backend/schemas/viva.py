@@ -1,6 +1,11 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 
+class SessionCreate(BaseModel):
+    trainee_id: int
+    module_id: int
+    duration_minutes: int = 15
+
 class SessionResponse(BaseModel):
     id: int
     trainee_id: int

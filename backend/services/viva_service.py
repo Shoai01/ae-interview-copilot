@@ -4,6 +4,45 @@ from schemas import viva as viva_schemas
 from repositories import viva_repository
 import datetime
 
+def assign_session(db: Session, session_data: viva_schemas.SessionCreate) -> viva_schemas.SessionResponse:
+    from services.user_service import get_user_by_id
+    trainee = get_user_by_id(db, session_data.trainee_id)
+    if not trainee or trainee.role != domain.UserRole.TRAINEE:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Invalid trainee ID.")
+        
+    existing_session = db.query(domain.VivaSession).filter(
+        domain.VivaSession.trainee_id == session_data.trainee_id,
+        domain.VivaSession.status.in_([domain.SessionStatus.IN_PROGRESS, domain.SessionStatus.PENDING])
+    ).first()
+    
+    if existing_session:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Trainee already has an active or pending session.")
+
+    db_session = domain.VivaSession(
+        trainee_id=session_data.trainee_id,
+        module_id=session_data.module_id,
+        duration_minutes=session_data.duration_minutes,
+        status=domain.SessionStatus.PENDING,
+        start_time=None
+    )
+    db.add(db_session)
+    db.commit()
+    db.refresh(db_session)
+    
+    module = db.query(domain.TrainingModule).filter(domain.TrainingModule.id == session_data.module_id).first()
+
+    return viva_schemas.SessionResponse(
+        id=db_session.id,
+        trainee_id=db_session.trainee_id,
+        module_id=db_session.module_id,
+        status=db_session.status.value,
+        module_name=module.name if module else "Unknown",
+        trainee_name=trainee.full_name or trainee.username,
+        duration_minutes=db_session.duration_minutes,
+        total_questions=0
+    )
 def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas.SessionResponse:
     if not trainee.module_id:
         raise ValueError("Trainee does not have an assigned module.")
@@ -49,12 +88,24 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
                 total_questions = len(dynamic_questions) if dynamic_questions else 0
 
     if not existing_session:
-        # Create the session first
-        db_session = viva_repository.create_session(db, trainee.id, trainee.module_id)
+        # If no in_progress session, look for a PENDING one
+        pending_session = db.query(domain.VivaSession).filter(
+            domain.VivaSession.trainee_id == trainee.id,
+            domain.VivaSession.status == domain.SessionStatus.PENDING
+        ).first()
+        
+        if not pending_session:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="No session has been assigned to you by an admin or trainer.")
+            
+        db_session = pending_session
+        db_session.status = domain.SessionStatus.IN_PROGRESS
+        db_session.start_time = datetime.datetime.utcnow()
+        db.commit()
         
         # Phase 2: Dynamically generate 5 questions tailored to this session from FAISS
         from services.knowledge_service import generate_dynamic_questions_for_session
-        dynamic_questions = generate_dynamic_questions_for_session(db, trainee.module_id, count=5)
+        dynamic_questions = generate_dynamic_questions_for_session(db, db_session.module_id, count=5)
         
         if len(dynamic_questions) < 5:
             # Surface partial generation explicitly
@@ -63,7 +114,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
             needed = 5 - len(dynamic_questions)
             exclude_ids = [q.id for q in dynamic_questions]
             fallback_questions = db.query(domain.QuestionBank).filter(
-                domain.QuestionBank.module_id == trainee.module_id,
+                domain.QuestionBank.module_id == db_session.module_id,
                 domain.QuestionBank.is_active == True,
                 ~domain.QuestionBank.id.in_(exclude_ids) if exclude_ids else True
             ).order_by(func.random()).limit(needed).all()

@@ -1,5 +1,6 @@
 import { createContext, useState, useEffect, useContext, useRef } from 'react';
 import api, { authService } from '@/services/api';
+import { globalState } from '@/store';
 
 const AuthContext = createContext(null);
 
@@ -93,6 +94,12 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setAccessToken(null);
       setUser(null);
+      
+      // Clean up global media stream (camera/mic) on sign out
+      if (globalState.mediaStream) {
+        globalState.mediaStream.getTracks().forEach(track => track.stop());
+        globalState.mediaStream = null;
+      }
     }
   };
 
