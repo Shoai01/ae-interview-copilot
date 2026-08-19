@@ -87,10 +87,36 @@ class SessionFullReportResponse(BaseModel):
 class SessionListItem(BaseModel):
     id: int
     trainee_name: Optional[str] = None
-    employee_id: Optional[str] = None
+    username: Optional[str] = None
     module_name: str
     ai_recommendation: Optional[str] = None
     status: str
     date: str
     
     model_config = ConfigDict(from_attributes=True)
+
+class TrainerDecisionRequest(BaseModel):
+    decision: str  # PASS, FAIL, HOLD
+    notes: Optional[str] = None
+
+class BulkSessionTrainee(BaseModel):
+    trainee_identifier: str
+    trainee_full_name: str
+
+class BulkSessionCreate(BaseModel):
+    module_id: int
+    duration_minutes: int = 15
+    question_count: Optional[int] = None
+    trainees: list[BulkSessionTrainee]
+
+class BulkSessionResultItem(BaseModel):
+    identifier: str
+    full_name: str
+    session_id: Optional[int] = None
+    new_user_password: Optional[str] = None
+    error: Optional[str] = None
+
+class BulkSessionResponse(BaseModel):
+    success_count: int
+    failed_count: int
+    results: list[BulkSessionResultItem]

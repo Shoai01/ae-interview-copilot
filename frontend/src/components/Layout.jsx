@@ -1,18 +1,16 @@
 import React from 'react';
-import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, Button, IconButton, InputBase } from '@mui/material';
+import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, IconButton } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import MicIcon from '@mui/icons-material/Mic';
 import SourceIcon from '@mui/icons-material/Source';
 import LogoutIcon from '@mui/icons-material/Logout';
-import AddIcon from '@mui/icons-material/Add';
-import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
 import PeopleIcon from '@mui/icons-material/People';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import { useAuth } from '@/store/AuthContext';
 
-const drawerWidth = 280;
+const drawerWidth = 268;
 
 export default function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -34,7 +32,7 @@ export default function Layout({ children }) {
   ];
 
   const drawerContent = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'background.paper' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', borderRight: '1px solid rgba(0, 0, 0, 0.05)' }}>
       {/* Sidebar Header */}
       <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
         <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 18 }}>
@@ -64,6 +62,7 @@ export default function Layout({ children }) {
                   '&.Mui-selected': {
                     bgcolor: 'rgba(242, 101, 34, 0.08)',
                     color: 'primary.main',
+                    borderRight: '3px solid #F26522',
                     '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.12)' },
                     '& .MuiListItemIcon-root': { color: 'primary.main' }
                   }
@@ -95,7 +94,7 @@ export default function Layout({ children }) {
   );
 
   return (
-    <Box sx={{ display: 'flex', width: '100%', minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box sx={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden', bgcolor: 'transparent' }}>
       
       {/* Mobile Drawer */}
       <Drawer
@@ -130,16 +129,12 @@ export default function Layout({ children }) {
         
         {/* Top App Bar */}
         <Box component="header" sx={{ 
-          height: 64, 
+          height: 72, 
           px: { xs: 2, lg: 4 }, 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between', 
-          bgcolor: 'background.paper', 
-          borderBottom: '1px solid', 
-          borderColor: 'divider',
-          position: 'sticky',
-          top: 0,
+          bgcolor: 'transparent', 
           zIndex: 30
         }}>
           
@@ -147,22 +142,31 @@ export default function Layout({ children }) {
             <IconButton color="inherit" aria-label="open drawer" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { lg: 'none' } }}>
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" sx={{ display: { xs: 'none', lg: 'block' }, fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>
-              Trainer Review Dashboard
+            <Typography variant="h6" sx={{ display: { xs: 'none', md: 'block' }, fontWeight: 600 }}>
+              {navItems.find(item => location.pathname.startsWith(item.path))?.text || 'Dashboard'}
             </Typography>
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', bgcolor: 'rgba(0,0,0,0.04)', borderRadius: 8, px: 2, py: 0.5, border: '1px solid rgba(0,0,0,0.08)' }}>
-              <SearchIcon sx={{ color: 'text.secondary', fontSize: 20, mr: 1 }} />
-              <InputBase placeholder="Search sessions..." sx={{ ml: 1, flex: 1, fontSize: 14 }} />
-            </Box>
           </Box>
         </Box>
 
-        {/* Page Content Canvas */}
-        <Box sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, lg: 4 }, display: 'block', width: '100%' }}>
-          <Box sx={{ width: '100%', display: 'block' }}>
+        {/* Page Content Canvas - Glass Container */}
+        <Box sx={{
+          flexGrow: 1, 
+          m: { xs: 1, sm: 1, md: 1.5 }, 
+          mt: 0,
+          bgcolor: 'rgba(255, 255, 255, 0.65)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderRadius: 'var(--radius)',
+          border: '1px solid rgba(255, 255, 255, 0.6)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.04)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <Box className="glass-container" sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, md: 3, lg: 4 } }}>
             {children}
           </Box>
         </Box>

@@ -26,6 +26,35 @@ def create_user(db: Session, user: UserCreate, created_by_id: int) -> User:
 def get_all_users(db: Session, current_user_role: UserRole) -> list[User]:
     # Trainers might only need to see trainees, but for now let's return all non-admins if trainer, or all if admin
     if current_user_role == UserRole.ADMIN:
-        return db.query(User).all()
+        return db.query(User).order_by(User.id.desc()).all()
     else:
-        return db.query(User).filter(User.role == UserRole.TRAINEE).all()
+        return db.query(User).filter(User.role == UserRole.TRAINEE).order_by(User.id.desc()).all()
+
+from schemas.user import UserUpdate
+
+def update_user(db: Session, user_id: int, user_data: UserUpdate) -> User:
+    db_user = get_user_by_id(db, user_id)
+    if not db_user:
+        return None
+    
+    update_data = user_data.model_dump(exclude_unset=True)
+    
+    if 'password' in update_data and update_data['password']:
+        update_data['password_hash'] = get_password_hash(update_data.pop('password'))
+    elif 'password' in update_data:
+        update_data.pop('password')
+        
+    for key, value in update_data.items():
+        setattr(db_user, key, value)
+        
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def delete_user(db: Session, user_id: int) -> bool:
+    db_user = get_user_by_id(db, user_id)
+    if not db_user:
+        return False
+    db.delete(db_user)
+    db.commit()
+    return True

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack, CircularProgress, IconButton, TablePagination, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Autocomplete } from '@mui/material';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack, CircularProgress, IconButton, TablePagination, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Autocomplete, Card, ToggleButton, ToggleButtonGroup, List, ListItem, ListItemText, Divider } from '@mui/material';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
 import Layout from '@/components/Layout';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -22,6 +23,10 @@ export default function TrainerSessions() {
   
   // Assign Modal State
   const [openAssignModal, setOpenAssignModal] = useState(false);
+  const [assignMode, setAssignMode] = useState('single'); // 'single' or 'bulk'
+  const [bulkInputText, setBulkInputText] = useState('');
+  const [bulkResults, setBulkResults] = useState(null);
+  const fileInputRef = useRef(null);
   const [trainees, setTrainees] = useState([]);
   const [modulesList, setModulesList] = useState([]);
   const [assignForm, setAssignForm] = useState({ traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15, questionCount: '' });
@@ -59,46 +64,109 @@ export default function TrainerSessions() {
   }, []);
 
   const handleAssignSubmit = async () => {
-    if ((!assignForm.traineeId && !assignForm.traineeIdentifier) || !assignForm.moduleId || !assignForm.durationMinutes) {
-      toast.error("Please fill all fields");
-      return;
-    }
-    setAssigning(true);
-    try {
-      const payload = {
-        trainee_id: assignForm.traineeId || null,
-        trainee_identifier: assignForm.traineeIdentifier || null,
-        trainee_full_name: assignForm.traineeFullName || null,
-        module_id: assignForm.moduleId,
-        duration_minutes: assignForm.durationMinutes
-      };
-      
-      const res = await vivaService.assignSession(
-        payload.trainee_id,
-        payload.trainee_identifier,
-        payload.trainee_full_name,
-        payload.module_id,
-        payload.duration_minutes,
-        assignForm.questionCount
-      );
-      
-      if (res.new_user_password) {
-        toast.success(`Account created! Temp password: ${res.new_user_password}`, { duration: 10000 });
-      } else {
-        toast.success("Session assigned successfully!");
+    if (assignMode === 'single') {
+      if (!assignForm.traineeIdentifier) {
+        toast.error("Please provide a trainee username");
+        return;
+      }
+      setAssigning(true);
+      try {
+        const result = await vivaService.assignSession(
+          assignForm.traineeId,
+          assignForm.traineeIdentifier,
+          assignForm.traineeFullName,
+          assignForm.moduleId,
+          assignForm.durationMinutes,
+          assignForm.questionCount
+        );
+        toast.success('Session assigned successfully!');
+        if (result.new_user_password) {
+          toast.success(`New user created. Password: ${result.new_user_password}`, { duration: 8000 });
+        }
+        setOpenAssignModal(false);
+        fetchSessions();
+      } catch (err) {
+        console.error('Failed to assign session:', err);
+        toast.error('Failed to assign session. ' + (err.response?.data?.detail || err.message));
+      } finally {
+        setAssigning(false);
+      }
+    } else {
+      // Bulk Mode
+      if (!bulkInputText.trim()) {
+        toast.error("Please provide trainee details");
+        return;
       }
       
-      setOpenAssignModal(false);
-      setAssignForm({ traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15 });
-      fetchSessions();
-      fetchAssignData(); // refresh trainees list
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.detail || "Failed to assign session");
-    } finally {
-      setAssigning(false);
+      const trainees = [];
+      const lines = bulkInputText.trim().split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const parts = line.split(',');
+        if (parts.length >= 1) {
+          const identifier = parts[0].trim();
+          const fullName = parts.length > 1 ? parts.slice(1).join(',').trim() : '';
+          
+          // Skip header row if present
+          if (identifier.toLowerCase() === 'username' || identifier.toLowerCase() === 'employee id') {
+            continue;
+          }
+          
+          if (identifier) {
+            trainees.push({ trainee_identifier: identifier, trainee_full_name: fullName });
+          }
+        }
+      }
+      
+      if (trainees.length === 0) {
+        toast.error("Could not parse any valid trainees");
+        return;
+      }
+
+      setAssigning(true);
+      try {
+        const result = await vivaService.assignSessionBulk(
+          assignForm.moduleId,
+          assignForm.durationMinutes,
+          assignForm.questionCount,
+          trainees
+        );
+        toast.success(`Successfully assigned ${result.success_count} sessions.`);
+        setBulkResults(result.results);
+        setOpenAssignModal(false);
+        fetchSessions();
+      } catch (err) {
+        console.error('Failed to assign bulk sessions:', err);
+        toast.error('Failed to assign bulk sessions. ' + (err.response?.data?.detail || err.message));
+      } finally {
+        setAssigning(false);
+      }
     }
   };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setBulkInputText(event.target.result);
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+  
+  const handleDownloadTemplate = () => {
+    const csvContent = "data:text/csv;charset=utf-8,Username,FullName\naarav.sharma@gmail.com,Aarav Sharma\ndiya.patel@gmail.com,Diya Patel\nrohan.mehta@gmail.com,Rohan Mehta\nananya.shah@gmail.com,Ananya Shah";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "bulk_assign_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   const uniqueModules = [...new Set(sessions.map(s => s.module_name))].filter(Boolean);
   const uniqueStatuses = [...new Set(sessions.map(s => s.status))].filter(Boolean);
@@ -127,21 +195,21 @@ export default function TrainerSessions() {
 
   return (
     <Layout>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'calc(100vh - 120px)', bgcolor: '#f8f9ff', p: { xs: 2, md: 4 } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, width: '100%' }}>
         
         {/* Page Header & Filters */}
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0d1c2e', mb: 1 }}>
+                <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
                   Viva Sessions
                 </Typography>
                 <IconButton onClick={fetchSessions} size="medium" disabled={loading} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
                   <SyncIcon sx={{ animation: loading ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
                 </IconButton>
               </Box>
-              <Typography variant="body1" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#535f74' }}>
+              <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
                 Review and evaluate completed candidate interviews.
               </Typography>
             </Box>
@@ -170,7 +238,7 @@ export default function TrainerSessions() {
         </Box>
 
         {/* Data Table */}
-        <Paper elevation={0} sx={{ bgcolor: '#ffffff', borderRadius: 3, border: '1px solid rgba(225,191,179,0.5)', overflow: 'hidden', minHeight: 400, display: 'flex', flexDirection: 'column' }}>
+        <Card sx={{ minHeight: 400, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <TableContainer>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
@@ -180,14 +248,14 @@ export default function TrainerSessions() {
             <>
               <Table sx={{ minWidth: 800 }} aria-label="sessions table">
                 <TableHead>
-                  <TableRow sx={{ bgcolor: '#fafbfd' }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Trainee Name</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Employee ID</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Module</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>AI Rec.</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Date</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Action</TableCell>
+                  <TableRow sx={{  }}>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Trainee Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Username</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Module</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>AI Rec.</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Date</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -201,20 +269,22 @@ export default function TrainerSessions() {
                     <TableRow 
                       key={row.id} 
                       hover 
+                      onClick={() => navigate(`/hr/review/${row.id}`)}
                       sx={{ 
+                        cursor: 'pointer',
                         '&:last-child td, &:last-child th': { border: 0 },
                         transition: 'background-color 0.2s ease',
                         '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.04)' }
                       }}
                     >
-                      <TableCell sx={{ fontWeight: 600, color: '#0d1c2e', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(225,191,179,0.3)' }}>{row.trainee_name || 'Unknown'}</TableCell>
-                      <TableCell sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(225,191,179,0.3)' }}>{row.employee_id || 'N/A'}</TableCell>
-                      <TableCell sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                      <TableCell sx={{ fontWeight: 600, color: '#0d1c2e', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{row.trainee_name || 'Unknown'}</TableCell>
+                      <TableCell sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{row.username || 'N/A'}</TableCell>
+                      <TableCell sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                         <Box sx={{ display: 'inline-flex', px: 1, py: 0.5, bgcolor: 'rgba(242, 101, 34, 0.08)', borderRadius: 1, fontSize: '12px', fontWeight: 600, color: '#f26522' }}>
                           {row.module_name}
                         </Box>
                       </TableCell>
-                      <TableCell sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                      <TableCell sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                         {row.ai_recommendation ? (
                           <Stack direction="row" alignItems="center" spacing={1}>
                             {row.ai_recommendation === 'PASS' && <CheckCircleIcon sx={{ fontSize: 18, color: '#059669' }} />}
@@ -224,11 +294,13 @@ export default function TrainerSessions() {
                               {row.ai_recommendation}
                             </Typography>
                           </Stack>
-                        ) : (
+                        ) : row.status === 'Completed' ? (
                           <Typography variant="body2" color="text.secondary">Evaluating...</Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.disabled">—</Typography>
                         )}
                       </TableCell>
-                      <TableCell sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                      <TableCell sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                         <Chip 
                           label={row.status} 
                           size="small" 
@@ -242,13 +314,16 @@ export default function TrainerSessions() {
                           }} 
                         />
                       </TableCell>
-                      <TableCell sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(225,191,179,0.3)' }}>{row.date}</TableCell>
-                      <TableCell align="right" sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                      <TableCell sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{row.date}</TableCell>
+                      <TableCell align="right" sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                         <Button 
                           variant="outlined" 
                           color="primary" 
                           size="small"
-                          onClick={() => navigate(`/hr/review/${row.id}`)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/hr/review/${row.id}`);
+                          }}
                           sx={{ 
                             borderRadius: 2, 
                             fontWeight: 600, 
@@ -276,61 +351,122 @@ export default function TrainerSessions() {
               page={page}
               onPageChange={handleChangePage}
               onRowsPerPageChange={handleChangeRowsPerPage}
-              sx={{ borderTop: '1px solid rgba(225,191,179,0.5)', bgcolor: '#fafbfd' }}
+              sx={{ borderTop: '1px solid rgba(225,191,179,0.5)',  }}
             />
           )}
-        </Paper>
+        </Card>
 
       </Box>
 
       {/* Assign Session Modal */}
-      <Dialog open={openAssignModal} onClose={() => setOpenAssignModal(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, pb: 1 }}>Assign New Viva Session</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <FormControl fullWidth>
-              <Autocomplete
-                freeSolo
-                options={trainees}
-                getOptionLabel={(option) => {
-                  if (typeof option === 'string') return option;
-                  return `${option.username} (${option.full_name || 'N/A'})`;
-                }}
-                onChange={(event, newValue) => {
-                  if (typeof newValue === 'string') {
-                    setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newValue, traineeFullName: '' });
-                  } else if (newValue && newValue.id) {
-                    setAssignForm({ ...assignForm, traineeId: newValue.id, traineeIdentifier: newValue.username, traineeFullName: newValue.full_name || '' });
-                  } else {
-                    setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: '', traineeFullName: '' });
-                  }
-                }}
-                onInputChange={(event, newInputValue) => {
-                  if (event && event.type === 'change') { // only reset full name if typing manually
-                    setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newInputValue, traineeFullName: '' });
-                  } else {
-                    setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newInputValue });
-                  }
-                }}
-                renderInput={(params) => (
-                  <TextField 
-                    {...params} 
-                    label="Trainee Username" 
-                    helperText="Select an existing trainee or type a new username to auto-create."
+      <Dialog open={openAssignModal} onClose={() => setOpenAssignModal(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 24px 64px rgba(0,0,0,0.1)' } }}>
+        <DialogTitle sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, pb: 2, borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#f8fafc' }}>
+          Assign New Session
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2, p: 3 }}>
+          <Stack spacing={3}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+              <ToggleButtonGroup
+                color="primary"
+                value={assignMode}
+                exclusive
+                onChange={(e, newMode) => { if (newMode) setAssignMode(newMode); }}
+                aria-label="Assign Mode"
+                size="small"
+                sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}
+              >
+                <ToggleButton value="single" sx={{ px: 3, py: 0.5, fontWeight: 600, textTransform: 'none', fontFamily: 'DM Sans' }}>Single Trainee</ToggleButton>
+                <ToggleButton value="bulk" sx={{ px: 3, py: 0.5, fontWeight: 600, textTransform: 'none', fontFamily: 'DM Sans' }}>Bulk Batch</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+
+            {assignMode === 'single' ? (
+              <>
+                <FormControl fullWidth>
+                  <Autocomplete
+                    freeSolo
+                    options={trainees}
+                    getOptionLabel={(option) => typeof option === 'string' ? option : `${option.username} (${option.full_name || 'No name'})`}
+                    onChange={(event, newValue) => {
+                      if (typeof newValue === 'string') {
+                        setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newValue, traineeFullName: '' });
+                      } else if (newValue && newValue.id) {
+                        setAssignForm({ ...assignForm, traineeId: newValue.id, traineeIdentifier: newValue.username, traineeFullName: newValue.full_name || '' });
+                      } else {
+                        setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: '', traineeFullName: '' });
+                      }
+                    }}
+                    onInputChange={(event, newInputValue) => {
+                      if (event && event.type === 'change') {
+                        setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newInputValue, traineeFullName: '' });
+                      } else {
+                        setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newInputValue });
+                      }
+                    }}
+                    renderInput={(params) => (
+                      <TextField 
+                        {...params} 
+                        label="Username" 
+                        helperText="Select an existing trainee or type a new username to auto-create."
+                      />
+                    )}
                   />
-                )}
-              />
-            </FormControl>
-            
-            <FormControl fullWidth>
-              <TextField
-                label="Full Name"
-                value={assignForm.traineeFullName}
-                onChange={(e) => setAssignForm({ ...assignForm, traineeFullName: e.target.value })}
-                helperText="Auto-filled for existing users. Type manually if creating a new user."
-              />
-            </FormControl>
-            
+                </FormControl>
+                
+                <FormControl fullWidth>
+                  <TextField
+                    label="Full Name"
+                    value={assignForm.traineeFullName}
+                    onChange={(e) => setAssignForm({ ...assignForm, traineeFullName: e.target.value })}
+                    helperText="Auto-filled for existing users. Type manually if creating a new user."
+                  />
+                </FormControl>
+              </>
+            ) : (
+              <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed rgba(0,0,0,0.12)' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontFamily: 'DM Sans', textAlign: 'center' }}>
+                  Paste rows directly from Excel or upload a CSV file.<br/>
+                  <strong>Format:</strong> <code>Username, Full Name</code>
+                </Typography>
+                
+                <TextField
+                  multiline
+                  rows={6}
+                  fullWidth
+                  placeholder="aarav.sharma@gmail.com, Aarav Sharma\ndiya.patel@gmail.com, Diya Patel"
+                  value={bulkInputText}
+                  onChange={(e) => setBulkInputText(e.target.value)}
+                  sx={{ mb: 2, bgcolor: '#fff' }}
+                />
+                
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Button variant="text" size="small" onClick={handleDownloadTemplate} sx={{ textTransform: 'none', fontWeight: 600 }}>
+                    Download Template
+                  </Button>
+                  <Box>
+                    <input
+                      type="file"
+                      accept=".csv"
+                      ref={fileInputRef}
+                      onChange={handleFileUpload}
+                      style={{ display: 'none' }}
+                    />
+                    <Button 
+                      variant="outlined" 
+                      size="small"
+                      startIcon={<FileUploadIcon />}
+                      onClick={() => fileInputRef.current?.click()}
+                      sx={{ textTransform: 'none', fontWeight: 600, borderColor: 'rgba(0,0,0,0.1)' }}
+                    >
+                      Upload CSV
+                    </Button>
+                  </Box>
+                </Box>
+              </Box>
+            )}
+
+            <Divider />
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#0a1628' }}>Module Settings</Typography>
             <FormControl fullWidth>
               <InputLabel>Module</InputLabel>
               <Select
@@ -379,6 +515,39 @@ export default function TrainerSessions() {
           >
             {assigning ? 'Assigning...' : 'Confirm Assignment'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Results Dialog */}
+      <Dialog open={Boolean(bulkResults)} onClose={() => setBulkResults(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontFamily: 'Syne', fontWeight: 700, bgcolor: '#f8fafc', borderBottom: '1px solid divider' }}>
+          Bulk Assignment Results
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          <List sx={{ width: '100%', bgcolor: 'background.paper', p: 0 }}>
+            {bulkResults?.map((res, i) => (
+              <Box key={i}>
+                <ListItem sx={{ py: 1.5, px: 3 }}>
+                  <ListItemText 
+                    primary={<Typography sx={{ fontWeight: 600, fontSize: 14 }}>{res.identifier} {res.full_name ? `(${res.full_name})` : ''}</Typography>}
+                    secondary={
+                      res.error ? (
+                        <Typography variant="body2" color="error.main" sx={{ mt: 0.5 }}>Error: {res.error}</Typography>
+                      ) : (
+                        <Typography variant="body2" sx={{ color: 'success.main', mt: 0.5 }}>
+                          Assigned successfully! {res.new_user_password && `New User Password: ${res.new_user_password}`}
+                        </Typography>
+                      )
+                    }
+                  />
+                </ListItem>
+                {i < bulkResults.length - 1 && <Divider />}
+              </Box>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, bgcolor: '#f8fafc' }}>
+          <Button variant="contained" onClick={() => setBulkResults(null)} sx={{ borderRadius: 2, px: 3 }}>Close</Button>
         </DialogActions>
       </Dialog>
     </Layout>

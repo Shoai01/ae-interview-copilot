@@ -91,6 +91,14 @@ export const adminService = {
   getUsers: async () => {
     const response = await api.get('/admin/users');
     return response.data;
+  },
+  updateUser: async (userId, userData) => {
+    const response = await api.put(`/admin/users/${userId}`, userData);
+    return response.data;
+  },
+  deleteUser: async (userId) => {
+    await api.delete(`/admin/users/${userId}`);
+    return true;
   }
 };
 
@@ -110,6 +118,17 @@ export const vivaService = {
     if (questionCount !== null && questionCount !== "") payload.question_count = parseInt(questionCount);
     
     const response = await api.post('/viva/sessions/assign', payload);
+    return response.data;
+  },
+  assignSessionBulk: async (moduleId, durationMinutes, questionCount, trainees) => {
+    const payload = {
+      module_id: moduleId,
+      duration_minutes: durationMinutes,
+      trainees: trainees
+    };
+    if (questionCount !== null && questionCount !== "") payload.question_count = parseInt(questionCount);
+    
+    const response = await api.post('/viva/sessions/assign/bulk', payload);
     return response.data;
   },
   startSession: async () => {
@@ -157,6 +176,10 @@ export const vivaService = {
     } catch {
       // Fail silently — never interrupt the trainee's exam
     }
+  },
+  submitDecision: async (sessionId, decision, notes) => {
+    const response = await api.put(`/viva/${sessionId}/decision`, { decision, notes: notes || null });
+    return response.data;
   }
 };
 

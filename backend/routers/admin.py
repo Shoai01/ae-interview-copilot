@@ -37,6 +37,34 @@ def create_user(user: user_schemas.UserCreate, db: Session = Depends(get_db), cu
 def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     return user_service.get_all_users(db, current_user.role)
 
+@router.put("/users/{user_id}", response_model=user_schemas.UserResponse)
+def update_user(user_id: int, user_update: user_schemas.UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    # Only Admin can update to TRAINER, Trainers can only update TRAINEE
+    existing_user = user_service.get_user_by_id(db, user_id)
+    if not existing_user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if current_user.role == UserRole.TRAINER:
+        if existing_user.role != UserRole.TRAINEE:
+            raise HTTPException(status_code=403, detail="Trainers can only edit Trainee accounts.")
+        if user_update.role and user_update.role != UserRole.TRAINEE:
+            raise HTTPException(status_code=403, detail="Trainers cannot change role to Admin or Trainer.")
+            
+    updated_user = user_service.update_user(db, user_id, user_update)
+    return updated_user
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    existing_user = user_service.get_user_by_id(db, user_id)
+    if not existing_user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if current_user.role == UserRole.TRAINER and existing_user.role != UserRole.TRAINEE:
+        raise HTTPException(status_code=403, detail="Trainers can only delete Trainee accounts.")
+        
+    user_service.delete_user(db, user_id)
+    return None
+
 @router.get("/modules", response_model=List[admin_schemas.ModuleResponse])
 def get_all_modules(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE]))):
     modules = admin_service.get_modules(db)

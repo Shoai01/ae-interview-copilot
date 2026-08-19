@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Snackbar, Alert, Chip } from '@mui/material';
+import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Snackbar, Alert, Chip, Card } from '@mui/material';
 import Layout from '@/components/Layout';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -249,15 +249,15 @@ export default function AdminQuestionBank() {
 
   return (
     <Layout>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'calc(100vh - 120px)', bgcolor: '#f8f9ff', p: { xs: 2, md: 4 } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, width: '100%' }}>
         
         {/* Header & Actions */}
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'flex-end' }, justifyContent: 'space-between', gap: 2 }}>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0d1c2e', mb: 1 }}>
+            <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
               Question Bank
             </Typography>
-            <Typography variant="body1" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#535f74' }}>
+            <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
               Manage and organize your AI training scenarios.
             </Typography>
           </Box>
@@ -265,7 +265,7 @@ export default function AdminQuestionBank() {
             <Button 
               variant="outlined" 
               startIcon={<AutoAwesomeIcon />} 
-              sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, color: '#f26522', borderColor: '#f26522', fontFamily: 'DM Sans, sans-serif', '&:hover': { bgcolor: '#ffdbce', borderColor: '#f26522' } }} 
+              sx={{ px: 3, py: 1 }} 
               onClick={() => setOpenGenerate(true)}
               disabled={!activeModuleId}
             >
@@ -274,7 +274,7 @@ export default function AdminQuestionBank() {
             <Button 
               variant="contained" 
               startIcon={<AddIcon />} 
-              sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, bgcolor: '#f26522', color: '#fff', fontFamily: 'DM Sans, sans-serif', '&:hover': { bgcolor: '#d9581b' }, boxShadow: 'none' }} 
+              sx={{ px: 3, py: 1 }} 
               onClick={handleOpenCreate}
               disabled={!activeModuleId}
             >
@@ -284,9 +284,9 @@ export default function AdminQuestionBank() {
         </Box>
 
         {/* Filters & Search */}
-        <Paper elevation={0} sx={{ bgcolor: '#ffffff', borderRadius: 3, border: '1px solid rgba(225,191,179,0.5)', overflow: 'hidden' }}>
+        <Card>
           {/* Module Tabs */}
-          <Box sx={{ display: 'flex', borderBottom: '1px solid rgba(225,191,179,0.5)', overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
+          <Box sx={{ display: 'flex', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
             {modules.map(mod => (
               <Button
                 key={mod.id} 
@@ -296,7 +296,7 @@ export default function AdminQuestionBank() {
                   minWidth: 'auto',
                   borderRadius: 0,
                   borderBottom: activeModuleId === mod.id ? '2px solid #f26522' : '2px solid transparent',
-                  color: activeModuleId === mod.id ? '#f26522' : '#535f74',
+                  color: activeModuleId === mod.id ? 'primary.main' : 'text.secondary',
                   fontWeight: activeModuleId === mod.id ? 700 : 500,
                   textTransform: 'none',
                   fontFamily: 'DM Sans, sans-serif',
@@ -320,15 +320,15 @@ export default function AdminQuestionBank() {
                     px: 2, py: 0.5,
                     borderRadius: '999px',
                     border: '1px solid',
-                    borderColor: activeSet === setName ? '#ffdbce' : 'rgba(225,191,179,0.8)',
-                    bgcolor: activeSet === setName ? '#ffdbce' : '#f8f9ff',
-                    color: activeSet === setName ? '#f26522' : '#535f74',
+                    borderColor: activeSet === setName ? 'rgba(242,101,34,0.3)' : 'rgba(0,0,0,0.1)',
+                    bgcolor: activeSet === setName ? 'rgba(242,101,34,0.1)' : 'transparent',
+                    color: activeSet === setName ? 'primary.main' : 'text.secondary',
                     fontWeight: activeSet === setName ? 600 : 500,
                     textTransform: 'none',
                     fontFamily: 'DM Sans, sans-serif',
                     fontSize: '0.875rem',
                     transition: 'all 0.2s ease',
-                    '&:hover': { bgcolor: activeSet === setName ? '#ffdbce' : '#d5e3fc' }
+                    '&:hover': { bgcolor: activeSet === setName ? 'rgba(242,101,34,0.15)' : 'rgba(0,0,0,0.04)' }
                   }}
                 >
                   {setName}
@@ -353,34 +353,24 @@ export default function AdminQuestionBank() {
                 placeholder="Search questions..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                sx={{ 
-                  width: '100%', pl: 5, pr: 2, py: 1, 
-                  bgcolor: '#f8f9ff', 
-                  border: '1px solid rgba(225,191,179,0.8)', 
-                  borderRadius: 2, 
-                  fontFamily: 'DM Sans, sans-serif', 
-                  fontSize: '0.875rem',
-                  color: '#0d1c2e',
-                  transition: 'all 0.2s ease',
-                  '&:focus-within': { borderColor: '#f26522', boxShadow: '0 0 0 2px rgba(242,101,34,0.1)' } 
-                }} 
+                sx={{ width: '100%', pl: 5, pr: 2, py: 1, fontSize: '0.875rem' }} 
               />
             </Box>
           </Box>
-        </Paper>
+        </Card>
 
         {/* Data Table */}
-        <Paper elevation={0} sx={{ flexGrow: 1, borderRadius: 3, border: '1px solid rgba(225,191,179,0.5)', bgcolor: '#ffffff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Card sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <TableContainer sx={{ flexGrow: 1 }}>
             <Table stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell align="center" sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', width: 60, textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>#</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Question Text</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Set Name</TableCell>
-                  <TableCell align="left" sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Difficulty</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Status</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 600, color: '#535f74', py: 2, bgcolor: '#fafbfd', borderBottom: '1px solid rgba(225,191,179,0.5)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Actions</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, color: '#535f74', py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.08)', width: 60, textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>#</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#535f74', py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.08)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Question Text</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#535f74', py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.08)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Set Name</TableCell>
+                  <TableCell align="left" sx={{ fontWeight: 600, color: '#535f74', py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.08)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Difficulty</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 600, color: '#535f74', py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.08)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Status</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 600, color: '#535f74', py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.08)', textTransform: 'uppercase', fontSize: '0.75rem', fontFamily: 'DM Sans, sans-serif' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -391,19 +381,19 @@ export default function AdminQuestionBank() {
                     </TableCell>
                   </TableRow>
                 ) : paginatedQuestions.map((q, index) => (
-                  <TableRow key={q.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 }, transition: 'background-color 0.2s ease', '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.04)' } }}>
-                    <TableCell align="center" sx={{ py: 2, color: '#535f74', fontWeight: 500, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                  <TableRow key={q.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 }, '&:hover': { bgcolor: 'var(--ae-surface)' } }}>
+                    <TableCell align="center" sx={{ py: 2, color: '#535f74', fontWeight: 500, borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                       {page * rowsPerPage + index + 1}
                     </TableCell>
-                    <TableCell sx={{ maxWidth: 300, py: 2, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                    <TableCell sx={{ maxWidth: 300, py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                       <Typography sx={{ color: '#0d1c2e', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'DM Sans, sans-serif', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{q.text}</Typography>
                     </TableCell>
-                    <TableCell sx={{ py: 2, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                    <TableCell sx={{ py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                       <Box sx={{ display: 'inline-flex', px: 1, py: 0.5, borderRadius: 1, bgcolor: '#cae6ff', color: '#002d45', fontSize: '0.625rem', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
                         {q.set_name || 'Default Set'}
                       </Box>
                     </TableCell>
-                    <TableCell align="left" sx={{ py: 2, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                    <TableCell align="left" sx={{ py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                       <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
                         <Box sx={{ 
                           width: 8, height: 8, borderRadius: '50%',
@@ -414,10 +404,10 @@ export default function AdminQuestionBank() {
                         <Typography variant="caption" sx={{ color: '#535f74', fontWeight: 500, fontFamily: 'DM Sans, sans-serif' }}>{q.difficulty === 'EASY' ? 'Easy' : q.difficulty === 'MEDIUM' ? 'Medium' : 'Hard'}</Typography>
                       </Box>
                     </TableCell>
-                    <TableCell align="center" sx={{ py: 2, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                    <TableCell align="center" sx={{ py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                       <Switch checked={q.is_active} onChange={() => handleToggle(q.id)} size="small" sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#f26522' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: '#f26522' } }} />
                     </TableCell>
-                    <TableCell align="right" sx={{ py: 2, borderBottom: '1px solid rgba(225,191,179,0.3)' }}>
+                    <TableCell align="right" sx={{ py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                       <IconButton size="small" onClick={() => handleOpenEdit(q)} sx={{ color: '#535f74', '&:hover': { color: '#f26522' }, mr: 1 }}>
                         <EditIcon fontSize="small" />
                       </IconButton>
@@ -442,7 +432,7 @@ export default function AdminQuestionBank() {
               sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif' }}
             />
           </Box>
-        </Paper>
+        </Card>
 
       </Box>
 
@@ -579,7 +569,7 @@ export default function AdminQuestionBank() {
       <Dialog open={deleteConfirm.open} onClose={() => setDeleteConfirm({ open: false, type: '', id: null, name: '' })} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 24px 64px rgba(0,0,0,0.1)' } }}>
         <DialogTitle sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.25rem', pb: 1, pt: 3, color: '#ba1a1a' }}>Confirm Deletion</DialogTitle>
         <DialogContent sx={{ p: 3 }}>
-          <Typography variant="body1" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#535f74' }}>
+          <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
             {deleteConfirm.type === 'SET' 
               ? `Are you sure you want to delete the set "${deleteConfirm.name}"? This will attempt to delete all questions within it.` 
               : `Are you sure you want to delete this question?`}

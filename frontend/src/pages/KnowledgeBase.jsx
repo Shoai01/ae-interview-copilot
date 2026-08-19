@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Card } from '@mui/material';
 import Layout from '@/components/Layout';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -18,6 +18,7 @@ export default function KnowledgeBase() {
   const [viewingDoc, setViewingDoc] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, docId: null });
   const fileInputRef = useRef(null);
 
   const fetchModules = async () => {
@@ -80,19 +81,23 @@ export default function KnowledgeBase() {
     }
   };
 
-  const handleDelete = async (docId) => {
-    if (!window.confirm("Are you sure you want to delete this document? The AI index will be rebuilt without it.")) return;
-    
+  const handleDeleteClick = (docId) => {
+    setDeleteDialog({ open: true, docId });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteDialog.docId) return;
     try {
-      await adminService.deleteKnowledgeDocument(docId);
-      setDocuments(prev => prev.filter(d => d.id !== docId));
+      await adminService.deleteKnowledgeDocument(deleteDialog.docId);
+      setDocuments(prev => prev.filter(d => d.id !== deleteDialog.docId));
       toast.success('Document deleted successfully.');
     } catch (err) {
       console.error("Failed to delete document:", err);
       toast.error('Failed to delete document.');
+    } finally {
+      setDeleteDialog({ open: false, docId: null });
     }
   };
-
   const handleView = async (docId) => {
     try {
       const docDetail = await adminService.getKnowledgeDocumentDetail(docId);
@@ -105,15 +110,15 @@ export default function KnowledgeBase() {
 
   return (
     <Layout>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'calc(100vh - 120px)', bgcolor: '#f8f9ff', p: { xs: 2, md: 4 } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, width: '100%' }}>
         
         {/* Header & Actions */}
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'flex-end' }, justifyContent: 'space-between', gap: 2 }}>
           <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0d1c2e', mb: 1 }}>
+            <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
               Knowledge Base
             </Typography>
-            <Typography variant="body1" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#535f74' }}>
+            <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
               Upload and manage reference materials for AI context.
             </Typography>
           </Box>
@@ -132,7 +137,7 @@ export default function KnowledgeBase() {
             <Button 
               variant="contained" 
               startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <UploadFileIcon />}
-              sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, bgcolor: '#f26522', color: '#fff', fontFamily: 'DM Sans, sans-serif', '&:hover': { bgcolor: '#d9581b' }, boxShadow: 'none' }} 
+              sx={{ px: 3, py: 1 }} 
               onClick={() => fileInputRef.current?.click()}
               disabled={loading || !activeModuleId}
             >
@@ -142,9 +147,9 @@ export default function KnowledgeBase() {
         </Box>
 
         {/* Filters & Search - Matching AdminQuestionBank layout */}
-        <Paper elevation={0} sx={{ bgcolor: '#ffffff', borderRadius: 3, border: '1px solid rgba(225,191,179,0.5)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Card sx={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Module Tabs */}
-          <Box sx={{ display: 'flex', borderBottom: '1px solid rgba(225,191,179,0.5)', overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
+          <Box sx={{ display: 'flex', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
             {modules.map(mod => (
               <Button
                 key={mod.id} 
@@ -171,9 +176,9 @@ export default function KnowledgeBase() {
             <Table>
               <TableHead>
                 <TableRow sx={{ bgcolor: '#fafbfd' }}>
-                  <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>File Name</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2 }}>Uploaded At</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(225,191,179,0.5)', py: 2, width: 150, textAlign: 'right' }}>Actions</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>File Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Uploaded At</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2, width: 150, textAlign: 'right' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -190,7 +195,7 @@ export default function KnowledgeBase() {
                 )}
                 {documents.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(doc => (
                   <TableRow key={doc.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                    <TableCell sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)', py: 2 }}>
+                    <TableCell sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)', py: 2 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: 'rgba(0,154,222,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#009ADE' }}>
                           <DescriptionIcon fontSize="small" />
@@ -200,17 +205,17 @@ export default function KnowledgeBase() {
                         </Typography>
                       </Box>
                     </TableCell>
-                    <TableCell sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)', py: 2 }}>
+                    <TableCell sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)', py: 2 }}>
                       <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
                         {new Date(doc.uploaded_at).toLocaleString()}
                       </Typography>
                     </TableCell>
-                    <TableCell align="right" sx={{ borderBottom: '1px solid rgba(225,191,179,0.3)', py: 2 }}>
+                    <TableCell align="right" sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)', py: 2 }}>
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
                         <IconButton onClick={() => handleView(doc.id)} size="small" sx={{ color: '#009ADE', bgcolor: 'rgba(0,154,222,0.1)', '&:hover': { bgcolor: 'rgba(0,154,222,0.2)' } }}>
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
-                        <IconButton onClick={() => handleDelete(doc.id)} size="small" sx={{ color: '#f26522', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
+                        <IconButton aria-label="Delete document" onClick={() => handleDeleteClick(doc.id)} size="small" sx={{ color: 'error.main', bgcolor: 'rgba(239,68,68,0.1)', '&:hover': { bgcolor: 'rgba(239,68,68,0.2)' } }}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Box>
@@ -231,7 +236,7 @@ export default function KnowledgeBase() {
             onRowsPerPageChange={handleChangeRowsPerPage}
             sx={{ borderTop: '1px solid rgba(225,191,179,0.5)', bgcolor: '#fafbfd' }}
           />
-        </Paper>
+        </Card>
 
       </Box>
 
@@ -255,6 +260,19 @@ export default function KnowledgeBase() {
           <Button onClick={() => setViewingDoc(null)} variant="outlined" sx={{ borderRadius: 2, fontWeight: 600, color: '#535f74', borderColor: '#cbd5e1' }}>
             Close
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, docId: null })} PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 24px 64px rgba(0,0,0,0.1)', minWidth: 400 } }}>
+        <DialogTitle sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.25rem', pb: 1, pt: 3, color: 'error.main' }}>Confirm Deletion</DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Typography variant="body1">Are you sure you want to delete this document?</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>The AI index will be rebuilt without it.</Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button onClick={() => setDeleteDialog({ open: false, docId: null })} sx={{ color: 'text.secondary', fontWeight: 600, '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' } }}>Cancel</Button>
+          <Button onClick={handleConfirmDelete} variant="contained" color="error" sx={{ px: 3, py: 1, borderRadius: 2, fontWeight: 600, boxShadow: 'none' }}>Delete Document</Button>
         </DialogActions>
       </Dialog>
     </Layout>

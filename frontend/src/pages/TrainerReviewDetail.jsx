@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Box, Typography, Button, Paper, Avatar, Stack, CircularProgress, Grid } from '@mui/material';
+import { Box, Typography, Button, Avatar, Stack, CircularProgress, Grid, Card, Chip, Divider, TextField } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -8,6 +8,10 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import CancelIcon from '@mui/icons-material/Cancel';
 import SendIcon from '@mui/icons-material/Send';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import BadgeIcon from '@mui/icons-material/Badge';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { vivaService } from '@/services/api';
 
 export default function TrainerReviewDetail() {
@@ -17,6 +21,9 @@ export default function TrainerReviewDetail() {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedDecision, setSelectedDecision] = useState(null);
+  const [trainerNotes, setTrainerNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -64,194 +71,285 @@ export default function TrainerReviewDetail() {
     return `${m}m ${s}s`;
   };
 
+  const getRecChipProps = (rec) => {
+    if (rec === 'PASS') return { icon: <CheckCircleIcon sx={{ fontSize: 14 }} />, color: 'success', label: 'Pass' };
+    if (rec === 'FAIL') return { icon: <CancelIcon sx={{ fontSize: 14 }} />, color: 'error', label: 'Fail' };
+    return { icon: <WarningIcon sx={{ fontSize: 14 }} />, color: 'warning', label: 'Borderline' };
+  };
+
+  const decisionButtons = [
+    { key: 'HOLD', label: 'Hold', color: '#475569', bg: 'rgba(71,85,105,0.08)', border: 'rgba(71,85,105,0.25)' },
+    { key: 'FAIL', label: 'Fail', color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)' },
+    { key: 'PASS', label: 'Pass', color: '#22c55e', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.25)' },
+  ];
+
   return (
     <Layout>
-      <Box sx={{ pb: 44 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%', pb: 28 }}>
+
         {/* Back Navigation */}
         <Box 
           onClick={() => navigate('/hr/sessions')}
-          sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, color: 'text.secondary', cursor: 'pointer', mb: 2, '&:hover': { color: 'text.primary' } }}
+          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.8, color: 'text.secondary', cursor: 'pointer', '&:hover': { color: 'primary.main' }, transition: 'color 0.2s' }}
         >
-          <ArrowBackIcon fontSize="small" />
-          <Typography variant="body2" fontWeight={500}>Back to Sessions</Typography>
+          <ArrowBackIcon sx={{ fontSize: 18 }} />
+          <Typography variant="body2" fontWeight={500} sx={{ fontFamily: 'DM Sans, sans-serif' }}>Back to Sessions</Typography>
         </Box>
 
-        {/* Header Card: Trainee Info */}
-        <Paper elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'rgba(0,0,0,0.08)', display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ width: 64, height: 64, background: 'linear-gradient(135deg, rgba(242, 101, 34, 0.15) 0%, rgba(0, 154, 222, 0.15) 100%)', color: 'primary.main', fontWeight: 700, fontSize: 24 }}>
-              {avatarLetter}
-            </Avatar>
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>{candidateName}</Typography>
-              <Typography variant="body2" color="text.secondary">Emp ID: {trainee?.employee_id || 'N/A'}</Typography>
-            </Box>
-          </Box>
-          <Box sx={{ display: 'flex', gap: 4 }}>
-            <Box>
-              <Typography variant="caption" color="text.secondary" fontWeight={500}>Date</Typography>
-              <Typography variant="body2" fontWeight={500}>
-                {new Date(reportData.session.start_time).toLocaleDateString()}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" color="text.secondary" fontWeight={500}>Duration</Typography>
-              <Typography variant="body2" fontWeight={500}>{formatDuration(summary.duration_seconds)}</Typography>
-            </Box>
-          </Box>
-        </Paper>
-
-        {/* AI Summary Card */}
-        {report ? (
-          <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid', borderColor: 'rgba(0, 154, 222, 0.2)', background: 'linear-gradient(135deg, rgba(0,154,222,0.03) 0%, rgba(242,101,34,0.03) 100%)' }}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-              <PsychologyIcon color="primary" sx={{ mt: 0.5 }} />
+        {/* ─── Top Section: Candidate Info + Stats ─── */}
+        <Card sx={{ p: 0, overflow: 'hidden' }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { md: 'center' }, justifyContent: 'space-between', p: { xs: 2.5, md: 3 }, gap: 2 }}>
+            {/* Candidate */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar sx={{
+                width: 52, height: 52,
+                background: 'linear-gradient(135deg, rgba(242,101,34,0.15) 0%, rgba(242,101,34,0.05) 100%)',
+                color: 'primary.main', fontWeight: 700, fontSize: 20, fontFamily: 'Syne, sans-serif'
+              }}>
+                {avatarLetter}
+              </Avatar>
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif', mb: 0.5 }}>AI Summary</Typography>
-                
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 1 }}>Strengths:</Typography>
-                  <Typography variant="body2" color="text.secondary">{report.strengths || "N/A"}</Typography>
-                  
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 1 }}>Areas of Improvement:</Typography>
-                  <Typography variant="body2" color="text.secondary">{report.areas_of_improvement || "N/A"}</Typography>
-                </Box>
-
-                <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, bgcolor: 'rgba(0,0,0,0.04)', px: 1.5, py: 0.5, borderRadius: 4 }}>
-                  {report.ai_recommendation === 'PASS' && <CheckCircleIcon sx={{ fontSize: 16, color: '#059669' }} />}
-                  {report.ai_recommendation === 'BORDERLINE' && <WarningIcon sx={{ fontSize: 16, color: '#d97706' }} />}
-                  {report.ai_recommendation === 'FAIL' && <CancelIcon sx={{ fontSize: 16, color: '#dc2626' }} />}
-                  <Typography variant="caption" fontWeight={600}>Recommended: {report.ai_recommendation}</Typography>
-                </Box>
+                <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '-0.5px', lineHeight: 1.3 }}>
+                  {candidateName}
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.3 }}>
+                  <BadgeIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                  <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
+                    {trainee?.username || 'N/A'}
+                  </Typography>
+                </Stack>
               </Box>
             </Box>
-          </Paper>
+
+            {/* Meta Stats */}
+            <Stack direction="row" spacing={3}>
+              <Stack direction="row" spacing={0.8} alignItems="center">
+                <CalendarTodayIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>Date</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'DM Sans, sans-serif' }}>
+                    {new Date(reportData.session.start_time).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </Typography>
+                </Box>
+              </Stack>
+              <Stack direction="row" spacing={0.8} alignItems="center">
+                <AccessTimeIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>Duration</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'DM Sans, sans-serif' }}>{formatDuration(summary.duration_seconds)}</Typography>
+                </Box>
+              </Stack>
+              <Stack direction="row" spacing={0.8} alignItems="center">
+                <TrendingUpIcon sx={{ fontSize: 15, color: 'text.secondary' }} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>Score</Typography>
+                  <Typography variant="body2" fontWeight={600} sx={{ fontFamily: 'DM Sans, sans-serif', color: 'primary.main' }}>
+                    {report?.aggregate_score != null ? `${Number(report.aggregate_score).toFixed(1)}/10` : '—'}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Stack>
+          </Box>
+        </Card>
+
+        {/* ─── AI Summary ─── */}
+        {report ? (
+          <Card sx={{ p: 0, overflow: 'hidden', borderLeft: '3px solid', borderColor: 'primary.main' }}>
+            <Box sx={{ p: { xs: 2.5, md: 3 } }}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                <PsychologyIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '-0.5px', fontSize: 16 }}>
+                  AI Analysis
+                </Typography>
+                {report.ai_recommendation && (
+                  <Chip
+                    size="small"
+                    icon={getRecChipProps(report.ai_recommendation).icon}
+                    label={getRecChipProps(report.ai_recommendation).label}
+                    color={getRecChipProps(report.ai_recommendation).color}
+                    variant="outlined"
+                    sx={{ ml: 'auto', fontWeight: 600, fontSize: 12, fontFamily: 'DM Sans, sans-serif' }}
+                  />
+                )}
+              </Stack>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.12)' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 0.5 }}>Strengths</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6 }}>
+                      {report.strengths || "N/A"}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(242,101,34,0.04)', border: '1px solid rgba(242,101,34,0.12)' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#ea580c', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 0.5 }}>Areas to Improve</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6 }}>
+                      {report.areas_of_improvement || "N/A"}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Box>
+          </Card>
         ) : (
-          <Paper elevation={0} sx={{ p: 3, mb: 4, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: 'rgba(0,0,0,0.02)' }}>
-            <Typography variant="body2" color="text.secondary">AI Evaluation is pending or failed to generate.</Typography>
-          </Paper>
+          <Card sx={{ p: 3 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>AI Evaluation is pending or failed to generate.</Typography>
+          </Card>
         )}
 
-        {/* Main Layout: Full width sections */}
-        <Grid container spacing={4}>
-          <Grid item xs={12}>
-            <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif', borderBottom: '1px solid', borderColor: 'divider', pb: 1, mb: 2 }}>
-              Transcript & Assessment
-            </Typography>
+        {/* ─── Question-by-Question Breakdown ─── */}
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '-0.5px', mb: 2, fontSize: 16 }}>
+            Questions & Responses ({questions.length})
+          </Typography>
 
+          <Stack spacing={2}>
             {questions.length === 0 ? (
               <Typography variant="body2" color="text.secondary">No questions were recorded for this session.</Typography>
             ) : (
               questions.map((q, index) => (
-                <Paper key={q.viva_question_id} elevation={0} sx={{ p: 3, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2, mb: 2 }}>
-                    <Typography variant="subtitle1" fontWeight={600}>{index + 1}. {q.text}</Typography>
-                    <Typography variant="caption" color="text.secondary">{formatDuration(q.duration)}</Typography>
+                <Card key={q.viva_question_id} sx={{ p: 0, overflow: 'hidden' }}>
+                  {/* Question Header */}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', p: { xs: 2, md: 2.5 }, pb: 0 }}>
+                    <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ flex: 1 }}>
+                      <Box sx={{
+                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        bgcolor: 'rgba(242,101,34,0.1)', color: 'primary.main',
+                        fontSize: 12, fontWeight: 700, fontFamily: 'DM Sans, sans-serif', mt: 0.2
+                      }}>
+                        {index + 1}
+                      </Box>
+                      <Typography variant="body1" sx={{ fontWeight: 600, fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5 }}>
+                        {q.text}
+                      </Typography>
+                    </Stack>
+                    <Chip size="small" icon={<AccessTimeIcon sx={{ fontSize: 13 }} />} label={formatDuration(q.duration)} variant="outlined"
+                      sx={{ ml: 2, flexShrink: 0, fontSize: 11, fontWeight: 600, borderColor: 'rgba(0,0,0,0.1)' }}
+                    />
                   </Box>
-                  <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 2, border: '1px solid', borderColor: 'rgba(0,0,0,0.06)', mb: 3 }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+
+                  {/* Transcript */}
+                  <Box sx={{ mx: { xs: 2, md: 2.5 }, mt: 1.5, p: 2, borderRadius: 2, bgcolor: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.05)' }}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'DM Sans, sans-serif', fontStyle: 'italic', lineHeight: 1.7 }}>
                       "{q.transcript || "(No transcript available)"}"
                     </Typography>
                     {q.evaluation?.ai_feedback && (
-                      <Box sx={{ mt: 2, p: 1.5, bgcolor: 'rgba(0, 154, 222, 0.04)', borderRadius: 1.5, borderLeft: '3px solid', borderLeftColor: 'secondary.main' }}>
-                        <Typography variant="caption" sx={{ color: 'secondary.dark', fontWeight: 600 }}>
-                          AI Feedback: {q.evaluation.ai_feedback}
+                      <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                        <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 600, display: 'block', mb: 0.3 }}>AI Feedback</Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5 }}>
+                          {q.evaluation.ai_feedback}
                         </Typography>
                       </Box>
                     )}
                   </Box>
-                  
-                  {q.evaluation ? (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      <ScoreBar label="Communication" score={q.evaluation.score_communication || 0} percentage={(q.evaluation.score_communication || 0) * 10} color="#009ADE" />
-                      <ScoreBar label="Technical" score={q.evaluation.score_technical || 0} percentage={(q.evaluation.score_technical || 0) * 10} color="#F26522" />
-                      <ScoreBar label="Confidence" score={q.evaluation.score_confidence || 0} percentage={(q.evaluation.score_confidence || 0) * 10} color="#009ADE" />
-                    </Box>
-                  ) : (
-                    <Typography variant="caption" color="text.secondary">No evaluation scores available.</Typography>
-                  )}
-                </Paper>
+
+                  {/* Scores */}
+                  <Box sx={{ px: { xs: 2, md: 2.5 }, py: 2 }}>
+                    {q.evaluation ? (
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1.5, sm: 4 }}>
+                        <ScoreBar label="Communication" score={q.evaluation.score_communication || 0} color="#3b82f6" />
+                        <ScoreBar label="Technical" score={q.evaluation.score_technical || 0} color="#F26522" />
+                        <ScoreBar label="Confidence" score={q.evaluation.score_confidence || 0} color="#8b5cf6" />
+                      </Stack>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">No evaluation scores available.</Typography>
+                    )}
+                  </Box>
+                </Card>
               ))
             )}
-          </Grid>
+          </Stack>
+        </Box>
 
-        </Grid>
       </Box>
 
-      {/* Sticky Decision Panel */}
+      {/* ─── Sticky Decision Panel ─── */}
       <Box sx={{
-        position: 'fixed',
-        bottom: 0,
-        left: { xs: 0, lg: 280 },
-        right: 0,
-        zIndex: 1000,
-        p: { xs: 2, lg: 4 },
-        borderTop: '1px solid',
-        borderColor: 'divider',
-        bgcolor: '#f8fafc',
-        boxShadow: '0 -10px 40px rgba(0,0,0,0.05)'
+        position: 'sticky',
+        bottom: { xs: -16, md: -24, lg: -32 },
+        zIndex: 10,
+        bgcolor: 'rgba(255, 255, 255, 0.9)',
+        backdropFilter: 'blur(20px)',
+        mx: { xs: -2, md: -3, lg: -4 },
+        mb: { xs: -2, md: -3, lg: -4 },
+        px: { xs: 2, md: 3, lg: 4 },
+        py: { xs: 2, md: 2.5 },
+        borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+        borderBottomLeftRadius: 'var(--radius)',
+        borderBottomRightRadius: 'var(--radius)',
       }}>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif', borderBottom: '1px solid', borderColor: 'divider', pb: 1, mb: 2 }}>
-            Final Decision
-          </Typography>
-          <Paper elevation={0} sx={{ 
-            p: { xs: 2, md: 3 },
-            borderRadius: 3,
-            border: '1px solid', 
-            borderColor: 'rgba(0,0,0,0.08)',
-            bgcolor: '#fff'
-          }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Box>
-                <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>Trainer Notes</Typography>
-                <Box 
-                  component="textarea" 
-                  placeholder="Add final remarks..." 
-                  rows={4} 
-                  sx={{ 
-                    width: '100%', 
-                    p: 1.5, 
-                    borderRadius: 2, 
-                    border: '1px solid', 
-                    borderColor: 'divider', 
-                    fontFamily: 'inherit',
-                    fontSize: 14,
-                    resize: 'none',
-                    '&:focus': { outline: 'none', borderColor: 'primary.main' } 
-                  }} 
-                />
-              </Box>
-              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mt: 1 }}>
-                <Button variant="outlined" color="secondary" sx={{ flex: 1, borderRadius: 2, fontWeight: 600, py: 1 }}>Hold</Button>
-                <Button variant="outlined" color="error" sx={{ flex: 1, borderRadius: 2, fontWeight: 600, py: 1 }}>Fail</Button>
-                <Button variant="outlined" color="success" sx={{ flex: 1, borderRadius: 2, fontWeight: 600, py: 1 }}>Pass</Button>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  endIcon={<SendIcon />}
-                  sx={{ flex: 2, boxShadow: '0 4px 14px rgba(242, 101, 34, 0.4)', borderRadius: 2, px: 3, py: 1.5, fontWeight: 600, '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.6)' } }}
-                  onClick={() => navigate('/hr/sessions')}
-                >
-                  Submit Decision
-                </Button>
-              </Box>
-            </Box>
-          </Paper>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, alignItems: { md: 'center' } }}>
+          {/* Decision Buttons */}
+          <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+            {decisionButtons.map(btn => (
+              <Button
+                key={btn.key}
+                variant="outlined"
+                onClick={() => setSelectedDecision(btn.key)}
+                sx={{
+                  px: 2.5, py: 0.8, fontWeight: 600, fontSize: 13,
+                  borderColor: selectedDecision === btn.key ? btn.color : 'rgba(0,0,0,0.12)',
+                  color: selectedDecision === btn.key ? btn.color : 'text.secondary',
+                  bgcolor: selectedDecision === btn.key ? btn.bg : 'transparent',
+                  '&:hover': { borderColor: btn.border, bgcolor: btn.bg },
+                }}
+              >
+                {btn.label}
+              </Button>
+            ))}
+          </Stack>
+
+          {/* Notes Input */}
+          <TextField
+            placeholder="Add final remarks..."
+            size="small"
+            fullWidth
+            value={trainerNotes}
+            onChange={(e) => setTrainerNotes(e.target.value)}
+            aria-label="Trainer notes"
+            sx={{ flex: 1, '& .MuiOutlinedInput-root': { fontSize: 14 } }}
+          />
+
+          {/* Submit */}
+          <Button
+            variant="contained"
+            color="primary"
+            endIcon={<SendIcon sx={{ fontSize: 16 }} />}
+            disabled={!selectedDecision || submitting}
+            onClick={async () => {
+              setSubmitting(true);
+              try {
+                await vivaService.submitDecision(sessionId, selectedDecision, trainerNotes);
+                navigate('/hr/sessions');
+              } catch (err) {
+                console.error('Failed to submit decision:', err);
+                setSubmitting(false);
+              }
+            }}
+            sx={{ px: 3, py: 1, flexShrink: 0, whiteSpace: 'nowrap' }}
+          >
+            {submitting ? <CircularProgress size={20} color="inherit" /> : 'Submit Decision'}
+          </Button>
         </Box>
       </Box>
     </Layout>
   );
 }
 
-function ScoreBar({ label, score, percentage, color }) {
+function ScoreBar({ label, score, color }) {
+  const percentage = Math.min(100, Math.max(0, (score || 0) * 10));
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      <Typography variant="caption" color="text.secondary" sx={{ minWidth: 100, fontWeight: 500, flexShrink: 0 }}>{label}</Typography>
-      <Box sx={{ width: 96, height: 8, bgcolor: 'rgba(0,0,0,0.04)', borderRadius: 4, overflow: 'hidden' }}>
-        <Box sx={{ width: `${Math.min(100, Math.max(0, percentage))}%`, height: '100%', bgcolor: color, borderRadius: 4 }} />
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1 }}>
+      <Typography variant="caption" color="text.secondary" sx={{ minWidth: 90, fontWeight: 500, fontFamily: 'DM Sans, sans-serif' }}>{label}</Typography>
+      <Box sx={{ flex: 1, height: 6, bgcolor: 'rgba(0,0,0,0.04)', borderRadius: 3, overflow: 'hidden', minWidth: 60 }}>
+        <Box sx={{ width: `${percentage}%`, height: '100%', bgcolor: color, borderRadius: 3, transition: 'width 0.5s ease' }} />
       </Box>
-      <Typography variant="caption" fontWeight={600}>{Number(score).toFixed(1)}/10</Typography>
-    </Box>
+      <Typography variant="caption" fontWeight={700} sx={{ minWidth: 36, textAlign: 'right', fontFamily: 'DM Sans, sans-serif' }}>
+        {Number(score).toFixed(1)}
+      </Typography>
+    </Stack>
   );
 }

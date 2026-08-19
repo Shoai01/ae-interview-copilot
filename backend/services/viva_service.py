@@ -439,7 +439,7 @@ def get_all_sessions(db: Session):
         result.append(viva_schemas.SessionListItem(
             id=s.id,
             trainee_name=s.trainee.full_name or s.trainee.username if s.trainee else "Unknown",
-            employee_id=s.trainee.employee_id if s.trainee else f"EMP-{s.trainee.id:04d}",
+            username=s.trainee.username if s.trainee else "Unknown",
             module_name=s.module.name if s.module else "Unknown",
             ai_recommendation=ai_rec,
             status=status,
@@ -460,3 +460,67 @@ def create_fraud_flag(db: Session, session_id: int, flag_data: viva_schemas.Frau
     except (ValueError, AttributeError):
         detected_at = dt.utcnow()
     return viva_repository.create_fraud_flag(db, flag_data.viva_question_id, flag_data.flag_type, detected_at)
+
+def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewer_id: int):
+    session = db.query(domain.VivaSession).filter(domain.VivaSession.id == session_id).first()
+    if not session or not session.report:
+        return None
+    
+    report = session.report
+    report.trainer_decision = domain.TrainerDecisionType(decision_data.decision)
+    report.reviewed_by = reviewer_id
+    report.reviewed_at = datetime.datetime.utcnow()
+    
+    # Store notes in areas_of_improvement if no dedicated field exists
+    if decision_data.notes:
+        existing = report.areas_of_improvement or ""
+        report.areas_of_improvement = existing + ("\n\n--- Trainer Notes ---\n" + decision_data.notes if existing else "Trainer Notes: " + decision_data.notes)
+    
+    db.commit()
+    db.refresh(report)
+    return report
+
+def assign_session_bulk(db: Session, bulk_data: viva_schemas.BulkSessionCreate, current_user_id: int) -> viva_schemas.BulkSessionResponse:
+    from fastapi import HTTPException
+    
+    success_count = 0
+    failed_count = 0
+    results = []
+    
+    for trainee in bulk_data.trainees:
+        result_item = viva_schemas.BulkSessionResultItem(
+            identifier=trainee.trainee_identifier,
+            full_name=trainee.trainee_full_name
+        )
+        
+        try:
+            # Create standard SessionCreate payload
+            single_session_data = viva_schemas.SessionCreate(
+                trainee_identifier=trainee.trainee_identifier,
+                trainee_full_name=trainee.trainee_full_name,
+                module_id=bulk_data.module_id,
+                duration_minutes=bulk_data.duration_minutes,
+                question_count=bulk_data.question_count
+            )
+            
+            # Delegate to existing logic
+            assigned = assign_session(db, single_session_data, current_user_id)
+            
+            result_item.session_id = assigned.id
+            result_item.new_user_password = assigned.new_user_password
+            success_count += 1
+            
+        except HTTPException as e:
+            result_item.error = e.detail
+            failed_count += 1
+        except Exception as e:
+            result_item.error = str(e)
+            failed_count += 1
+            
+        results.append(result_item)
+        
+    return viva_schemas.BulkSessionResponse(
+        success_count=success_count,
+        failed_count=failed_count,
+        results=results
+    )

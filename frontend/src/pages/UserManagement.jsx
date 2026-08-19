@@ -14,6 +14,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DownloadIcon from '@mui/icons-material/Download';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import SyncIcon from '@mui/icons-material/Sync';
 
 export default function UserManagement() {
@@ -27,15 +29,22 @@ export default function UserManagement() {
   const [errorMsg, setErrorMsg] = useState('');
   
   const [openDialog, setOpenDialog] = useState(false);
+  const [openEditDialog, setOpenEditDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  
+  const [editFormData, setEditFormData] = useState({
+    full_name: '',
+    role: '',
+    password: ''
+  });
   const [searchQuery, setSearchQuery] = useState('');
 
   const [formData, setFormData] = useState({
     username: '',
     password: '',
     role: user?.role === 'TRAINER' ? 'TRAINEE' : 'TRAINER',
-    full_name: '',
-    employee_id: ''
-  });
+    full_name: '',});
 
   const fetchUsersData = async () => {
     
@@ -70,9 +79,7 @@ export default function UserManagement() {
         username: formData.username,
         password: formData.password,
         role: formData.role,
-        full_name: formData.full_name || null,
-        employee_id: formData.employee_id || null
-      };
+        full_name: formData.full_name || null,};
 
       const createdUser = await adminService.createUser(payload);
       
@@ -82,12 +89,61 @@ export default function UserManagement() {
         username: '',
         password: '',
         role: user?.role === 'TRAINER' ? 'TRAINEE' : 'TRAINER',
-        full_name: '',
-        employee_id: ''
-      });
+        full_name: '',});
       setTimeout(() => setOpenDialog(false), 1500);
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'Failed to create user.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenEdit = (u) => {
+    setSelectedUser(u);
+    setEditFormData({
+      full_name: u.full_name || '',
+      role: u.role,
+      password: ''
+    });
+    setOpenEditDialog(true);
+    setSuccessMsg('');
+    setErrorMsg('');
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const payload = {
+        full_name: editFormData.full_name || null,
+        role: editFormData.role
+      };
+      if (editFormData.password) {
+        payload.password = editFormData.password;
+      }
+      
+      const updatedUser = await adminService.updateUser(selectedUser.id, payload);
+      setUsers(prev => prev.map(u => u.id === selectedUser.id ? updatedUser : u));
+      setSuccessMsg(`Successfully updated user ${selectedUser.username}`);
+      setTimeout(() => setOpenEditDialog(false), 1500);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.detail || 'Failed to update user.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteClick = async () => {
+    if (!selectedUser) return;
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      await adminService.deleteUser(selectedUser.id);
+      setUsers(prev => prev.filter(u => u.id !== selectedUser.id));
+      setOpenDeleteDialog(false);
+    } catch (err) {
+      setErrorMsg(err.response?.data?.detail || 'Failed to delete user.');
     } finally {
       setLoading(false);
     }
@@ -126,26 +182,25 @@ export default function UserManagement() {
 
   const filteredUsers = users.filter(u => 
     (u.full_name && u.full_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (u.username && u.username.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (u.employee_id && u.employee_id.toLowerCase().includes(searchQuery.toLowerCase()))
+    (u.username && u.username.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
     <Layout>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, minHeight: 'calc(100vh - 120px)', bgcolor: '#f8f9ff', p: { xs: 2, md: 4 } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, width: '100%' }}>
         
         {/* Header Section */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0d1c2e', mb: 1 }}>
+              <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
                 Manage Users
               </Typography>
-              <IconButton onClick={fetchUsersData} size="medium" disabled={loadingUsers} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
+              <IconButton onClick={fetchUsersData} size="medium" disabled={loadingUsers} >
                 <SyncIcon sx={{ animation: loadingUsers ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
               </IconButton>
             </Box>
-            <Typography variant="body1" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#535f74' }}>
+            <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
               View and manage system access for trainers and trainees.
             </Typography>
           </Box>
@@ -154,10 +209,7 @@ export default function UserManagement() {
               variant="contained" 
               startIcon={<PersonAddIcon />}
               onClick={() => { setOpenDialog(true); setSuccessMsg(''); setErrorMsg(''); }}
-              sx={{ 
-                borderRadius: 2, px: 3, py: 1, fontWeight: 600, bgcolor: '#f26522', color: '#fff', 
-                fontFamily: 'DM Sans, sans-serif', '&:hover': { bgcolor: '#d9581b' }, boxShadow: 'none', textTransform: 'none' 
-              }}
+              sx={{ px: 3, py: 1 }}
             >
               Add User
             </Button>
@@ -165,10 +217,10 @@ export default function UserManagement() {
         </Box>
 
         {/* Toolbar */}
-        <Paper elevation={0} sx={{ bgcolor: '#ffffff', borderRadius: 3, border: '1px solid rgba(225,191,179,0.5)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Card sx={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <Box sx={{ 
             display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-            p: 2, borderBottom: '1px solid rgba(225,191,179,0.5)', bgcolor: '#ffffff'
+            p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.08)'
           }}>
           <TextField 
             placeholder="Search by name, username, or ID..."
@@ -184,31 +236,7 @@ export default function UserManagement() {
               ),
             }}
           />
-          <Stack direction="row" spacing={2}>
-            <Button 
-              variant="outlined" 
-              startIcon={<FilterListIcon sx={{ fontSize: 18 }}/>}
-              sx={{ 
-                borderColor: 'rgba(0,0,0,0.1)', color: 'text.primary', textTransform: 'none', 
-                fontFamily: 'DM Sans, sans-serif', fontWeight: 600, borderRadius: 2,
-                bgcolor: 'transparent', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)', borderColor: 'rgba(0,0,0,0.2)' }
-              }}
-            >
-              Filter
-            </Button>
-            <Button 
-              variant="outlined" 
-              startIcon={<DownloadIcon sx={{ fontSize: 18 }}/>}
-              sx={{ 
-                borderColor: 'rgba(0,0,0,0.1)', color: 'text.primary', textTransform: 'none', 
-                fontFamily: 'DM Sans, sans-serif', fontWeight: 600, borderRadius: 2,
-                bgcolor: 'transparent', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)', borderColor: 'rgba(0,0,0,0.2)' }
-              }}
-            >
-              Export
-            </Button>
-          </Stack>
-        </Box>
+          </Box>
 
         {/* Users Table */}
         <TableContainer>
@@ -219,10 +247,9 @@ export default function UserManagement() {
           ) : (
             <Table>
               <TableHead>
-                <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.01)' }}>
+                <TableRow sx={{ bgcolor: 'transparent' }}>
                   <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>NAME</TableCell>
                   <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>USERNAME</TableCell>
-                  <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>EMP ID</TableCell>
                   <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>ROLE</TableCell>
                   <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>STATUS</TableCell>
                   <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>ACTIONS</TableCell>
@@ -246,7 +273,6 @@ export default function UserManagement() {
                       </Stack>
                     </TableCell>
                     <TableCell sx={{ color: 'text.secondary', fontFamily: 'DM Sans, sans-serif', fontSize: 14 }}>{u.username}</TableCell>
-                    <TableCell sx={{ color: 'text.secondary', fontFamily: 'DM Sans, sans-serif', fontSize: 14 }}>{u.employee_id || '—'}</TableCell>
                     <TableCell>
                       <Chip 
                         size="small" 
@@ -259,12 +285,30 @@ export default function UserManagement() {
                       />
                     </TableCell>
                     <TableCell>
-                      <Switch defaultChecked size="small" color="primary" />
+                      <Switch 
+                        checked={u.is_active} 
+                        size="small" 
+                        color="primary"
+                        inputProps={{ 'aria-label': `Toggle active status for ${u.username}` }}
+                        onChange={async () => {
+                          try {
+                            const updated = await adminService.updateUser(u.id, { is_active: !u.is_active });
+                            setUsers(prev => prev.map(x => x.id === u.id ? updated : x));
+                          } catch (err) {
+                            console.error('Failed to toggle user status:', err);
+                          }
+                        }}
+                      />
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" sx={{ color: 'text.secondary' }}>
-                        <MoreHorizIcon />
-                      </IconButton>
+                      <Stack direction="row" spacing={1} justifyContent="flex-end">
+                        <IconButton size="small" onClick={() => handleOpenEdit(u)} sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)' } }}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" onClick={() => { setSelectedUser(u); setOpenDeleteDialog(true); }} sx={{ color: 'text.secondary', '&:hover': { color: 'error.main', bgcolor: 'rgba(239,68,68,0.1)' } }}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -279,7 +323,7 @@ export default function UserManagement() {
             </Table>
           )}
         </TableContainer>
-        </Paper>
+        </Card>
 
       </Box>
 
@@ -409,6 +453,143 @@ export default function UserManagement() {
             sx={{ px: 3, borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 4px 14px rgba(242, 101, 34, 0.3)', '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.5)' } }}
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : 'Create Account'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Edit User Dialog */}
+      <Dialog 
+        open={openEditDialog} 
+        onClose={() => setOpenEditDialog(false)}
+        PaperProps={{ sx: { borderRadius: 3, width: '100%', maxWidth: 540, p: 1 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontFamily: 'Syne, sans-serif', fontWeight: 700 }}>
+          <Box sx={{ p: 1, bgcolor: 'rgba(242, 101, 34, 0.1)', borderRadius: 2, display: 'flex', color: 'primary.main' }}>
+            <EditIcon fontSize="small" />
+          </Box>
+          Edit User: {selectedUser?.username}
+        </DialogTitle>
+        <DialogContent sx={{ mt: 1 }}>
+          {successMsg && <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>{successMsg}</Alert>}
+          {errorMsg && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{errorMsg}</Alert>}
+
+          <form id="edit-user-form" onSubmit={handleEditSubmit}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" color="text.secondary" sx={labelSx}>
+                  Full Name
+                </Typography>
+                <TextField 
+                  fullWidth 
+                  size="small"
+                  name="full_name"
+                  value={editFormData.full_name}
+                  onChange={(e) => setEditFormData(prev => ({...prev, full_name: e.target.value}))}
+                  sx={inputSx}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" color="text.secondary" sx={labelSx}>
+                  New Password (Optional)
+                </Typography>
+                <TextField 
+                  fullWidth 
+                  size="small"
+                  name="password"
+                  value={editFormData.password}
+                  onChange={(e) => setEditFormData(prev => ({...prev, password: e.target.value}))}
+                  type="password"
+                  placeholder="Leave blank to keep current"
+                  sx={inputSx}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <Typography variant="caption" color="text.secondary" sx={labelSx}>
+                  Role *
+                </Typography>
+                <Select 
+                  fullWidth 
+                  size="small"
+                  name="role"
+                  value={editFormData.role}
+                  onChange={(e) => setEditFormData(prev => ({...prev, role: e.target.value}))}
+                  disabled={!isAdmin} // Only Admins can change roles
+                  sx={selectSx}
+                >
+                  {isAdmin && <MenuItem value="TRAINER">Trainer</MenuItem>}
+                  <MenuItem value="TRAINEE">Trainee</MenuItem>
+                </Select>
+              </Grid>
+
+              {editFormData.role === 'TRAINEE' && (
+                <Grid item xs={12} sm={6}>
+                  <Typography variant="caption" color="text.secondary" sx={labelSx}>
+                    Employee ID
+                  </Typography>
+                  <TextField 
+                    fullWidth 
+                    size="small"
+                    name="employee_id"
+                    value={editFormData.employee_id}
+                    onChange={(e) => setEditFormData(prev => ({...prev, employee_id: e.target.value}))}
+                    sx={inputSx}
+                  />
+                </Grid>
+              )}
+            </Grid>
+          </form>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button 
+            onClick={() => setOpenEditDialog(false)} 
+            sx={{ color: 'text.secondary', fontFamily: 'DM Sans, sans-serif', fontWeight: 600, textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            form="edit-user-form"
+            variant="contained" 
+            color="primary"
+            disabled={loading}
+            sx={{ px: 3, borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 4px 14px rgba(242, 101, 34, 0.3)', '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.5)' } }}
+          >
+            {loading ? <CircularProgress size={24} color="inherit" /> : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog 
+        open={openDeleteDialog} 
+        onClose={() => setOpenDeleteDialog(false)}
+        PaperProps={{ sx: { borderRadius: 3, p: 1 } }}
+      >
+        <DialogTitle sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700 }}>
+          Delete User
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontFamily: 'DM Sans, sans-serif', color: 'text.secondary' }}>
+            Are you sure you want to delete the user <strong>{selectedUser?.username}</strong>? This action cannot be undone.
+          </Typography>
+          {errorMsg && <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>{errorMsg}</Alert>}
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button 
+            onClick={() => setOpenDeleteDialog(false)} 
+            sx={{ color: 'text.secondary', fontFamily: 'DM Sans, sans-serif', fontWeight: 600, textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteClick}
+            variant="contained" 
+            color="error"
+            disabled={loading}
+            sx={{ px: 3, borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: 'none' }}
+          >
+            {loading ? <CircularProgress size={24} color="inherit" /> : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>

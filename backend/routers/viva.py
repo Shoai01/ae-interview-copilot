@@ -17,6 +17,10 @@ router = APIRouter(
 def assign_session(session_data: viva_schemas.SessionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     return viva_service.assign_session(db, session_data, current_user_id=current_user.id)
 
+@router.post("/sessions/assign/bulk", response_model=viva_schemas.BulkSessionResponse, status_code=status.HTTP_201_CREATED)
+def assign_session_bulk(bulk_data: viva_schemas.BulkSessionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    return viva_service.assign_session_bulk(db, bulk_data, current_user_id=current_user.id)
+
 @router.post("/sessions/start", response_model=viva_schemas.SessionResponse, status_code=status.HTTP_201_CREATED)
 def start_session(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
     return viva_service.resolve_or_create_session(db, current_user)
@@ -73,6 +77,13 @@ def get_session_report_route(session_id: int, db: Session = Depends(get_db), cur
     if not report:
         raise HTTPException(status_code=404, detail="Session not found")
     return report
+
+@router.put("/{session_id}/decision")
+def submit_decision(session_id: int, decision_data: viva_schemas.TrainerDecisionRequest, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    result = viva_service.submit_trainer_decision(db, session_id, decision_data, current_user.id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Session or report not found")
+    return {"status": "ok", "decision": result.trainer_decision.value if result.trainer_decision else None}
 
 @router.get("/trainee/{user_id}", response_model=viva_schemas.TraineeResponse)
 def get_trainee(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
