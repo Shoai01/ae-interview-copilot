@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from models import domain
 from schemas import admin as admin_schemas
-from typing import List
+from typing import List, Optional
 from repositories import admin_repository
 
 def get_modules(db: Session) -> List[domain.TrainingModule]:
@@ -27,7 +27,7 @@ def delete_question(db: Session, question_id: int) -> bool:
         return True
     return False
 
-def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
+def get_dashboard_metrics(db: Session, module_id: Optional[int] = None) -> dict:
     return admin_repository.get_dashboard_metrics(db, module_id)
 
 def update_question(db: Session, question_id: int, update_data: admin_schemas.QuestionUpdate) -> domain.QuestionBank:
