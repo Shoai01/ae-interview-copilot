@@ -83,6 +83,8 @@ class RecentActivity(BaseModel):
 
 class DashboardResponse(BaseModel):
     total_interviews: int
+    total_passed: int
+    total_failed: int
     avg_performance_score: float
     active_sessions: int
     completion_rate: float

@@ -88,7 +88,7 @@ export default function TrainerOverview() {
   };
 
   // Colors for competency bars
-  const compColors = ["#F26522", "#009ADE", "#535f74", "#bbc7df"];
+  const compColors = ["#F26522", "primary.main", "text.secondary", "#bbc7df"];
 
   return (
     <Layout>
@@ -186,7 +186,7 @@ export default function TrainerOverview() {
               <Typography variant="h6" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 600 }}>
                 Interview Performance Trends
               </Typography>
-              <IconButton size="small"><MoreVertIcon /></IconButton>
+              <IconButton aria-label="action" size="small"><MoreVertIcon /></IconButton>
             </Box>
             <Box sx={{ flex: 1, bgcolor: '#ffffff', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 2, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {/* Abstract Bar Chart */}
@@ -272,7 +272,7 @@ export default function TrainerOverview() {
                           <Box sx={{ 
                             width: activity.score ? `${activity.score}%` : (activity.status === 'IN_PROGRESS' ? '45%' : '0%'), 
                             height: '100%', 
-                            bgcolor: activity.score ? (activity.score >= 80 ? '#10b981' : '#fb923c') : '#F26522', 
+                            bgcolor: activity.score ? (activity.score >= 80 ? 'success.main' : 'warning.main') : '#F26522', 
                             borderRadius: 3,
                             animation: activity.status === 'IN_PROGRESS' ? `${pulse} 2s infinite` : 'none'
                           }} />
@@ -281,7 +281,7 @@ export default function TrainerOverview() {
                     </TableCell>
                     <TableCell sx={{ borderBottom: 'none' }}>
                       {activity.status === 'COMPLETED' ? (
-                         <Chip size="small" label="Complete" sx={{ bgcolor: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', borderRadius: 1 }} />
+                         <Chip size="small" label="Complete" sx={{ bgcolor: '#ecfdf5', color: 'success.dark', border: '1px solid #a7f3d0', borderRadius: 1 }} />
                       ) : (
                          <Chip size="small" label="In-Progress" icon={<Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#F26522', animation: `${pulse} 2s infinite`, ml: 1 }} />} sx={{ bgcolor: 'rgba(0,0,0,0.04)', color: 'text.primary', borderRadius: 1, '& .MuiChip-icon': { color: '#F26522' } }} />
                       )}

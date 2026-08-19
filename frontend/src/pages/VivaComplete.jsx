@@ -80,7 +80,7 @@ export default function VivaComplete() {
           '100%': { opacity: 1, transform: 'translateY(0)' }
         }
       }}>
-        <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', p: { xs: 5, md: 8 }, '&:last-child': { pb: { xs: 5, md: 8 } } }}>
+        <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', p: { xs: 3, md: 6 }, '&:last-child': { pb: { xs: 3, md: 6 } } }}>
           
           {/* Icon Area */}
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
@@ -112,11 +112,11 @@ export default function VivaComplete() {
           <Divider sx={{ width: '85%', mx: 'auto', my: 5 }} />
 
           {/* Stats Row */}
-          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: { xs: 3, md: 6 }, width: '100%', mb: 6 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: { xs: 2, md: 6 }, width: '100%', mb: 6 }}>
             <Box sx={{ 
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               bgcolor: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)',
-              borderRadius: 3, p: 3, minWidth: 160
+              borderRadius: 3, p: { xs: 2, sm: 3 }, minWidth: { xs: 120, sm: 160 }
             }}>
               <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 600, mb: 1, letterSpacing: '0.05em' }}>
                 Duration
@@ -129,7 +129,7 @@ export default function VivaComplete() {
             <Box sx={{ 
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               bgcolor: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)',
-              borderRadius: 3, p: 3, minWidth: 160
+              borderRadius: 3, p: { xs: 2, sm: 3 }, minWidth: { xs: 120, sm: 160 }
             }}>
               <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 600, mb: 1, letterSpacing: '0.05em' }}>
                 Questions

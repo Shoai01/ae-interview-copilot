@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Box, Typography, Button, Avatar, Stack, CircularProgress, Grid, Card, Chip, Divider, TextField } from '@mui/material';
+import { Box, Typography, Button, Avatar, Stack, CircularProgress, Grid, Card, Chip, TextField } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -88,9 +88,7 @@ export default function TrainerReviewDetail() {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%', pb: 28 }}>
 
         {/* Back Navigation */}
-        <Box 
-          onClick={() => navigate('/hr/sessions')}
-          sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.8, color: 'text.secondary', cursor: 'pointer', '&:hover': { color: 'primary.main' }, transition: 'color 0.2s' }}
+        <Box onClick={() => navigate('/hr/sessions')} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && navigate('/hr/sessions')} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.8, color: 'text.secondary', cursor: 'pointer', '&:hover': { color: 'primary.main' }, transition: 'color 0.2s' }}
         >
           <ArrowBackIcon sx={{ fontSize: 18 }} />
           <Typography variant="body2" fontWeight={500} sx={{ fontFamily: 'DM Sans, sans-serif' }}>Back to Sessions</Typography>

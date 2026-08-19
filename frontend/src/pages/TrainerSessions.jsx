@@ -1,12 +1,10 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, Stack, CircularProgress, IconButton, TablePagination, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Autocomplete, Card, ToggleButton, ToggleButtonGroup, List, ListItem, ListItemText, Divider } from '@mui/material';
+import { Box, Typography, Button, MenuItem, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Stack, CircularProgress, IconButton, TablePagination, Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl, InputLabel, Autocomplete, Card, ToggleButton, ToggleButtonGroup, List, ListItem, ListItemText, Divider } from '@mui/material';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import Layout from '@/components/Layout';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import CancelIcon from '@mui/icons-material/Cancel';
-import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
-import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import SyncIcon from '@mui/icons-material/Sync';
 import { useNavigate } from 'react-router-dom';
 import { vivaService, adminService } from '@/services/api';
@@ -205,7 +203,7 @@ export default function TrainerSessions() {
                 <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
                   Viva Sessions
                 </Typography>
-                <IconButton onClick={fetchSessions} size="medium" disabled={loading} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
+                <IconButton aria-label="action" onClick={fetchSessions} size="medium" disabled={loading} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
                   <SyncIcon sx={{ animation: loading ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
                 </IconButton>
               </Box>
@@ -214,11 +212,11 @@ export default function TrainerSessions() {
               </Typography>
             </Box>
           </Box>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             <Button 
               variant="contained" 
               onClick={() => setOpenAssignModal(true)}
-              sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, bgcolor: '#f26522', color: '#fff', fontFamily: 'DM Sans, sans-serif', '&:hover': { bgcolor: '#d9581b' }, boxShadow: 'none', textTransform: 'none' }}
+              sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600, fontFamily: 'DM Sans, sans-serif', boxShadow: 'none', textTransform: 'none' }}
             >
               Assign Session
             </Button>
@@ -249,13 +247,13 @@ export default function TrainerSessions() {
               <Table sx={{ minWidth: 800 }} aria-label="sessions table">
                 <TableHead>
                   <TableRow sx={{  }}>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Trainee Name</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Username</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Module</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>AI Rec.</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Date</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Action</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Trainee Name</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Username</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Module</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>AI Rec.</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Date</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -277,8 +275,8 @@ export default function TrainerSessions() {
                         '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.04)' }
                       }}
                     >
-                      <TableCell sx={{ fontWeight: 600, color: '#0d1c2e', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{row.trainee_name || 'Unknown'}</TableCell>
-                      <TableCell sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{row.username || 'N/A'}</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: 'text.primary', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{row.trainee_name || 'Unknown'}</TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{row.username || 'N/A'}</TableCell>
                       <TableCell sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                         <Box sx={{ display: 'inline-flex', px: 1, py: 0.5, bgcolor: 'rgba(242, 101, 34, 0.08)', borderRadius: 1, fontSize: '12px', fontWeight: 600, color: '#f26522' }}>
                           {row.module_name}
@@ -287,10 +285,10 @@ export default function TrainerSessions() {
                       <TableCell sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                         {row.ai_recommendation ? (
                           <Stack direction="row" alignItems="center" spacing={1}>
-                            {row.ai_recommendation === 'PASS' && <CheckCircleIcon sx={{ fontSize: 18, color: '#059669' }} />}
+                            {row.ai_recommendation === 'PASS' && <CheckCircleIcon sx={{ fontSize: 18, color: 'success.dark' }} />}
                             {row.ai_recommendation === 'BORDERLINE' && <WarningIcon sx={{ fontSize: 18, color: '#d97706' }} />}
                             {row.ai_recommendation === 'FAIL' && <CancelIcon sx={{ fontSize: 18, color: '#dc2626' }} />}
-                            <Typography variant="body2" sx={{ fontWeight: 500, color: row.ai_recommendation === 'PASS' ? '#059669' : row.ai_recommendation === 'BORDERLINE' ? '#d97706' : '#dc2626' }}>
+                            <Typography variant="body2" sx={{ fontWeight: 500, color: row.ai_recommendation === 'PASS' ? 'success.dark' : row.ai_recommendation === 'BORDERLINE' ? '#d97706' : '#dc2626' }}>
                               {row.ai_recommendation}
                             </Typography>
                           </Stack>
@@ -314,7 +312,7 @@ export default function TrainerSessions() {
                           }} 
                         />
                       </TableCell>
-                      <TableCell sx={{ color: '#535f74', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{row.date}</TableCell>
+                      <TableCell sx={{ color: 'text.secondary', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>{row.date}</TableCell>
                       <TableCell align="right" sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                         <Button 
                           variant="outlined" 

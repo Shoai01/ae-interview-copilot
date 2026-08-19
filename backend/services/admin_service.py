@@ -27,8 +27,8 @@ def delete_question(db: Session, question_id: int) -> bool:
         return True
     return False
 
-def get_dashboard_metrics(db: Session) -> dict:
-    return admin_repository.get_dashboard_metrics(db)
+def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
+    return admin_repository.get_dashboard_metrics(db, module_id)
 
 def update_question(db: Session, question_id: int, update_data: admin_schemas.QuestionUpdate) -> domain.QuestionBank:
     question = admin_repository.get_question_by_id(db, question_id)

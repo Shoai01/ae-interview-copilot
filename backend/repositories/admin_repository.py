@@ -89,26 +89,37 @@ def delete_set_questions(db: Session, module_id: int, set_name: str) -> None:
 
 from sqlalchemy import func, desc
 
-def get_dashboard_metrics(db: Session) -> dict:
-    total_interviews = db.query(domain.VivaSession).count()
+def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
+    session_query = db.query(domain.VivaSession)
+    report_query = db.query(domain.VivaReport).join(domain.VivaSession, domain.VivaSession.id == domain.VivaReport.session_id)
     
-    avg_score = db.query(func.avg(domain.VivaReport.aggregate_score)).scalar()
+    if module_id is not None:
+        session_query = session_query.filter(domain.VivaSession.module_id == module_id)
+        report_query = report_query.filter(domain.VivaSession.module_id == module_id)
+        
+    total_interviews = session_query.count()
+    
+    avg_score = report_query.with_entities(func.avg(domain.VivaReport.aggregate_score)).scalar()
     avg_performance_score = round(avg_score, 1) if avg_score else 0.0
     
-    active_sessions = db.query(domain.VivaSession).filter(domain.VivaSession.status == domain.SessionStatus.IN_PROGRESS).count()
+    active_sessions = session_query.filter(domain.VivaSession.status == domain.SessionStatus.IN_PROGRESS).count()
+    completed_sessions = session_query.filter(domain.VivaSession.status == domain.SessionStatus.COMPLETED).count()
     
-    completed_sessions = db.query(domain.VivaSession).filter(domain.VivaSession.status == domain.SessionStatus.COMPLETED).count()
     completion_rate = (completed_sessions / total_interviews * 100) if total_interviews > 0 else 0.0
     completion_rate = round(completion_rate, 1)
     
-    # Trends (mocking logic by grouping by day - SQLite compatible)
-    # Actually, a simple grouping might be complex cross-DB. Let's return 7 days of dummy data for trends 
-    # OR we can just query all completed sessions and group them manually in python
-    completed_reports = db.query(domain.VivaSession.start_time, domain.VivaReport.aggregate_score)\
+    total_passed = report_query.filter(domain.VivaReport.ai_recommendation == domain.AIRecommendationType.PASS).count()
+    total_failed = report_query.filter(domain.VivaReport.ai_recommendation == domain.AIRecommendationType.FAIL).count()
+    
+    completed_reports_query = db.query(domain.VivaSession.start_time, domain.VivaReport.aggregate_score)\
         .join(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)\
-        .filter(domain.VivaSession.status == domain.SessionStatus.COMPLETED).all()
+        .filter(domain.VivaSession.status == domain.SessionStatus.COMPLETED)
         
-    # Python-side aggregation for trends (safe for all DB dialects for small datasets)
+    if module_id is not None:
+        completed_reports_query = completed_reports_query.filter(domain.VivaSession.module_id == module_id)
+        
+    completed_reports = completed_reports_query.all()
+        
     from collections import defaultdict
     trend_dict = defaultdict(list)
     for start_time, score in completed_reports:
@@ -117,22 +128,25 @@ def get_dashboard_metrics(db: Session) -> dict:
             trend_dict[day_str].append(score)
             
     trends = []
-    # If no data, provide empty
-    for day_str, scores in list(trend_dict.items())[-7:]: # last 7 entries
+    for day_str, scores in list(trend_dict.items())[-7:]:
         trends.append({
             "label": day_str,
             "average_score": round(sum(scores) / len(scores), 1),
             "count": len(scores)
         })
         
-    # Top Competencies
-    module_scores = db.query(
+    module_scores_query = db.query(
         domain.TrainingModule.name,
         func.avg(domain.VivaReport.aggregate_score).label("avg_score")
     )\
     .select_from(domain.VivaSession)\
     .join(domain.TrainingModule, domain.VivaSession.module_id == domain.TrainingModule.id)\
-    .join(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)\
+    .join(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)
+    
+    if module_id is not None:
+        module_scores_query = module_scores_query.filter(domain.VivaSession.module_id == module_id)
+        
+    module_scores = module_scores_query\
     .group_by(domain.TrainingModule.name)\
     .order_by(desc("avg_score"))\
     .limit(4).all()
@@ -142,8 +156,7 @@ def get_dashboard_metrics(db: Session) -> dict:
         for m_name, m_score in module_scores if m_score is not None
     ]
     
-    # Recent Activity
-    recent_sessions = db.query(
+    recent_sessions_query = db.query(
         domain.VivaSession,
         domain.User.full_name,
         domain.User.username,
@@ -152,7 +165,12 @@ def get_dashboard_metrics(db: Session) -> dict:
     )\
     .join(domain.User, domain.VivaSession.trainee_id == domain.User.id)\
     .join(domain.TrainingModule, domain.VivaSession.module_id == domain.TrainingModule.id)\
-    .outerjoin(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)\
+    .outerjoin(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)
+    
+    if module_id is not None:
+        recent_sessions_query = recent_sessions_query.filter(domain.VivaSession.module_id == module_id)
+        
+    recent_sessions = recent_sessions_query\
     .order_by(domain.VivaSession.start_time.desc())\
     .limit(5).all()
     
@@ -165,13 +183,15 @@ def get_dashboard_metrics(db: Session) -> dict:
             "trainee_name": name,
             "trainee_initials": initials,
             "module_name": m_name,
-            "date": sess.start_time.strftime("%b %d, %Y") if sess.start_time else "Unknown",
+            "date": sess.start_time.strftime("%d %b, %Y") if sess.start_time else "N/A",
             "score": round(score, 1) if score is not None else None,
             "status": sess.status.value
         })
         
     return {
         "total_interviews": total_interviews,
+        "total_passed": total_passed,
+        "total_failed": total_failed,
         "avg_performance_score": avg_performance_score,
         "active_sessions": active_sessions,
         "completion_rate": completion_rate,

@@ -28,8 +28,8 @@ export const adminService = {
     const response = await api.get('/admin/modules');
     return response.data;
   },
-  getDashboardMetrics: async () => {
-    const response = await api.get('/admin/dashboard');
+  getDashboardMetrics: async (moduleId = null) => {
+    const response = await api.get('/admin/dashboard', { params: moduleId ? { module_id: moduleId } : {} });
     return response.data;
   },
   getQuestions: async (moduleId) => {

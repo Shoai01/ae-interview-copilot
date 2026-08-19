@@ -187,8 +187,7 @@ export default function VivaInProgress() {
         </Paper>
 
         <Box sx={{ 
-          width: 240, 
-          height: 180, 
+          width: { xs: 120, sm: 180, md: 240 }, height: { xs: 90, sm: 135, md: 180 }, 
           borderRadius: 4, 
           border: '1px solid rgba(255,255,255,0.4)', 
           overflow: 'hidden', 
@@ -207,9 +206,10 @@ export default function VivaInProgress() {
             playsInline 
             muted 
             sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            aria-label="Video stream"
           />
           <Box sx={{ position: 'absolute', bottom: 12, right: 12, display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', px: 1, py: 0.5, borderRadius: 2 }}>
-            <Box sx={{ width: 8, height: 8, bgcolor: '#10b981', borderRadius: '50%', boxShadow: '0 0 8px #10b981' }} />
+            <Box sx={{ width: 8, height: 8, bgcolor: 'success.main', borderRadius: '50%', boxShadow: '0 0 8px success.main' }} />
             <Typography variant="caption" sx={{ color: 'white', fontWeight: 600, fontSize: '10px', letterSpacing: 0.5 }}>LIVE</Typography>
           </Box>
         </Box>
@@ -218,13 +218,10 @@ export default function VivaInProgress() {
       <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', px: 3, pt: 12, pb: 6, maxWidth: 1440, mx: 'auto', width: '100%', zIndex: 10 }}>
         
         <Box sx={{ maxWidth: 800, textAlign: 'center', mb: 6 }}>
-          <Box 
-            sx={{ display: 'flex', justifyContent: 'center', mb: 2, cursor: 'pointer' }}
-            onClick={() => currentQuestion && speakQuestion(currentQuestion.text)}
-          >
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2, cursor: 'pointer' }} onClick={() => currentQuestion && speakQuestion(currentQuestion.text)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && currentQuestion && speakQuestion(currentQuestion.text)}>
             <VolumeUpIcon sx={{ color: 'text.secondary', fontSize: 32, opacity: 0.7, '&:hover': { opacity: 1, color: 'primary.main' } }} />
           </Box>
-          <Typography variant="h1" sx={{ letterSpacing: '-0.02em', mb: 4, fontFamily: '"Georgia", "Merriweather", serif', fontWeight: 500 }}>
+          <Typography variant="h1" sx={{ fontSize: { xs: '2rem', sm: '2.5rem', md: '3.5rem' }, letterSpacing: '-0.02em', mb: 4, fontFamily: '"Georgia", "Merriweather", serif', fontWeight: 500 }}>
             {loading ? "Loading..." : currentQuestion ? currentQuestion.text : "Session Complete"}
           </Typography>
 
@@ -248,7 +245,7 @@ export default function VivaInProgress() {
 
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 700 }}>
           
-          <IconButton 
+          <IconButton aria-label="action" 
             color={isRecording ? "error" : "primary"} 
             onClick={() => {
               if (!isRecording) cancelSpeech();

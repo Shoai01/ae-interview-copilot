@@ -94,7 +94,7 @@ export default function Layout({ children }) {
   );
 
   return (
-    <Box sx={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden', bgcolor: 'transparent' }}>
+    <Box sx={{ display: 'flex', width: '100%', height: '100vh', overflow: 'hidden', bgcolor: 'transparent' }}>
       
       {/* Mobile Drawer */}
       <Drawer
@@ -142,7 +142,7 @@ export default function Layout({ children }) {
             <IconButton color="inherit" aria-label="open drawer" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { lg: 'none' } }}>
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" sx={{ display: { xs: 'none', md: 'block' }, fontWeight: 600 }}>
+            <Typography variant="h6" sx={{ display: 'block', fontWeight: 600 }}>
               {navItems.find(item => location.pathname.startsWith(item.path))?.text || 'Dashboard'}
             </Typography>
           </Box>

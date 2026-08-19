@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Card } from '@mui/material';
+import { Box, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, CircularProgress, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Card } from '@mui/material';
 import Layout from '@/components/Layout';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -123,7 +123,7 @@ export default function KnowledgeBase() {
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 2, mt: { xs: 2, md: 0 } }}>
-            <IconButton onClick={() => { fetchModules(); if (activeModuleId) fetchDocuments(activeModuleId); }} size="medium" disabled={loading} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
+            <IconButton aria-label="action" onClick={() => { fetchModules(); if (activeModuleId) fetchDocuments(activeModuleId); }} size="medium" disabled={loading} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
               <SyncIcon sx={{ animation: loading ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
             </IconButton>
             <Box 
@@ -159,7 +159,7 @@ export default function KnowledgeBase() {
                   minWidth: 'auto',
                   borderRadius: 0,
                   borderBottom: activeModuleId === mod.id ? '2px solid #f26522' : '2px solid transparent',
-                  color: activeModuleId === mod.id ? '#f26522' : '#535f74',
+                  color: activeModuleId === mod.id ? '#f26522' : 'text.secondary',
                   fontWeight: activeModuleId === mod.id ? 700 : 500,
                   fontFamily: 'Syne, sans-serif',
                   textTransform: 'none',
@@ -173,12 +173,12 @@ export default function KnowledgeBase() {
           </Box>
 
           <TableContainer>
-            <Table>
+            <Table aria-label="knowledge base table">
               <TableHead>
                 <TableRow sx={{ bgcolor: '#fafbfd' }}>
-                  <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>File Name</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Uploaded At</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#535f74', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2, width: 150, textAlign: 'right' }}>Actions</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>File Name</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Uploaded At</TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2, width: 150, textAlign: 'right' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -197,10 +197,10 @@ export default function KnowledgeBase() {
                   <TableRow key={doc.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                     <TableCell sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)', py: 2 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: 'rgba(0,154,222,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#009ADE' }}>
+                        <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: 'rgba(0,154,222,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main' }}>
                           <DescriptionIcon fontSize="small" />
                         </Box>
-                        <Typography variant="body2" fontWeight={600} color="#0d1c2e" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" fontWeight={600} color="text.primary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
                           {doc.filename}
                         </Typography>
                       </Box>
@@ -212,10 +212,10 @@ export default function KnowledgeBase() {
                     </TableCell>
                     <TableCell align="right" sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)', py: 2 }}>
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                        <IconButton onClick={() => handleView(doc.id)} size="small" sx={{ color: '#009ADE', bgcolor: 'rgba(0,154,222,0.1)', '&:hover': { bgcolor: 'rgba(0,154,222,0.2)' } }}>
+                        <IconButton aria-label="action" onClick={() => handleView(doc.id)} size="small" sx={{ color: 'primary.main', bgcolor: 'rgba(0,154,222,0.1)', '&:hover': { bgcolor: 'rgba(0,154,222,0.2)' } }}>
                           <VisibilityIcon fontSize="small" />
                         </IconButton>
-                        <IconButton aria-label="Delete document" onClick={() => handleDeleteClick(doc.id)} size="small" sx={{ color: 'error.main', bgcolor: 'rgba(239,68,68,0.1)', '&:hover': { bgcolor: 'rgba(239,68,68,0.2)' } }}>
+                        <IconButton aria-label="action" aria-label="Delete document" onClick={() => handleDeleteClick(doc.id)} size="small" sx={{ color: 'error.main', bgcolor: 'rgba(239,68,68,0.1)', '&:hover': { bgcolor: 'rgba(239,68,68,0.2)' } }}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Box>
@@ -248,7 +248,7 @@ export default function KnowledgeBase() {
         fullWidth 
         PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 20px 40px rgba(0,0,0,0.1)' } }}
       >
-        <DialogTitle sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#f8f9ff', color: '#0d1c2e' }}>
+        <DialogTitle sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#f8f9ff', color: 'text.primary' }}>
           {viewingDoc?.filename}
         </DialogTitle>
         <DialogContent sx={{ p: 3, bgcolor: '#ffffff' }}>
@@ -257,7 +257,7 @@ export default function KnowledgeBase() {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 0, bgcolor: '#ffffff' }}>
-          <Button onClick={() => setViewingDoc(null)} variant="outlined" sx={{ borderRadius: 2, fontWeight: 600, color: '#535f74', borderColor: '#cbd5e1' }}>
+          <Button onClick={() => setViewingDoc(null)} variant="outlined" sx={{ borderRadius: 2, fontWeight: 600, color: 'text.secondary', borderColor: '#cbd5e1' }}>
             Close
           </Button>
         </DialogActions>

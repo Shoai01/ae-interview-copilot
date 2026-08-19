@@ -4,7 +4,7 @@ import {
   Select, MenuItem, Alert, CircularProgress, Stack, Grid,
   Table, TableBody, TableCell, TableHead, TableRow, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  IconButton, Avatar, Switch, InputAdornment, Paper, TableContainer
+  IconButton, Avatar, Switch, InputAdornment, TableContainer
 } from '@mui/material';
 import Layout from '@/components/Layout';
 import { adminService } from '@/services/api';
@@ -13,7 +13,6 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import DownloadIcon from '@mui/icons-material/Download';
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SyncIcon from '@mui/icons-material/Sync';
@@ -21,8 +20,7 @@ import SyncIcon from '@mui/icons-material/Sync';
 export default function UserManagement() {
   const { user } = useAuth();
   
-  const [modules, setModules] = useState([]);
-  const [users, setUsers] = useState([]);
+    const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -196,7 +194,7 @@ export default function UserManagement() {
               <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
                 Manage Users
               </Typography>
-              <IconButton onClick={fetchUsersData} size="medium" disabled={loadingUsers} >
+              <IconButton aria-label="action" onClick={fetchUsersData} size="medium" disabled={loadingUsers} >
                 <SyncIcon sx={{ animation: loadingUsers ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
               </IconButton>
             </Box>
@@ -227,7 +225,7 @@ export default function UserManagement() {
             size="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{ width: 320, ...inputSx }}
+            sx={{ width: { xs: '100%', sm: 320 }, ...inputSx }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -285,7 +283,7 @@ export default function UserManagement() {
                       />
                     </TableCell>
                     <TableCell>
-                      <Switch 
+                      <Switch inputProps={{ "aria-label": "toggle active" }} 
                         checked={u.is_active} 
                         size="small" 
                         color="primary"
@@ -302,10 +300,10 @@ export default function UserManagement() {
                     </TableCell>
                     <TableCell align="right">
                       <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <IconButton size="small" onClick={() => handleOpenEdit(u)} sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)' } }}>
+                        <IconButton aria-label="action" size="small" onClick={() => handleOpenEdit(u)} sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)' } }}>
                           <EditIcon fontSize="small" />
                         </IconButton>
-                        <IconButton size="small" onClick={() => { setSelectedUser(u); setOpenDeleteDialog(true); }} sx={{ color: 'text.secondary', '&:hover': { color: 'error.main', bgcolor: 'rgba(239,68,68,0.1)' } }}>
+                        <IconButton aria-label="action" size="small" onClick={() => { setSelectedUser(u); setOpenDeleteDialog(true); }} sx={{ color: 'text.secondary', '&:hover': { color: 'error.main', bgcolor: 'rgba(239,68,68,0.1)' } }}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Stack>

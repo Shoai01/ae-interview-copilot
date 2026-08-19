@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from core.database import get_db
 from schemas import admin as admin_schemas
@@ -16,8 +16,8 @@ router = APIRouter(
 )
 
 @router.get("/dashboard", response_model=admin_schemas.DashboardResponse)
-def get_dashboard_metrics(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
-    return admin_service.get_dashboard_metrics(db)
+def get_dashboard_metrics(module_id: Optional[int] = None, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    return admin_service.get_dashboard_metrics(db, module_id=module_id)
 
 @router.post("/users", response_model=user_schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: user_schemas.UserCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):

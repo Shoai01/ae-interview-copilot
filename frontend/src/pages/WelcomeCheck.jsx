@@ -204,7 +204,7 @@ export default function WelcomeCheck() {
                 px: 1
               }} 
             />
-            <Typography variant="h2" sx={{ fontWeight: 700, fontSize: { xs: '32px', md: '48px' }, mb: 1, color: '#0d1c2e' }}>
+            <Typography variant="h2" sx={{ fontWeight: 700, fontSize: { xs: '32px', md: '48px' }, mb: 1, color: 'text.primary' }}>
               Welcome, {traineeName}
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ fontSize: '18px' }}>
@@ -225,26 +225,26 @@ export default function WelcomeCheck() {
                 
                 <Stack spacing={4}>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    <TimerOutlinedIcon sx={{ color: '#009ade', fontSize: '22px' }} />
+                    <TimerOutlinedIcon sx={{ color: 'primary.main', fontSize: '22px' }} />
                     <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#0d1c2e', mb: 0.5 }}>Duration</Typography>
-                      <Typography variant="body2" sx={{ color: '#535f74', lineHeight: 1.6 }}>Approximately 25-30 minutes. Ensure you have uninterrupted time.</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>Duration</Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>Approximately 25-30 minutes. Ensure you have uninterrupted time.</Typography>
                     </Box>
                   </Box>
                   
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    <FormatListNumberedOutlinedIcon sx={{ color: '#009ade', fontSize: '22px' }} />
+                    <FormatListNumberedOutlinedIcon sx={{ color: 'primary.main', fontSize: '22px' }} />
                     <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#0d1c2e', mb: 0.5 }}>Questions</Typography>
-                      <Typography variant="body2" sx={{ color: '#535f74', lineHeight: 1.6 }}>Dynamic questions tailored to your {currentSession?.module_name || ''} profile.</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>Questions</Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>Dynamic questions tailored to your {currentSession?.module_name || ''} profile.</Typography>
                     </Box>
                   </Box>
                   
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    <SmartToyOutlinedIcon sx={{ color: '#009ade', fontSize: '22px' }} />
+                    <SmartToyOutlinedIcon sx={{ color: 'primary.main', fontSize: '22px' }} />
                     <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#0d1c2e', mb: 0.5 }}>AI Evaluation</Typography>
-                      <Typography variant="body2" sx={{ color: '#535f74', lineHeight: 1.6 }}>Responses are analyzed in real-time for technical accuracy and clarity.</Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>AI Evaluation</Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>Responses are analyzed in real-time for technical accuracy and clarity.</Typography>
                     </Box>
                   </Box>
                 </Stack>
@@ -260,7 +260,7 @@ export default function WelcomeCheck() {
                     <FactCheckOutlinedIcon sx={{ color: '#f26522' }} />
                     <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>System Check</Typography>
                   </Stack>
-                  <Typography variant="caption" sx={{ color: '#535f74', fontWeight: 500 }}>{readyCount}/5 Ready</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>{readyCount}/5 Ready</Typography>
                 </Box>
 
                 {/* Live Video Preview Box */}
@@ -283,40 +283,40 @@ export default function WelcomeCheck() {
                 <Stack spacing={0.5}>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
                     <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <VideocamOutlinedIcon sx={{ color: '#535f74', fontSize: '18px' }} />
-                      <Typography variant="body2" sx={{ color: '#0d1c2e' }}>Camera</Typography>
+                      <VideocamOutlinedIcon sx={{ color: 'text.secondary', fontSize: '18px' }} />
+                      <Typography variant="body2" sx={{ color: 'text.primary' }}>Camera</Typography>
                     </Stack>
                     <StatusIcon status={checks.camera} />
                   </Box>
                   
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
                     <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <MicNoneOutlinedIcon sx={{ color: '#535f74', fontSize: '18px' }} />
-                      <Typography variant="body2" sx={{ color: '#0d1c2e' }}>Microphone</Typography>
+                      <MicNoneOutlinedIcon sx={{ color: 'text.secondary', fontSize: '18px' }} />
+                      <Typography variant="body2" sx={{ color: 'text.primary' }}>Microphone</Typography>
                     </Stack>
                     <StatusIcon status={checks.mic} />
                   </Box>
                   
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
                     <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <VolumeUpOutlinedIcon sx={{ color: '#535f74', fontSize: '18px' }} />
-                      <Typography variant="body2" sx={{ color: '#0d1c2e' }}>Speaker</Typography>
+                      <VolumeUpOutlinedIcon sx={{ color: 'text.secondary', fontSize: '18px' }} />
+                      <Typography variant="body2" sx={{ color: 'text.primary' }}>Speaker</Typography>
                     </Stack>
                     <StatusIcon status={checks.speaker} />
                   </Box>
                   
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
                     <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <WifiOutlinedIcon sx={{ color: '#535f74', fontSize: '18px' }} />
-                      <Typography variant="body2" sx={{ color: '#0d1c2e' }}>Internet</Typography>
+                      <WifiOutlinedIcon sx={{ color: 'text.secondary', fontSize: '18px' }} />
+                      <Typography variant="body2" sx={{ color: 'text.primary' }}>Internet</Typography>
                     </Stack>
                     <StatusIcon status={checks.network} />
                   </Box>
                   
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
                     <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <PublicOutlinedIcon sx={{ color: '#535f74', fontSize: '18px' }} />
-                      <Typography variant="body2" sx={{ color: '#0d1c2e' }}>Browser</Typography>
+                      <PublicOutlinedIcon sx={{ color: 'text.secondary', fontSize: '18px' }} />
+                      <Typography variant="body2" sx={{ color: 'text.primary' }}>Browser</Typography>
                     </Stack>
                     <StatusIcon status={checks.browser} />
                   </Box>
