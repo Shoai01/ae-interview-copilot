@@ -13,6 +13,7 @@ def create_question(db: Session, question: admin_schemas.QuestionCreate) -> doma
     db_question = domain.QuestionBank(
         module_id=question.module_id,
         text=question.text,
+        ideal_answer=question.ideal_answer,
         difficulty=question.difficulty,
         set_name=question.set_name,
         is_active=True

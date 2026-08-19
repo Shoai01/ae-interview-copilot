@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Snackbar, Alert, Chip, Card } from '@mui/material';
+import { Box, Typography, Button, IconButton, Paper, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Snackbar, Alert, Chip, Card, Tooltip } from '@mui/material';
 import Layout from '@/components/Layout';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
@@ -21,7 +21,7 @@ export default function AdminQuestionBank() {
   
   // Dialog State
   const [open, setOpen] = useState(false);
-  const [newQuestion, setNewQuestion] = useState({ text: '', difficulty: 'MEDIUM', setNameSelection: '' });
+  const [newQuestion, setNewQuestion] = useState({ text: '', ideal_answer: '', difficulty: 'MEDIUM', setNameSelection: '' });
   const [openGenerate, setOpenGenerate] = useState(false);
   const [generateConfig, setGenerateConfig] = useState({ count: 15 });
   const [isGenerating, setIsGenerating] = useState(false);
@@ -95,14 +95,14 @@ export default function AdminQuestionBank() {
   const handleOpenEdit = (q) => {
     setEditMode(true);
     setEditQuestionId(q.id);
-    setNewQuestion({ text: q.text, difficulty: q.difficulty, setNameSelection: q.set_name || 'Default Set' });
+    setNewQuestion({ text: q.text, ideal_answer: q.ideal_answer || '', difficulty: q.difficulty, setNameSelection: q.set_name || 'Default Set' });
     setOpen(true);
   };
 
   const handleOpenCreate = () => {
     setEditMode(false);
     setEditQuestionId(null);
-    setNewQuestion({ text: '', difficulty: 'MEDIUM', setNameSelection: '' });
+    setNewQuestion({ text: '', ideal_answer: '', difficulty: 'MEDIUM', setNameSelection: '' });
     setOpen(true);
   };
 
@@ -386,7 +386,14 @@ export default function AdminQuestionBank() {
                       {page * rowsPerPage + index + 1}
                     </TableCell>
                     <TableCell sx={{ maxWidth: 300, py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
-                      <Typography sx={{ color: '#0d1c2e', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'DM Sans, sans-serif', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{q.text}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography sx={{ color: '#0d1c2e', fontSize: '0.875rem', fontWeight: 500, fontFamily: 'DM Sans, sans-serif', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{q.text}</Typography>
+                        {q.ideal_answer && (
+                          <Tooltip title={<Typography sx={{ whiteSpace: 'pre-wrap', fontSize: '0.75rem' }}>{q.ideal_answer}</Typography>} arrow placement="top">
+                            <Chip size="small" label="Answer" sx={{ height: 20, fontSize: '0.625rem', bgcolor: 'rgba(5, 150, 105, 0.1)', color: '#059669', fontWeight: 600, borderRadius: 1, cursor: 'help' }} />
+                          </Tooltip>
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell sx={{ py: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
                       <Box sx={{ display: 'inline-flex', px: 1, py: 0.5, borderRadius: 1, bgcolor: '#cae6ff', color: '#002d45', fontSize: '0.625rem', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
@@ -448,6 +455,16 @@ export default function AdminQuestionBank() {
               fullWidth 
               value={newQuestion.text}
               onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+            <TextField 
+              label="Ideal Answer / Key Points (Optional)" 
+              multiline 
+              rows={3} 
+              fullWidth 
+              value={newQuestion.ideal_answer || ''}
+              onChange={(e) => setNewQuestion({ ...newQuestion, ideal_answer: e.target.value })}
+              placeholder="- Key concept 1&#10;- Key concept 2"
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
             <Box sx={{ display: 'flex', gap: 2 }}>

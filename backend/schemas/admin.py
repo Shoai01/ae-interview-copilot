@@ -13,6 +13,7 @@ class ModuleResponse(BaseModel):
 class QuestionBankBase(BaseModel):
     module_id: int
     text: str
+    ideal_answer: Optional[str] = None
     difficulty: DifficultyLevel
     set_name: Optional[str] = "Default Set"
     is_active: Optional[bool] = True
@@ -20,11 +21,13 @@ class QuestionBankBase(BaseModel):
 class QuestionCreate(BaseModel):
     module_id: int
     text: str
+    ideal_answer: Optional[str] = None
     difficulty: DifficultyLevel
     set_name: Optional[str] = "Default Set"
 
 class QuestionUpdate(BaseModel):
     text: Optional[str] = None
+    ideal_answer: Optional[str] = None
     difficulty: Optional[DifficultyLevel] = None
     set_name: Optional[str] = None
     is_active: Optional[bool] = None
@@ -36,6 +39,7 @@ class QuestionResponse(BaseModel):
     id: int
     module_id: int
     text: str
+    ideal_answer: Optional[str] = None
     difficulty: DifficultyLevel
     set_name: Optional[str] = None
     is_active: bool

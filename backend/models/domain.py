@@ -84,6 +84,7 @@ class QuestionBank(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=False)
     text = Column(String, nullable=False)
+    ideal_answer = Column(String, nullable=True)
     difficulty = Column(SQLEnum(DifficultyLevel), nullable=False)
     set_name = Column(String, nullable=True, default="Default Set")
     is_active = Column(Boolean, default=True)

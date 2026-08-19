@@ -12,6 +12,13 @@ from models import domain
 # The directory where FAISS index will be saved
 FAISS_INDEX_PATH = "faiss_index"
 
+from pydantic import BaseModel, Field
+
+class GeneratedQuestion(BaseModel):
+    topic: str = Field(description="1-3 words describing the core concept")
+    question: str = Field(description="The generated interview question")
+    ideal_answer: str = Field(description="Bullet points of what a good answer should include")
+
 def get_embeddings_model():
     # Use LangChain's Vertex AI embeddings wrapper
     # Project is inferred from GOOGLE_APPLICATION_CREDENTIALS
@@ -218,10 +225,7 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
         "- Do NOT ask about any concepts covered in the previous questions listed below.\n"
         "- You MUST format the question using the following style/format: {target_style}\n\n"
         "PREVIOUS QUESTIONS IN THIS SESSION:\n{previous_questions}\n\n"
-        "Extract:\n{context}\n\n"
-        "Return your response EXACTLY in this format, with no other text:\n"
-        "TOPIC: [1-3 words describing the core concept]\n"
-        "QUESTION: [Your generated question here]"
+        "Extract:\n{context}\n"
     )
     
     generated_questions = []
@@ -251,7 +255,7 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
     while len(target_difficulties) < count + 10:
         target_difficulties.extend([domain.DifficultyLevel.MEDIUM, domain.DifficultyLevel.HARD])
         
-    def process_and_add_question(text: str, difficulty: domain.DifficultyLevel, topic: str = "") -> bool:
+    def process_and_add_question(text: str, difficulty: domain.DifficultyLevel, topic: str = "", ideal_answer: str = "") -> bool:
         # Basic cleanup
         if text.startswith("Question:"):
             text = text.replace("Question:", "").strip()
@@ -327,6 +331,7 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
         qb_item = domain.QuestionBank(
             module_id=module_id,
             text=text,
+            ideal_answer=ideal_answer,
             difficulty=difficulty,
             set_name=set_name,
             is_active=True
@@ -349,7 +354,8 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
                 doc = random.choice(hard_docs)
                 
             target_style = question_styles[len(generated_questions) % len(question_styles)]
-            chain = prompt | llm
+            structured_llm = llm.with_structured_output(GeneratedQuestion)
+            chain = prompt | structured_llm
             prev_q_str = "\n".join([f"- {q}" for q in previous_questions_list]) if previous_questions_list else "None"
             response = chain.invoke({
                 "context": doc.page_content, 
@@ -358,21 +364,12 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
                 "target_difficulty": target_diff.value,
                 "target_style": target_style
             })
-            output = response.content.strip()
             
-            q_text = ""
-            q_topic = ""
-            for line in output.split('\n'):
-                line = line.strip()
-                if line.upper().startswith("QUESTION:"):
-                    q_text = line.split(":", 1)[1].strip()
-                elif line.upper().startswith("TOPIC:"):
-                    q_topic = line.split(":", 1)[1].strip()
-                    
-            if not q_text:
-                q_text = output.replace("Question:", "").strip()
-                
-            process_and_add_question(q_text, target_diff, q_topic)
+            q_text = response.question.strip()
+            q_topic = response.topic.strip()
+            q_ideal_answer = response.ideal_answer.strip()
+            
+            process_and_add_question(q_text, target_diff, q_topic, q_ideal_answer)
         except Exception as e:
             print("Failed to generate question from chunk:", e)
             db.rollback()
@@ -392,7 +389,8 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
                 doc = random.choice(hard_docs)
                 
             target_style = question_styles[len(generated_questions) % len(question_styles)]
-            chain = prompt | llm
+            structured_llm = llm.with_structured_output(GeneratedQuestion)
+            chain = prompt | structured_llm
             prev_q_str = "\n".join([f"- {q}" for q in previous_questions_list]) if previous_questions_list else "None"
             response = chain.invoke({
                 "context": doc.page_content, 
@@ -401,21 +399,12 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
                 "target_difficulty": target_diff.value,
                 "target_style": target_style
             })
-            output = response.content.strip()
             
-            q_text = ""
-            q_topic = ""
-            for line in output.split('\n'):
-                line = line.strip()
-                if line.upper().startswith("QUESTION:"):
-                    q_text = line.split(":", 1)[1].strip()
-                elif line.upper().startswith("TOPIC:"):
-                    q_topic = line.split(":", 1)[1].strip()
-                    
-            if not q_text:
-                q_text = output.replace("Question:", "").strip()
+            q_text = response.question.strip()
+            q_topic = response.topic.strip()
+            q_ideal_answer = response.ideal_answer.strip()
             
-            added = process_and_add_question(q_text, target_diff, q_topic)
+            added = process_and_add_question(q_text, target_diff, q_topic, q_ideal_answer)
             if not added:
                 retries += 1
         except Exception:

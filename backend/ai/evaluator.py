@@ -62,7 +62,17 @@ def evaluate_interview_session(questions_data: list) -> SessionEvaluationResult:
         prompt += f"Question ID {q['viva_question_id']}: {q['question_text']}\n"
         prompt += f"Candidate Answer: {q['transcript']}\n\n"
 
-    try:
+    from tenacity import retry, wait_exponential, stop_after_attempt
+
+    def log_retry(retry_state):
+        print(f"⚠️ Retrying Gemini API call due to error: {retry_state.outcome.exception()} (Attempt {retry_state.attempt_number})")
+
+    @retry(
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(3),
+        before_sleep=log_retry
+    )
+    def _call_gemini_api():
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
@@ -72,8 +82,11 @@ def evaluate_interview_session(questions_data: list) -> SessionEvaluationResult:
             },
         )
         return response.parsed
+
+    try:
+        return _call_gemini_api()
     except Exception as e:
-        print(f"Error evaluating session with Gemini: {e}")
+        print(f"❌ Gemini evaluation failed after retries: {e}. Falling back to default dummy score.")
         # Fallback in case of error (e.g. no API key, network error)
         evals = []
         for q in questions_data:
