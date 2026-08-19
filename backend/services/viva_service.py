@@ -317,10 +317,12 @@ def evaluate_session(db: Session, session_id: int):
     questions_data = []
     for q in session.questions:
         if q.answered_at and q.transcript:
+            flags = [f.flag_type for f in q.fraud_flags] if q.fraud_flags else []
             questions_data.append({
                 'viva_question_id': q.id,
                 'question_text': q.question_bank.text,
-                'transcript': q.transcript
+                'transcript': q.transcript,
+                'fraud_flags': flags
             })
             
     eval_result = ai_service.evaluate_interview_session(questions_data)

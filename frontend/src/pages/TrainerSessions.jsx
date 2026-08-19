@@ -267,9 +267,7 @@ export default function TrainerSessions() {
                     <TableRow 
                       key={row.id} 
                       hover 
-                      onClick={() => navigate(`/hr/review/${row.id}`)}
                       sx={{ 
-                        cursor: 'pointer',
                         '&:last-child td, &:last-child th': { border: 0 },
                         transition: 'background-color 0.2s ease',
                         '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.04)' }
@@ -318,10 +316,7 @@ export default function TrainerSessions() {
                           variant="outlined" 
                           color="primary" 
                           size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/hr/review/${row.id}`);
-                          }}
+                          onClick={() => navigate(`/hr/review/${row.id}`)}
                           sx={{ 
                             borderRadius: 2, 
                             fontWeight: 600, 
