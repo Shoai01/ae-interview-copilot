@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Button, IconButton, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Snackbar, Alert, Card, Tooltip, Chip } from '@mui/material';
+import { Box, Typography, Button, IconButton, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Card, Tooltip, Chip } from '@mui/material';
 import Layout from '@/components/Layout';
+import toast from 'react-hot-toast';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -35,17 +36,6 @@ export default function AdminQuestionBank() {
 
   const [openRenameSet, setOpenRenameSet] = useState(false);
   const [renameSetInput, setRenameSetInput] = useState('');
-
-
-
-
-  // Snackbar State
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
-  const showSnackbar = (message, severity = 'info') => setSnackbar({ open: true, message, severity });
-  const handleCloseSnackbar = (event, reason) => {
-    if (reason === 'clickaway') return;
-    setSnackbar(prev => ({ ...prev, open: false }));
-  };
 
   const fetchModules = async () => {
     try {
@@ -117,16 +107,16 @@ export default function AdminQuestionBank() {
       
       if (editMode) {
         await adminService.updateQuestion(editQuestionId, { ...newQuestion, set_name: finalSetName });
-        showSnackbar("Question updated successfully!", "success");
+        toast.success("Question updated successfully!");
       } else {
         await adminService.createQuestion({ ...newQuestion, set_name: finalSetName, module_id: activeModuleId });
-        showSnackbar("Question created successfully!", "success");
+        toast.success("Question created successfully!");
       }
       setOpen(false);
       fetchQuestions(activeModuleId);
     } catch (err) {
       console.error("Failed to save question:", err);
-      showSnackbar("Failed to save question.", "error");
+      toast.error("Failed to save question.");
     }
   };
 
@@ -137,21 +127,21 @@ export default function AdminQuestionBank() {
     if (type === 'SET') {
       try {
         await adminService.deleteSet(activeModuleId, name);
-        showSnackbar(`Set "${name}" deleted. (If questions were in use, they were deactivated instead).`, "success");
+        toast.success(`Set "${name}" deleted. (If questions were in use, they were deactivated instead).`);
         if (activeSet === name) setActiveSet('All Sets');
         fetchQuestions(activeModuleId);
       } catch (err) {
         console.error("Failed to delete set:", err);
-        showSnackbar("Failed to delete set.", "error");
+        toast.error("Failed to delete set.");
       }
     } else if (type === 'QUESTION') {
       try {
         await adminService.deleteQuestion(id);
         setQuestions(prev => prev.filter(q => q.id !== id));
-        showSnackbar("Question deleted.", "success");
+        toast.success("Question deleted.");
       } catch (err) {
         console.error("Failed to delete question:", err);
-        showSnackbar(err.response?.data?.detail || "Failed to delete question. It might be in use.", "error");
+        toast.error(err.response?.data?.detail || "Failed to delete question. It might be in use.");
       }
     }
   };
@@ -166,13 +156,13 @@ export default function AdminQuestionBank() {
     
     try {
       await adminService.renameSet(activeModuleId, activeSet, renameSetInput.trim());
-      showSnackbar(`Set renamed to "${renameSetInput.trim()}"`, "success");
+      toast.success(`Set renamed to "${renameSetInput.trim()}"`);
       setActiveSet(renameSetInput.trim());
       setOpenRenameSet(false);
       fetchQuestions(activeModuleId);
     } catch (err) {
       console.error("Failed to rename set:", err);
-      showSnackbar("Failed to rename set.", "error");
+      toast.error("Failed to rename set.");
     }
   };
 
@@ -181,11 +171,11 @@ export default function AdminQuestionBank() {
       setIsGenerating(true);
       await adminService.generateSetViaAI(activeModuleId, nextAvailableSetName, generateConfig.count);
       setOpenGenerate(false);
-      showSnackbar(`Successfully generated ${generateConfig.count} questions for ${nextAvailableSetName}!`, "success");
+      toast.success(`Successfully generated ${generateConfig.count} questions for ${nextAvailableSetName}!`);
       fetchQuestions(activeModuleId);
     } catch (err) {
       console.error("Failed to generate set:", err);
-      showSnackbar(err.response?.data?.detail || "Failed to generate AI set.", "error");
+      toast.error(err.response?.data?.detail || "Failed to generate AI set.");
     } finally {
       setIsGenerating(false);
     }
@@ -566,13 +556,6 @@ export default function AdminQuestionBank() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      
-      <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
-        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%', borderRadius: 2, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     
       <Dialog open={openRenameSet} onClose={() => setOpenRenameSet(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 24px 64px rgba(0,0,0,0.1)' } }}>
         <DialogTitle sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.25rem', pb: 1, pt: 3 }}>Rename Set</DialogTitle>

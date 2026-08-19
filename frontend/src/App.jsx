@@ -16,7 +16,7 @@ import { Toaster } from 'react-hot-toast';
 function App() {
   return (
     <AuthProvider>
-      <Toaster position="top-right" toastOptions={{ style: { fontFamily: 'DM Sans, sans-serif' } }} />
+      <Toaster position="top-right" containerStyle={{ zIndex: 99999 }} toastOptions={{ style: { fontFamily: 'DM Sans, sans-serif', fontSize: '14px', minWidth: '300px', zIndex: 99999 } }} />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />
