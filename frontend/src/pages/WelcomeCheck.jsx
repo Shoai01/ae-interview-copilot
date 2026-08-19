@@ -16,16 +16,16 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import SyncIcon from '@mui/icons-material/Sync';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { vivaService, adminService } from '@/services/api';
+import { vivaService } from '@/services/api';
 import { globalState } from '@/store';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/store/AuthContext';
 
 const StatusIcon = ({ status }) => {
-  if (status === 'passed') return <CheckCircleIcon sx={{ color: '#16a34a', fontSize: '20px' }} />;
-  if (status === 'failed') return <CancelIcon sx={{ color: '#dc2626', fontSize: '20px' }} />;
+  if (status === 'passed') return <CheckCircleIcon sx={{ color: 'success.main', fontSize: '20px' }} />;
+  if (status === 'failed') return <CancelIcon sx={{ color: 'error.main', fontSize: '20px' }} />;
   return (
-    <Stack direction="row" alignItems="center" spacing={1} sx={{ color: '#f59e0b' }}>
+    <Stack direction="row" alignItems="center" spacing={1} sx={{ color: 'warning.main' }}>
       <Typography variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px' }}>Checking</Typography>
       <SyncIcon sx={{ fontSize: '16px', animation: 'spin 2s linear infinite', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
     </Stack>
@@ -164,7 +164,7 @@ export default function WelcomeCheck() {
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       {/* Header */}
       <Box component="header" sx={{ width: '100%', px: 4, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, position: 'sticky', top: 0, zIndex: 50, bgcolor: 'background.default' }}>
-        <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', color: '#1a202c', fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>
+        <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', color: 'text.primary', fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>
           Viva Copilot<Typography component="span" variant="h6" color="primary.main" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>.</Typography>
         </Typography>
         <Button 
@@ -194,8 +194,8 @@ export default function WelcomeCheck() {
               label={currentSession ? `${currentSession.module_name.toUpperCase()} MODULE` : 'LOADING...'}
               size="small"
               sx={{ 
-                bgcolor: '#ffdbce', 
-                color: '#a63b00', 
+                bgcolor: 'rgba(242, 101, 34, 0.1)', 
+                color: 'primary.main', 
                 fontWeight: 600, 
                 fontSize: '11px',
                 letterSpacing: '0.05em', 
@@ -332,7 +332,7 @@ export default function WelcomeCheck() {
               variant="contained" 
               disabled={!isReady || isStartingSession}
               sx={{ 
-                bgcolor: '#F26522', 
+                bgcolor: 'primary.main', 
                 color: '#fff',
                 textTransform: 'none',
                 fontWeight: 600,
@@ -342,7 +342,7 @@ export default function WelcomeCheck() {
                 borderRadius: 3,
                 boxShadow: '0px 8px 24px rgba(242, 101, 34, 0.3)',
                 transition: 'all 0.3s ease',
-                '&:hover': { bgcolor: '#d95a1e', boxShadow: '0px 12px 28px rgba(242, 101, 34, 0.4)', transform: 'translateY(-2px)' },
+                '&:hover': { bgcolor: 'primary.dark', boxShadow: '0px 12px 28px rgba(242, 101, 34, 0.4)', transform: 'translateY(-2px)' },
                 '&.Mui-disabled': { bgcolor: 'rgba(0,0,0,0.06)', color: 'rgba(0,0,0,0.26)', boxShadow: 'none' }
               }}
               endIcon={!isStartingSession && <ArrowForwardIcon />}
@@ -358,7 +358,7 @@ export default function WelcomeCheck() {
               )}
             </Button>
             {!isReady && (
-              <Typography variant="body2" sx={{ color: '#dc2626', fontSize: '13px', fontWeight: 500 }}>
+              <Typography variant="body2" sx={{ color: 'error.main', fontSize: '13px', fontWeight: 500 }}>
                 Please allow camera and microphone access to proceed.
               </Typography>
             )}

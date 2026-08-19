@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Box, Typography, IconButton, Paper, Button, TextField, CircularProgress, Collapse } from '@mui/material';
+import { Box, Typography, IconButton, Paper, Button, TextField, CircularProgress } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CodeIcon from '@mui/icons-material/Code';
 import TimerIcon from '@mui/icons-material/Timer';
@@ -37,17 +37,8 @@ export default function VivaInProgress() {
   const timerExpired = remainingSeconds <= 0;
   const timerWarning = remainingSeconds <= 120 && remainingSeconds > 0; // last 2 min
 
-  // Fraud detection with monitor panel
-  const { logs: fraudLogs, detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id);
-  const [showMonitor, setShowMonitor] = useState(true);
-  const logEndRef = useRef(null);
-
-  // Auto-scroll log feed
-  useEffect(() => {
-    if (logEndRef.current && showMonitor) {
-      logEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [fraudLogs, showMonitor]);
+  // Fraud detection runs in background
+  useFraudDetection(sessionId, currentQuestion?.viva_question_id);
 
   // Timer tick — counts up every second
   useEffect(() => {
@@ -177,7 +168,7 @@ export default function VivaInProgress() {
             sx={{ 
               display: 'flex', alignItems: 'center', gap: 1, 
               borderLeft: '1px solid rgba(0,0,0,0.1)', pl: 2,
-              color: timerExpired ? 'error.main' : timerWarning ? '#d97706' : 'primary.main',
+              color: timerExpired ? 'error.main' : timerWarning ? 'warning.main' : 'primary.main',
               animation: timerWarning ? 'pulse 2s infinite' : 'none'
             }}
           >
@@ -306,7 +297,7 @@ export default function VivaInProgress() {
               sx={{
                 '& .MuiOutlinedInput-root': {
                   fontSize: '18px',
-                  color: '#594138',
+                  color: 'text.primary',
                   lineHeight: 1.8,
                   '& fieldset': { border: 'none' },
                 }
