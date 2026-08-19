@@ -251,6 +251,14 @@ export default function TrainerReviewDetail() {
                         <ScoreBar label="Communication" score={q.evaluation.score_communication || 0} color="#3b82f6" />
                         <ScoreBar label="Technical" score={q.evaluation.score_technical || 0} color="#F26522" />
                         <ScoreBar label="Confidence" score={q.evaluation.score_confidence || 0} color="#8b5cf6" />
+                        {(q.fraud_flags !== undefined) && (
+                          <ScoreBar 
+                            label="Fraud Events" 
+                            score={q.fraud_flags.length} 
+                            color={q.fraud_flags.length > 0 ? "#ef4444" : "#10b981"} 
+                            isCount={true}
+                          />
+                        )}
                       </Stack>
                     ) : (
                       <Typography variant="caption" color="text.secondary">No evaluation scores available.</Typography>
@@ -337,8 +345,8 @@ export default function TrainerReviewDetail() {
   );
 }
 
-function ScoreBar({ label, score, color }) {
-  const percentage = Math.min(100, Math.max(0, (score || 0) * 10));
+function ScoreBar({ label, score, color, isCount = false }) {
+  const percentage = Math.min(100, Math.max(0, (score || 0) * (isCount ? 10 : 10)));
   return (
     <Stack direction="row" spacing={1} alignItems="center" sx={{ flex: 1 }}>
       <Typography variant="caption" color="text.secondary" sx={{ minWidth: 90, fontWeight: 500, fontFamily: 'DM Sans, sans-serif' }}>{label}</Typography>
@@ -346,7 +354,7 @@ function ScoreBar({ label, score, color }) {
         <Box sx={{ width: `${percentage}%`, height: '100%', bgcolor: color, borderRadius: 3, transition: 'width 0.5s ease' }} />
       </Box>
       <Typography variant="caption" fontWeight={700} sx={{ minWidth: 36, textAlign: 'right', fontFamily: 'DM Sans, sans-serif' }}>
-        {Number(score).toFixed(1)}
+        {isCount ? Math.floor(score) : Number(score).toFixed(1)}
       </Typography>
     </Stack>
   );

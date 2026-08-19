@@ -1,5 +1,5 @@
 import os
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 from google import genai
 from models.domain import AIRecommendationType
@@ -16,7 +16,7 @@ class QuestionEvaluationResult(BaseModel):
     score_communication: float
     score_technical: float
     score_confidence: float
-    ai_feedback: str
+    ai_feedback: str = Field(description="Constructive feedback on the answer. **CRITICAL: If Fraud Flags are listed for this question, you MUST start your feedback with a warning noting the specific fraud flags detected.**")
 
 class LLMSessionEvaluationResult(BaseModel):
     ai_recommendation: AIRecommendationType

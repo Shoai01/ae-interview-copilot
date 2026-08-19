@@ -371,7 +371,8 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
             "text": q.question_bank.text,
             "transcript": q.transcript,
             "duration": int((q.answered_at - q.asked_at).total_seconds()) if q.answered_at and q.asked_at else 0,
-            "evaluation": eval_data
+            "evaluation": eval_data,
+            "fraud_flags": [f.flag_type.value for f in q.fraud_flags] if q.fraud_flags else []
         })
         
     report_data = None
