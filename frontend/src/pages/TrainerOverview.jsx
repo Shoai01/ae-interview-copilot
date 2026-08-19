@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Paper, Stack, Button, Table, TableBody, TableCell, TableHead, TableRow, TablePagination, IconButton, Avatar, Chip, keyframes, CircularProgress, Card } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { Box, Typography, Paper, Stack, Button, Table, TableBody, TableCell, TableHead, TableRow, TablePagination, IconButton, Avatar, Chip, keyframes, CircularProgress, Select, MenuItem } from '@mui/material';
 import Layout from '@/components/Layout';
 import GroupIcon from '@mui/icons-material/Group';
 import GradeIcon from '@mui/icons-material/Grade';
 import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { adminService } from '@/services/api';
 
@@ -19,24 +19,31 @@ const pulse = keyframes`
 `;
 
 export default function TrainerOverview() {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
+  const [modules, setModules] = useState([]);
+  const [activeModuleId, setActiveModuleId] = useState('');
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
   useEffect(() => {
-    const fetchDashboard = async () => {
+    const fetchInitialData = async () => {
       try {
-        const metrics = await adminService.getDashboardMetrics();
-        setData(metrics);
+        const [metricsData, modulesData] = await Promise.all([
+          adminService.getDashboardMetrics(activeModuleId || null),
+          adminService.getModules()
+        ]);
+        setData(metricsData);
+        if (modules.length === 0) setModules(modulesData);
       } catch (err) {
-        console.error("Failed to load dashboard metrics:", err);
+        console.error("Failed to load dashboard data:", err);
       } finally {
         setLoading(false);
       }
     };
-    fetchDashboard();
-  }, []);
+    fetchInitialData();
+  }, [activeModuleId]);
   
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -50,7 +57,7 @@ export default function TrainerOverview() {
   const cardSx = {
     p: 3, 
     borderRadius: 3, 
-    border: '1px solid rgba(225,191,179,0.5)', 
+    border: '1px solid rgba(0,0,0,0.08)', 
     boxShadow: 'none',
     bgcolor: '#ffffff',
     height: '100%',
@@ -66,7 +73,7 @@ export default function TrainerOverview() {
     display: 'flex', alignItems: 'center', justifyContent: 'center'
   };
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <Layout>
         <Box sx={{ display: 'flex', height: '80vh', alignItems: 'center', justifyContent: 'center' }}>
@@ -79,6 +86,8 @@ export default function TrainerOverview() {
   // Fallback to empty structure if data failed to load
   const metrics = data || {
     total_interviews: 0,
+    total_passed: 0,
+    total_failed: 0,
     avg_performance_score: 0,
     active_sessions: 0,
     completion_rate: 0,
@@ -88,44 +97,46 @@ export default function TrainerOverview() {
   };
 
   // Colors for competency bars
-  const compColors = ["#F26522", "primary.main", "text.secondary", "#bbc7df"];
+  const compColors = ["#F26522", "#ff9800", "#4ade80", "#475569"];
 
   return (
     <Layout>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, width: '100%' }}>
         
         {/* Page Header */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 1 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'flex-end' }, mb: 1, gap: 2 }}>
           <Box>
             <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
               Dashboard Overview
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '16px' }}>
-              Real-time insights across all interview sessions.
+              Real-time insights across interview sessions.
             </Typography>
           </Box>
-          <Button 
-            variant="outlined" 
-            startIcon={<CalendarTodayIcon fontSize="small" />}
-            endIcon={<ExpandMoreIcon fontSize="small" />}
-            sx={{ 
-              borderColor: 'rgba(0,0,0,0.1)', color: 'text.primary', textTransform: 'none', 
-              fontFamily: 'DM Sans, sans-serif', fontWeight: 500, borderRadius: 2, px: 2, py: 1,
-              bgcolor: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)', borderColor: 'rgba(0,0,0,0.1)' }
-            }}
-          >
-            All Time
-          </Button>
+          <Box sx={{ minWidth: 200 }}>
+            <Select
+              value={activeModuleId}
+              displayEmpty
+              onChange={(e) => setActiveModuleId(e.target.value)}
+              size="small"
+              sx={{ width: '100%', bgcolor: 'white', borderRadius: 2 }}
+            >
+              <MenuItem value="">All Modules</MenuItem>
+              {modules.map(mod => (
+                <MenuItem key={mod.id} value={mod.id}>{mod.name}</MenuItem>
+              ))}
+            </Select>
+          </Box>
         </Box>
 
         {/* Row 1: KPI Cards */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 3, width: '100%' }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(6, 1fr)' }, gap: 2, width: '100%' }}>
           {/* KPI 1 */}
           <Paper elevation={0} sx={cardSx}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
               <Box sx={iconWrapperSx}><GroupIcon /></Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
               Total Interviews
             </Typography>
             <Typography variant="h4" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary' }}>
@@ -138,20 +149,46 @@ export default function TrainerOverview() {
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
               <Box sx={iconWrapperSx}><GradeIcon /></Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5 }}>
-              Avg. Performance Score
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
+              Avg Score
             </Typography>
             <Typography variant="h4" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary' }}>
-              {metrics.avg_performance_score}%
+              {metrics.avg_performance_score}
             </Typography>
           </Paper>
 
           {/* KPI 3 */}
           <Paper elevation={0} sx={cardSx}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+              <Box sx={{ ...iconWrapperSx, bgcolor: 'rgba(74, 222, 128, 0.1)', color: 'success.main' }}><ThumbUpIcon /></Box>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
+              Passed
+            </Typography>
+            <Typography variant="h4" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary' }}>
+              {metrics.total_passed}
+            </Typography>
+          </Paper>
+
+          {/* KPI 4 */}
+          <Paper elevation={0} sx={cardSx}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+              <Box sx={{ ...iconWrapperSx, bgcolor: 'rgba(239, 68, 68, 0.1)', color: 'error.main' }}><ThumbDownIcon /></Box>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
+              Failed
+            </Typography>
+            <Typography variant="h4" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary' }}>
+              {metrics.total_failed}
+            </Typography>
+          </Paper>
+
+          {/* KPI 5 */}
+          <Paper elevation={0} sx={cardSx}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
               <Box sx={iconWrapperSx}><RecordVoiceOverIcon /></Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
               Active Sessions
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -164,12 +201,12 @@ export default function TrainerOverview() {
             </Box>
           </Paper>
 
-          {/* KPI 4 */}
+          {/* KPI 6 */}
           <Paper elevation={0} sx={cardSx}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
               <Box sx={iconWrapperSx}><CheckCircleIcon /></Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
               Completion Rate
             </Typography>
             <Typography variant="h4" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary' }}>
@@ -186,11 +223,10 @@ export default function TrainerOverview() {
               <Typography variant="h6" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 600 }}>
                 Interview Performance Trends
               </Typography>
-              <IconButton aria-label="action" size="small"><MoreVertIcon /></IconButton>
             </Box>
             <Box sx={{ flex: 1, bgcolor: '#ffffff', border: '1px solid rgba(0,0,0,0.05)', borderRadius: 2, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {/* Abstract Bar Chart */}
-              <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,154,222,0.05), transparent)' }} />
+              <Box sx={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(242, 101, 34, 0.05), transparent)' }} />
               
               <Box sx={{ width: '100%', height: '100%', px: 4, py: 2, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', opacity: 0.7 }}>
                 {metrics.trends.length > 0 ? metrics.trends.map((t, i) => (
@@ -210,7 +246,7 @@ export default function TrainerOverview() {
 
               {/* Grid Lines */}
               <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', py: 3, pointerEvents: 'none' }}>
-                {[1, 2, 3, 4].map((i) => <Box key={i} sx={{ borderBottom: '1px solid rgba(0,0,0,0.03)', w: '100%' }} />)}
+                {[1, 2, 3, 4].map((i) => <Box key={i} sx={{ borderBottom: '1px solid rgba(0,0,0,0.03)', width: '100%' }} />)}
               </Box>
             </Box>
           </Paper>
@@ -218,13 +254,13 @@ export default function TrainerOverview() {
           {/* Top Competencies */}
           <Paper elevation={0} sx={{ ...cardSx, minHeight: 400 }}>
             <Typography variant="h6" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, mb: 3 }}>
-              Top Competencies
+              Module Performance
             </Typography>
             <Stack spacing={4} sx={{ flex: 1 }}>
               {metrics.top_competencies.length > 0 ? metrics.top_competencies.map((comp, idx) => (
                 <CompetencyBar key={idx} label={comp.module_name} percentage={comp.average_score} color={compColors[idx % compColors.length]} />
               )) : (
-                <Typography variant="body2" color="text.secondary">No competency data available yet.</Typography>
+                <Typography variant="body2" color="text.secondary">No module data available yet.</Typography>
               )}
             </Stack>
           </Paper>
@@ -238,7 +274,7 @@ export default function TrainerOverview() {
               <Typography variant="h6" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 600 }}>
                 Recent Activity
               </Typography>
-              <Typography variant="caption" color="primary" sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' }, fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography onClick={() => navigate('/hr/sessions')} variant="caption" color="primary" sx={{ cursor: 'pointer', '&:hover': { textDecoration: 'underline' }, fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
                 View All
               </Typography>
             </Box>
@@ -272,7 +308,7 @@ export default function TrainerOverview() {
                           <Box sx={{ 
                             width: activity.score ? `${activity.score}%` : (activity.status === 'IN_PROGRESS' ? '45%' : '0%'), 
                             height: '100%', 
-                            bgcolor: activity.score ? (activity.score >= 80 ? 'success.main' : 'warning.main') : '#F26522', 
+                            bgcolor: activity.score ? (activity.score >= 80 ? 'success.main' : 'warning.main') : 'primary.main', 
                             borderRadius: 3,
                             animation: activity.status === 'IN_PROGRESS' ? `${pulse} 2s infinite` : 'none'
                           }} />
@@ -281,16 +317,16 @@ export default function TrainerOverview() {
                     </TableCell>
                     <TableCell sx={{ borderBottom: 'none' }}>
                       {activity.status === 'COMPLETED' ? (
-                         <Chip size="small" label="Complete" sx={{ bgcolor: '#ecfdf5', color: 'success.dark', border: '1px solid #a7f3d0', borderRadius: 1 }} />
+                         <Chip size="small" label="Complete" sx={{ bgcolor: 'rgba(74, 222, 128, 0.1)', color: 'success.dark', border: '1px solid rgba(74, 222, 128, 0.3)', borderRadius: 1 }} />
                       ) : (
-                         <Chip size="small" label="In-Progress" icon={<Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#F26522', animation: `${pulse} 2s infinite`, ml: 1 }} />} sx={{ bgcolor: 'rgba(0,0,0,0.04)', color: 'text.primary', borderRadius: 1, '& .MuiChip-icon': { color: '#F26522' } }} />
+                         <Chip size="small" label="In-Progress" icon={<Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main', animation: `${pulse} 2s infinite`, ml: 1 }} />} sx={{ bgcolor: 'rgba(0,0,0,0.04)', color: 'text.primary', borderRadius: 1, '& .MuiChip-icon': { color: 'primary.main' } }} />
                       )}
                     </TableCell>
                   </TableRow>
                 )) : (
                   <TableRow>
-                    <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                      No recent activity found.
+                    <TableCell colSpan={5} align="center" sx={{ py: 4, borderBottom: 'none' }}>
+                      <Typography variant="body2" color="text.secondary">No recent activity.</Typography>
                     </TableCell>
                   </TableRow>
                 )}
@@ -313,9 +349,9 @@ export default function TrainerOverview() {
               Quick Actions
             </Typography>
             <Stack spacing={2}>
-              <QuickAction title="Create New Interview" subtitle="Set up a new AI session" />
-              <QuickAction title="Manage Question Bank" subtitle="Edit core competencies" />
-              <QuickAction title="Invite Trainers" subtitle="Add users to workspace" />
+              <QuickAction title="Create New Interview" subtitle="Set up a new AI session" onClick={() => navigate('/hr/sessions')} />
+              <QuickAction title="Manage Question Bank" subtitle="Edit core competencies" onClick={() => navigate('/hr/questions')} />
+              <QuickAction title="Invite Trainers" subtitle="Add users to workspace" onClick={() => navigate('/hr/users')} />
             </Stack>
           </Paper>
         </Box>
@@ -339,15 +375,17 @@ function CompetencyBar({ label, percentage, color }) {
   );
 }
 
-function QuickAction({ title, subtitle }) {
+function QuickAction({ title, subtitle, onClick }) {
   return (
-    <Box sx={{ 
+    <Box 
+      onClick={onClick}
+      sx={{ 
       p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.1)', cursor: 'pointer',
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       transition: 'all 0.2s',
       '&:hover': {
         borderColor: 'primary.main',
-        bgcolor: 'rgba(0,154,222,0.02)',
+        bgcolor: 'rgba(242,101,34,0.04)',
         '& .icon': { color: 'primary.main' },
         '& .title': { color: 'primary.main' }
       }
