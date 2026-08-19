@@ -196,7 +196,7 @@ export default function UserManagement() {
               <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
                 Manage Users
               </Typography>
-              <IconButton onClick={fetchUsersData} size="medium" disabled={loadingUsers} >
+              <IconButton onClick={fetchUsersData} size="medium" disabled={loadingUsers} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
                 <SyncIcon sx={{ animation: loadingUsers ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
               </IconButton>
             </Box>

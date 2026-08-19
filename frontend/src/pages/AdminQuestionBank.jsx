@@ -8,6 +8,7 @@ import SignalCellularAlt2BarIcon from '@mui/icons-material/SignalCellularAlt2Bar
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import SyncIcon from '@mui/icons-material/Sync';
 import { adminService } from '@/services/api';
 
 export default function AdminQuestionBank() {
@@ -58,12 +59,17 @@ export default function AdminQuestionBank() {
     }
   };
 
+  const [loading, setLoading] = useState(false);
+
   const fetchQuestions = async (moduleId) => {
+    setLoading(true);
     try {
       const data = await adminService.getQuestions(moduleId);
       setQuestions(data);
     } catch (err) {
       console.error("Failed to load questions:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -252,14 +258,21 @@ export default function AdminQuestionBank() {
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, width: '100%' }}>
         
         {/* Header & Actions */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'flex-end' }, justifyContent: 'space-between', gap: 2 }}>
-          <Box>
-            <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
-              Question Bank
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
-              Manage and organize your AI training scenarios.
-            </Typography>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
+                  Question Bank
+                </Typography>
+                <IconButton onClick={() => fetchQuestions(activeModuleId)} size="medium" disabled={!activeModuleId || loading} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
+                  <SyncIcon sx={{ animation: loading ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
+                </IconButton>
+              </Box>
+              <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
+                Manage and organize your AI training scenarios.
+              </Typography>
+            </Box>
           </Box>
           <Box sx={{ display: 'flex', gap: 2, mt: { xs: 2, md: 0 } }}>
             <Button 
