@@ -16,8 +16,7 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate, curren
     if session_data.trainee_id:
         trainee = get_user_by_id(db, session_data.trainee_id)
         if not trainee or trainee.role != domain.UserRole.TRAINEE:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=400, detail="Invalid trainee ID.")
+            raise ValueError("Invalid trainee ID.")
     elif session_data.trainee_identifier:
         # Search only by username
         identifier = session_data.trainee_identifier.strip()
@@ -41,8 +40,7 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate, curren
             db.commit()
             db.refresh(trainee)
     else:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Must provide trainee_id or trainee_identifier.")
+        raise ValueError("Must provide trainee_id or trainee_identifier.")
         
     existing_session = db.query(domain.VivaSession).filter(
         domain.VivaSession.trainee_id == trainee.id,
@@ -58,8 +56,7 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate, curren
                 existing_session = None # It's expired, so they CAN have a new one
 
     if existing_session:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Trainee already has an active or pending session.")
+        raise ValueError("Trainee already has an active or pending session.")
 
     db_session = domain.VivaSession(
         trainee_id=trainee.id,
@@ -105,7 +102,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
         else:
             # If the session got stuck without questions, generate them now
             if total_questions == 0:
-                from services.knowledge_service import generate_dynamic_questions_for_session
+                from ai.question_gen import generate_dynamic_questions_for_session
                 dynamic_questions = generate_dynamic_questions_for_session(db, db_session.module_id, count=5)
                 
                 if len(dynamic_questions) < 5:
@@ -135,8 +132,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
         ).first()
         
         if not pending_session:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=400, detail="No session has been assigned to you by an admin or trainer.")
+            raise ValueError("No session has been assigned to you by an admin or trainer.")
             
         # Check for 24-hour expiration
         if pending_session.start_time:
@@ -144,8 +140,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
             if (now - pending_session.start_time).total_seconds() > 86400: # 24 hours
                 pending_session.status = domain.SessionStatus.EXPIRED
                 db.commit()
-                from fastapi import HTTPException
-                raise HTTPException(status_code=400, detail="This session assignment has expired. Please contact your trainer.")
+                raise ValueError("This session assignment has expired. Please contact your trainer.")
                 
         db_session = pending_session
         db_session.status = domain.SessionStatus.IN_PROGRESS
@@ -164,8 +159,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
             # Revert session state if no questions available
             db.delete(db_session)
             db.commit()
-            from fastapi import HTTPException
-            raise HTTPException(status_code=400, detail="Could not start session. No Question Sets are available for this module.")
+            raise ValueError("Could not start session. No Question Sets are available for this module.")
             
         import random
         # Pick a random set
@@ -201,8 +195,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
         total_questions = len(selected_questions)
 
     if total_questions == 0:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Could not generate questions. AI generation failed, and there are no predefined questions available for this module.")
+        raise ValueError("Could not generate questions. AI generation failed, and there are no predefined questions available for this module.")
 
 
     return viva_schemas.SessionResponse(
@@ -486,7 +479,6 @@ def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewe
     return report
 
 def assign_session_bulk(db: Session, bulk_data: viva_schemas.BulkSessionCreate, current_user_id: int) -> viva_schemas.BulkSessionResponse:
-    from fastapi import HTTPException
     
     success_count = 0
     failed_count = 0
@@ -515,8 +507,8 @@ def assign_session_bulk(db: Session, bulk_data: viva_schemas.BulkSessionCreate, 
             result_item.new_user_password = assigned.new_user_password
             success_count += 1
             
-        except HTTPException as e:
-            result_item.error = e.detail
+        except ValueError as e:
+            result_item.error = str(e)
             failed_count += 1
         except Exception as e:
             result_item.error = str(e)

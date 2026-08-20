@@ -15,15 +15,22 @@ router = APIRouter(
 
 @router.post("/sessions/assign", response_model=viva_schemas.SessionResponse, status_code=status.HTTP_201_CREATED)
 def assign_session(session_data: viva_schemas.SessionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
-    return viva_service.assign_session(db, session_data, current_user_id=current_user.id)
+    try:
+        return viva_service.assign_session(db, session_data, current_user_id=current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/sessions/assign/bulk", response_model=viva_schemas.BulkSessionResponse, status_code=status.HTTP_201_CREATED)
 def assign_session_bulk(bulk_data: viva_schemas.BulkSessionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    # Bulk handler catches ValueError internally and returns it in the response payload
     return viva_service.assign_session_bulk(db, bulk_data, current_user_id=current_user.id)
 
 @router.post("/sessions/start", response_model=viva_schemas.SessionResponse, status_code=status.HTTP_201_CREATED)
 def start_session(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
-    return viva_service.resolve_or_create_session(db, current_user)
+    try:
+        return viva_service.resolve_or_create_session(db, current_user)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/sessions/current", response_model=viva_schemas.SessionResponse)
 def get_current_session(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
