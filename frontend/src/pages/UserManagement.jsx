@@ -250,7 +250,7 @@ export default function UserManagement() {
                   <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>USERNAME</TableCell>
                   <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>ROLE</TableCell>
                   <TableCell sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>STATUS</TableCell>
-                  <TableCell align="right" sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>ACTIONS</TableCell>
+                  <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>ACTIONS</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -283,7 +283,7 @@ export default function UserManagement() {
                       />
                     </TableCell>
                     <TableCell>
-                      <Switch inputProps={{ "aria-label": "toggle active" }} 
+                      <Switch 
                         checked={u.is_active} 
                         size="small" 
                         color="primary"
@@ -298,15 +298,15 @@ export default function UserManagement() {
                         }}
                       />
                     </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={1} justifyContent="flex-end">
-                        <IconButton aria-label="action" size="small" onClick={() => handleOpenEdit(u)} sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)' } }}>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'inline-flex', justifyContent: 'center', gap: 1 }}>
+                        <IconButton aria-label="edit user" size="small" onClick={() => handleOpenEdit(u)} sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)' } }}>
                           <EditIcon fontSize="small" />
                         </IconButton>
-                        <IconButton aria-label="action" size="small" onClick={() => { setSelectedUser(u); setOpenDeleteDialog(true); }} sx={{ color: 'text.secondary', '&:hover': { color: 'error.main', bgcolor: 'rgba(239,68,68,0.1)' } }}>
+                        <IconButton aria-label="delete user" size="small" onClick={() => { setSelectedUser(u); setOpenDeleteDialog(true); }} sx={{ color: 'text.secondary', '&:hover': { color: 'error.main', bgcolor: 'rgba(239,68,68,0.1)' } }}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
-                      </Stack>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
