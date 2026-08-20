@@ -321,6 +321,7 @@ def evaluate_session(db: Session, session_id: int):
             questions_data.append({
                 'viva_question_id': q.id,
                 'question_text': q.question_bank.text,
+                'ideal_answer': q.question_bank.ideal_answer,
                 'transcript': q.transcript,
                 'fraud_flags': flags
             })
@@ -382,7 +383,8 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
             "ai_recommendation": session.report.ai_recommendation.value if session.report.ai_recommendation else None,
             "strengths": session.report.strengths,
             "areas_of_improvement": session.report.areas_of_improvement,
-            "trainer_decision": session.report.trainer_decision.value if session.report.trainer_decision else None
+            "trainer_decision": session.report.trainer_decision.value if session.report.trainer_decision else None,
+            "trainer_notes": session.report.trainer_notes
         }
         
     session_response = viva_schemas.SessionResponse(
@@ -445,6 +447,7 @@ def get_all_sessions(db: Session):
             username=s.trainee.username if s.trainee else "Unknown",
             module_name=s.module.name if s.module else "Unknown",
             ai_recommendation=ai_rec,
+            trainer_decision=s.report.trainer_decision.value if s.report and s.report.trainer_decision else None,
             status=status,
             date=s.start_time.strftime("%b %d, %Y")
         ))
@@ -474,10 +477,9 @@ def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewe
     report.reviewed_by = reviewer_id
     report.reviewed_at = datetime.datetime.utcnow()
     
-    # Store notes in areas_of_improvement if no dedicated field exists
+    # Store notes in dedicated field
     if decision_data.notes:
-        existing = report.areas_of_improvement or ""
-        report.areas_of_improvement = existing + ("\n\n--- Trainer Notes ---\n" + decision_data.notes if existing else "Trainer Notes: " + decision_data.notes)
+        report.trainer_notes = decision_data.notes
     
     db.commit()
     db.refresh(report)

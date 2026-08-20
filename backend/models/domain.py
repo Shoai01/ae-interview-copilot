@@ -158,6 +158,7 @@ class VivaReport(Base):
     strengths = Column(Text, nullable=True)
     areas_of_improvement = Column(Text, nullable=True)
     trainer_decision = Column(SQLEnum(TrainerDecisionType), nullable=True)
+    trainer_notes = Column(Text, nullable=True)
     reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True) # Trainer/Admin who made the call
     reviewed_at = Column(DateTime, nullable=True)
 

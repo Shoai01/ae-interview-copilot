@@ -197,6 +197,23 @@ export default function TrainerReviewDetail() {
           </Card>
         )}
 
+        {/* ─── Trainer Notes ─── */}
+        {report?.trainer_notes && (
+          <Card sx={{ p: { xs: 2.5, md: 3 }, borderLeft: '3px solid', borderColor: '#8b5cf6' }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+              <BadgeIcon sx={{ color: '#8b5cf6', fontSize: 20 }} />
+              <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '-0.5px', fontSize: 16 }}>
+                Trainer Remarks
+              </Typography>
+            </Stack>
+            <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'rgba(139,92,246,0.04)', border: '1px solid rgba(139,92,246,0.12)' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                {report.trainer_notes}
+              </Typography>
+            </Box>
+          </Card>
+        )}
+
         {/* ─── Question-by-Question Breakdown ─── */}
         <Box>
           <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '-0.5px', mb: 2, fontSize: 16 }}>

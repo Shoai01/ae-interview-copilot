@@ -250,7 +250,7 @@ export default function TrainerSessions() {
                     <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Trainee Name</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Username</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Module</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>AI Rec.</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Result</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Status</TableCell>
                     <TableCell sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Date</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600, color: 'text.secondary', borderBottom: '1px solid rgba(0, 0, 0, 0.08)', py: 2 }}>Action</TableCell>
@@ -281,13 +281,22 @@ export default function TrainerSessions() {
                         </Box>
                       </TableCell>
                       <TableCell sx={{ borderBottom: '1px solid rgba(0, 0, 0, 0.05)' }}>
-                        {row.ai_recommendation ? (
+                        {row.trainer_decision ? (
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            {row.trainer_decision === 'PASS' && <CheckCircleIcon sx={{ fontSize: 18, color: 'success.dark' }} />}
+                            {row.trainer_decision === 'HOLD' && <WarningIcon sx={{ fontSize: 18, color: '#d97706' }} />}
+                            {row.trainer_decision === 'FAIL' && <CancelIcon sx={{ fontSize: 18, color: '#dc2626' }} />}
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: row.trainer_decision === 'PASS' ? 'success.dark' : row.trainer_decision === 'HOLD' ? '#d97706' : '#dc2626' }}>
+                              {row.trainer_decision} (Trainer)
+                            </Typography>
+                          </Stack>
+                        ) : row.ai_recommendation ? (
                           <Stack direction="row" alignItems="center" spacing={1}>
                             {row.ai_recommendation === 'PASS' && <CheckCircleIcon sx={{ fontSize: 18, color: 'success.dark' }} />}
                             {row.ai_recommendation === 'BORDERLINE' && <WarningIcon sx={{ fontSize: 18, color: '#d97706' }} />}
                             {row.ai_recommendation === 'FAIL' && <CancelIcon sx={{ fontSize: 18, color: '#dc2626' }} />}
                             <Typography variant="body2" sx={{ fontWeight: 500, color: row.ai_recommendation === 'PASS' ? 'success.dark' : row.ai_recommendation === 'BORDERLINE' ? '#d97706' : '#dc2626' }}>
-                              {row.ai_recommendation}
+                              {row.ai_recommendation} (AI)
                             </Typography>
                           </Stack>
                         ) : row.status === 'Completed' ? (

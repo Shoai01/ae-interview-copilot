@@ -58,6 +58,7 @@ def evaluate_interview_session(questions_data: list) -> SessionEvaluationResult:
         "You are an expert technical interviewer evaluating a candidate's performance in a Viva session. "
         "Review the following questions and the candidate's answers. Provide an evaluation for each question "
         "(scoring communication, technical accuracy, and confidence out of 10, plus specific feedback). "
+        "If an 'Ideal Reference Answer' is provided for a question, heavily weigh the candidate's technical accuracy against it. "
         "Also provide an overall session evaluation including a recommendation "
         "(PASS, FAIL, or BORDERLINE), overall strengths, and areas for improvement. "
         "Be professional and constructive.\n\n"
@@ -75,7 +76,13 @@ def evaluate_interview_session(questions_data: list) -> SessionEvaluationResult:
 
     for q in questions_data:
         user_prompt += f"Question ID {q['viva_question_id']}: {q['question_text']}\n"
+        
+        ideal_ans = q.get('ideal_answer')
+        if ideal_ans:
+            user_prompt += f"Ideal Reference Answer: {ideal_ans}\n"
+            
         user_prompt += f"Candidate Answer: {q['transcript']}\n"
+        
         flags = q.get('fraud_flags', [])
         if flags:
             user_prompt += f"Fraud Flags: {', '.join(flags)}\n"

@@ -72,6 +72,7 @@ class VivaReportResponse(BaseModel):
     strengths: Optional[str]
     areas_of_improvement: Optional[str]
     trainer_decision: Optional[str]
+    trainer_notes: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -90,6 +91,7 @@ class SessionListItem(BaseModel):
     username: Optional[str] = None
     module_name: str
     ai_recommendation: Optional[str] = None
+    trainer_decision: Optional[str] = None
     status: str
     date: str
     
