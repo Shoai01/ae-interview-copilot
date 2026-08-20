@@ -66,9 +66,10 @@ export default function VivaComplete() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default', p: 2 }}>
+    <Box sx={{ height: '100vh', overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', bgcolor: 'background.default', p: 2 }}>
       
       <Card sx={{ 
+        my: 'auto',
         width: '100%', 
         maxWidth: 640, 
         borderRadius: 4, 

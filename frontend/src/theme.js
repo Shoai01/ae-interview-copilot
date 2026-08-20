@@ -183,9 +183,10 @@ const theme = createTheme({
         ':root': {
           '--radius': '24px',
           '--ae-surface': 'rgba(0, 0, 0, 0.04)',
+          overflow: 'auto',
         },
         body: {
-          overflow: 'hidden',
+          overflow: 'auto',
           backgroundColor: '#f8fafc',
           backgroundImage: 'radial-gradient(ellipse 80% 60% at 15% 10%, rgba(242,101,34,0.06) 0%, transparent 60%)',
           backgroundRepeat: 'no-repeat',

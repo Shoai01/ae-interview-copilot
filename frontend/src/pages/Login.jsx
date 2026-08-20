@@ -64,7 +64,7 @@ export default function Login() {
     };
 
     return (
-        <Box sx={{ display: 'flex', minHeight: '100vh', flexDirection: { xs: 'column', lg: 'row' }, bgcolor: 'background.default' }}>
+        <Box sx={{ display: 'flex', height: '100vh', overflowY: 'auto', flexDirection: { xs: 'column', lg: 'row' }, bgcolor: 'background.default' }}>
             
             {/* Left Side (Info Panel) */}
             <Box sx={{ 
@@ -102,7 +102,7 @@ export default function Login() {
             <Box sx={{ 
                 width: { xs: '100%', lg: '50%' }, 
                 display: 'flex', 
-                alignItems: 'center', 
+                alignItems: 'flex-start', 
                 justifyContent: 'center',
                 position: 'relative',
                 py: { xs: 8, lg: 0 },
@@ -110,6 +110,7 @@ export default function Login() {
                 bgcolor: 'background.default'
             }}>
                 <Box sx={{ 
+                    my: 'auto',
                     maxWidth: 420, 
                     width: '100%', 
                     bgcolor: 'background.paper',

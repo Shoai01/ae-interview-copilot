@@ -147,7 +147,7 @@ export default function VivaInProgress() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default', position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', bgcolor: 'background.default', position: 'relative' }}>
 
       <Box component="header" sx={{ position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 40, px: 3, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', pointerEvents: 'none' }}>
         
@@ -206,9 +206,9 @@ export default function VivaInProgress() {
         </Box>
       </Box>
 
-      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', px: 3, pt: 12, pb: 6, maxWidth: 1440, mx: 'auto', width: '100%', zIndex: 10 }}>
+      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', px: 3, pt: { xs: 16, sm: 14, md: 12 }, pb: 6, maxWidth: 1440, mx: 'auto', width: '100%', zIndex: 10 }}>
         
-        <Box sx={{ maxWidth: 800, textAlign: 'center', mb: 6 }}>
+        <Box sx={{ maxWidth: 800, textAlign: 'center', mb: 6, mt: 'auto' }}>
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2, cursor: 'pointer' }} onClick={() => currentQuestion && speakQuestion(currentQuestion.text)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && currentQuestion && speakQuestion(currentQuestion.text)}>
             <VolumeUpIcon sx={{ color: 'text.secondary', fontSize: 32, opacity: 0.7, '&:hover': { opacity: 1, color: 'primary.main' } }} />
           </Box>
@@ -234,7 +234,7 @@ export default function VivaInProgress() {
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 700 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 700, mb: 'auto' }}>
           
           <IconButton aria-label="action" 
             color={isRecording ? "error" : "primary"} 

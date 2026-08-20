@@ -161,7 +161,7 @@ export default function WelcomeCheck() {
 
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
+    <Box sx={{ height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       {/* Header */}
       <Box component="header" sx={{ width: '100%', px: 4, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, position: 'sticky', top: 0, zIndex: 50, bgcolor: 'background.default' }}>
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', color: 'text.primary', fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>
@@ -185,8 +185,8 @@ export default function WelcomeCheck() {
       </Box>
 
       {/* Main Content */}
-      <Box component="main" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: { xs: 2, md: 4 }, width: '100%', maxWidth: 1440, mx: 'auto' }}>
-        <Box sx={{ width: '100%', maxWidth: 860, display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center' }}>
+      <Box component="main" sx={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', p: { xs: 2, md: 4 }, width: '100%', maxWidth: 1440, mx: 'auto' }}>
+        <Box sx={{ width: '100%', maxWidth: 860, display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center', my: 'auto' }}>
           
           {/* Welcome Header */}
           <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
