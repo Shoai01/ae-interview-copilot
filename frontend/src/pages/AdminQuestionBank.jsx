@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Box, Typography, Button, IconButton, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Card, Tooltip, Chip } from '@mui/material';
+import { useState, useEffect, useRef } from 'react';
+import { Box, Typography, Button, IconButton, InputBase, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Switch, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, FormControl, Select, InputLabel, CircularProgress, Card, Tooltip, Chip, ToggleButton, ToggleButtonGroup, Divider } from '@mui/material';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import DownloadIcon from '@mui/icons-material/Download';
 import Layout from '@/components/Layout';
 import toast from 'react-hot-toast';
 import AddIcon from '@mui/icons-material/Add';
@@ -13,6 +15,8 @@ import { adminService } from '@/services/api';
 export default function AdminQuestionBank() {
   const [modules, setModules] = useState([]);
   const [activeModuleId, setActiveModuleId] = useState(null);
+  const [createMode, setCreateMode] = useState('single');
+  const [bulkQuestionsText, setBulkQuestionsText] = useState('');
   const [questions, setQuestions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSet, setActiveSet] = useState('All Sets');
@@ -36,6 +40,8 @@ export default function AdminQuestionBank() {
 
   const [openRenameSet, setOpenRenameSet] = useState(false);
   const [renameSetInput, setRenameSetInput] = useState('');
+  
+  const fileInputRef = useRef(null);
 
   const fetchModules = async () => {
     try {
@@ -97,7 +103,84 @@ export default function AdminQuestionBank() {
     setEditMode(false);
     setEditQuestionId(null);
     setNewQuestion({ text: '', ideal_answer: '', difficulty: 'MEDIUM', setNameSelection: '' });
+    setCreateMode('single');
+    setBulkQuestionsText('');
     setOpen(true);
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setBulkQuestionsText(event.target.result);
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+  
+  const handleDownloadTemplate = () => {
+    const csvContent = "data:text/csv;charset=utf-8,Question,IdealAnswer,Difficulty\nWhat is a React Hook?,Functions that let you hook into React state and lifecycle features.,MEDIUM\nWhat is the DOM?,The Document Object Model is a programming interface for HTML and XML documents.,EASY";
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "bulk_questions_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleSaveBulkQuestions = async () => {
+    try {
+      if (!bulkQuestionsText.trim()) return;
+      if (!newQuestion.setNameSelection) {
+        toast.error("Please select a Set for these questions.");
+        return;
+      }
+      
+      const finalSetName = newQuestion.setNameSelection === '+ Auto-Create New Set' ? nextAvailableSetName : newQuestion.setNameSelection;
+      
+      const lines = bulkQuestionsText.trim().split('\n');
+      const parsedQuestions = [];
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        
+        // Skip header if it exists (naive check)
+        if (i === 0 && line.toLowerCase().includes('question') && line.toLowerCase().includes('difficulty')) {
+          continue;
+        }
+
+        const parts = line.split(',').map(s => s.trim());
+        if (parts.length >= 1) {
+          parsedQuestions.push({
+            text: parts[0],
+            ideal_answer: parts.length > 1 && parts[1] ? parts[1] : null,
+            difficulty: parts.length > 2 && ['EASY', 'MEDIUM', 'HARD'].includes(parts[2].toUpperCase()) ? parts[2].toUpperCase() : 'MEDIUM',
+            set_name: finalSetName
+          });
+        }
+      }
+      
+      if (parsedQuestions.length === 0) {
+        toast.error("No valid questions found in bulk input.");
+        return;
+      }
+      
+      await adminService.createQuestionsBulk({
+        module_id: activeModuleId,
+        questions: parsedQuestions
+      });
+      
+      toast.success(`Successfully uploaded ${parsedQuestions.length} questions!`);
+      setOpen(false);
+      fetchQuestions(activeModuleId);
+    } catch (err) {
+      console.error("Failed to save bulk questions:", err);
+      toast.error("Failed to save bulk questions. Make sure format is correct.");
+    }
   };
 
   const handleSaveQuestion = async () => {
@@ -446,78 +529,145 @@ export default function AdminQuestionBank() {
 
     {/* Add Question Dialog */}    {/* Add Question Dialog */}    {/* Add Question Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, boxShadow: '0 24px 64px rgba(0,0,0,0.1)' } }}>
-        <DialogTitle sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.5rem', pb: 1, pt: 3 }}>{editMode ? 'Edit Question' : 'Add New Question'}</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.5rem', pb: 1, pt: 3 }}>
+          {editMode ? 'Edit Question' : 'Add New Question'}
+        </DialogTitle>
         <DialogContent sx={{ p: 3 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
-            <TextField 
-              label="Question Text" 
-              multiline 
-              rows={4} 
-              fullWidth 
-              value={newQuestion.text}
-              onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            />
-            <TextField 
-              label="Ideal Answer / Key Points (Optional)" 
-              multiline 
-              rows={3} 
-              fullWidth 
-              value={newQuestion.ideal_answer || ''}
-              onChange={(e) => setNewQuestion({ ...newQuestion, ideal_answer: e.target.value })}
-              placeholder="- Key concept 1&#10;- Key concept 2"
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            />
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <FormControl fullWidth>
-                <InputLabel>Select Set</InputLabel>
-                <Select
-                  value={newQuestion.setNameSelection}
-                  label="Select Set"
-                  onChange={(e) => setNewQuestion({ ...newQuestion, setNameSelection: e.target.value })}
-                  sx={{ borderRadius: 2 }}
-                >
-                  <MenuItem value="+ Auto-Create New Set" sx={{ fontWeight: 'bold', color: 'primary.main' }}>+ Auto-Create New Set</MenuItem>
-                  {existingSetsOnly.map(set => (
-                    <MenuItem key={set} value={set}>{set}</MenuItem>
-                  ))}
-                  <MenuItem value="Default Set">Default Set</MenuItem>
-                </Select>
-              </FormControl>
-              
-              {newQuestion.setNameSelection === '+ Auto-Create New Set' && (
-                <FormControl fullWidth>
-                  <TextField
-                    label="Auto-Generated Set Name"
-                    value={nextAvailableSetName}
-                    disabled
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                  />
-                </FormControl>
-              )}
+          {!editMode && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+              <ToggleButtonGroup
+                value={createMode}
+                exclusive
+                onChange={(e, val) => val && setCreateMode(val)}
+                aria-label="create mode"
+                size="small"
+              >
+                <ToggleButton value="single" sx={{ px: 3, py: 0.5, fontWeight: 600, textTransform: 'none', fontFamily: 'DM Sans' }}>Single Entry</ToggleButton>
+                <ToggleButton value="bulk" sx={{ px: 3, py: 0.5, fontWeight: 600, textTransform: 'none', fontFamily: 'DM Sans' }}>Bulk Batch</ToggleButton>
+              </ToggleButtonGroup>
             </Box>
+          )}
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <FormControl fullWidth>
+              <InputLabel>Select Set (Required)</InputLabel>
+              <Select
+                value={newQuestion.setNameSelection}
+                label="Select Set (Required)"
+                onChange={(e) => setNewQuestion({ ...newQuestion, setNameSelection: e.target.value })}
+                sx={{ borderRadius: 2 }}
+              >
+                <MenuItem value="+ Auto-Create New Set" sx={{ fontWeight: 'bold', color: 'primary.main' }}>+ Auto-Create New Set</MenuItem>
+                {existingSetsOnly.map(set => (
+                  <MenuItem key={set} value={set}>{set}</MenuItem>
+                ))}
+                <MenuItem value="Default Set">Default Set</MenuItem>
+              </Select>
+            </FormControl>
+            
+            {newQuestion.setNameSelection === '+ Auto-Create New Set' && (
               <FormControl fullWidth>
-                <InputLabel>Difficulty</InputLabel>
-                <Select
-                  value={newQuestion.difficulty}
-                  label="Difficulty"
-                  onChange={(e) => setNewQuestion({ ...newQuestion, difficulty: e.target.value })}
-                  sx={{ borderRadius: 2 }}
-                >
-                  <MenuItem value="EASY">EASY</MenuItem>
-                  <MenuItem value="MEDIUM">MEDIUM</MenuItem>
-                  <MenuItem value="HARD">HARD</MenuItem>
-                </Select>
+                <TextField
+                  label="Auto-Generated Set Name"
+                  value={nextAvailableSetName}
+                  disabled
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
               </FormControl>
-            </Box>
+            )}
           </Box>
+
+          {createMode === 'bulk' && !editMode ? (
+            <Box sx={{ p: 2, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed rgba(0,0,0,0.12)' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontFamily: 'DM Sans', textAlign: 'center' }}>
+                Paste rows directly from Excel or upload a CSV file.<br/>
+                <strong>Format:</strong> <code>Question Text, Ideal Answer, Difficulty (EASY/MEDIUM/HARD)</code>
+              </Typography>
+              
+              <TextField
+                multiline
+                rows={6}
+                fullWidth
+                placeholder="What is a React Hook?, Functions that let you hook into state., MEDIUM&#10;What is the DOM?, The Document Object Model is a programming interface., EASY"
+                value={bulkQuestionsText}
+                onChange={(e) => setBulkQuestionsText(e.target.value)}
+                sx={{ mb: 2, bgcolor: '#fff', '& .MuiOutlinedInput-root': { borderRadius: 2, fontFamily: 'monospace', fontSize: '0.875rem' } }}
+              />
+              
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Button variant="text" size="small" onClick={handleDownloadTemplate} sx={{ textTransform: 'none', fontWeight: 600 }}>
+                  Download Template
+                </Button>
+                <Box>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    style={{ display: 'none' }}
+                  />
+                  <Button 
+                    variant="outlined" 
+                    size="small"
+                    startIcon={<UploadFileIcon />}
+                    onClick={() => fileInputRef.current?.click()}
+                    sx={{ textTransform: 'none', fontWeight: 600, borderColor: 'rgba(0,0,0,0.1)' }}
+                  >
+                    Upload CSV
+                  </Button>
+                </Box>
+              </Box>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <TextField 
+                label="Question Text" 
+                multiline 
+                rows={4} 
+                fullWidth 
+                value={newQuestion.text}
+                onChange={(e) => setNewQuestion({ ...newQuestion, text: e.target.value })}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+              <TextField 
+                label="Ideal Answer / Key Points (Optional)" 
+                multiline 
+                rows={3} 
+                fullWidth 
+                value={newQuestion.ideal_answer || ''}
+                onChange={(e) => setNewQuestion({ ...newQuestion, ideal_answer: e.target.value })}
+                placeholder="- Key concept 1&#10;- Key concept 2"
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+              
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <FormControl fullWidth>
+                  <InputLabel>Difficulty</InputLabel>
+                  <Select
+                    value={newQuestion.difficulty}
+                    label="Difficulty"
+                    onChange={(e) => setNewQuestion({ ...newQuestion, difficulty: e.target.value })}
+                    sx={{ borderRadius: 2 }}
+                  >
+                    <MenuItem value="EASY">EASY</MenuItem>
+                    <MenuItem value="MEDIUM">MEDIUM</MenuItem>
+                    <MenuItem value="HARD">HARD</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 0 }}>
           <Button onClick={() => setOpen(false)} color="inherit" sx={{ fontWeight: 600, borderRadius: 2 }}>Cancel</Button>
-          <Button onClick={handleSaveQuestion} variant="contained" color="primary" disabled={!newQuestion.text.trim() || !newQuestion.setNameSelection} sx={{ fontWeight: 600, borderRadius: 2, px: 3, boxShadow: 'none' }}>
-            {editMode ? 'Update Question' : 'Save Question'}
+          <Button 
+            onClick={createMode === 'bulk' && !editMode ? handleSaveBulkQuestions : handleSaveQuestion} 
+            variant="contained" 
+            color="primary" 
+            disabled={createMode === 'bulk' && !editMode ? !bulkQuestionsText.trim() : (!newQuestion.text.trim() || !newQuestion.setNameSelection)} 
+            sx={{ fontWeight: 600, borderRadius: 2, px: 3, boxShadow: 'none' }}
+          >
+            {createMode === 'bulk' && !editMode ? 'Upload Bulk Questions' : (editMode ? 'Update Question' : 'Save Question')}
           </Button>
         </DialogActions>
       </Dialog>

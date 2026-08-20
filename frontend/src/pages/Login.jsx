@@ -64,7 +64,7 @@ export default function Login() {
     };
 
     return (
-        <Box sx={{ display: 'flex', minHeight: '100vh', flexDirection: { xs: 'column', lg: 'row' }, bgcolor: 'background.default', overflow: 'hidden' }}>
+        <Box sx={{ display: 'flex', minHeight: '100vh', flexDirection: { xs: 'column', lg: 'row' }, bgcolor: 'background.default' }}>
             
             {/* Left Side (Info Panel) */}
             <Box sx={{ 

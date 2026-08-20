@@ -99,6 +99,10 @@ def generate_ai_set(module_id: int, set_name: str, count: int = 15, db: Session 
         raise HTTPException(status_code=400, detail="Could not generate questions. Make sure you have uploaded PDFs for this module.")
     return questions
 
+@router.post("/questions/bulk", response_model=admin_schemas.BulkQuestionResponse, status_code=status.HTTP_201_CREATED)
+def create_questions_bulk(bulk_data: admin_schemas.BulkQuestionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    return admin_service.create_questions_bulk(db, bulk_data=bulk_data)
+
 @router.post("/questions", response_model=admin_schemas.QuestionResponse, status_code=status.HTTP_201_CREATED)
 def create_question(question_data: admin_schemas.QuestionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     return admin_service.create_question(db, question=question_data)

@@ -61,6 +61,10 @@ export const adminService = {
     const response = await api.post('/admin/questions', questionData);
     return response.data;
   },
+  createQuestionsBulk: async (bulkData) => {
+    const response = await api.post('/admin/questions/bulk', bulkData);
+    return response.data;
+  },
   updateQuestion: async (questionId, questionData) => {
     const response = await api.put(`/admin/questions/${questionId}`, questionData);
     return response.data;

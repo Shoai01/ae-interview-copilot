@@ -13,6 +13,20 @@ def get_questions_by_module(db: Session, module_id: int) -> List[domain.Question
 def create_question(db: Session, question: admin_schemas.QuestionCreate) -> domain.QuestionBank:
     return admin_repository.create_question(db, question)
 
+def create_questions_bulk(db: Session, bulk_data: admin_schemas.BulkQuestionCreate) -> admin_schemas.BulkQuestionResponse:
+    count = 0
+    for q in bulk_data.questions:
+        q_create = admin_schemas.QuestionCreate(
+            module_id=bulk_data.module_id,
+            text=q.text,
+            ideal_answer=q.ideal_answer,
+            difficulty=q.difficulty,
+            set_name=q.set_name
+        )
+        admin_repository.create_question(db, q_create)
+        count += 1
+    return admin_schemas.BulkQuestionResponse(message="Successfully created questions in bulk", count=count)
+
 def toggle_question_active_status(db: Session, question_id: int) -> domain.QuestionBank:
     question = admin_repository.get_question_by_id(db, question_id)
     if question:

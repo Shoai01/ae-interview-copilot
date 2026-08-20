@@ -25,6 +25,20 @@ class QuestionCreate(BaseModel):
     difficulty: DifficultyLevel
     set_name: Optional[str] = "Default Set"
 
+class BulkQuestionItem(BaseModel):
+    text: str
+    ideal_answer: Optional[str] = None
+    difficulty: DifficultyLevel = DifficultyLevel.MEDIUM
+    set_name: Optional[str] = "Default Set"
+
+class BulkQuestionCreate(BaseModel):
+    module_id: int
+    questions: List[BulkQuestionItem]
+    
+class BulkQuestionResponse(BaseModel):
+    message: str
+    count: int
+
 class QuestionUpdate(BaseModel):
     text: Optional[str] = None
     ideal_answer: Optional[str] = None
