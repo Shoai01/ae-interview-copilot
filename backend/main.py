@@ -26,7 +26,11 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # For development. Adjust for production.
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://ae-interview-copilot.pages.dev"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

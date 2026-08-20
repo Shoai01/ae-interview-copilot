@@ -34,7 +34,7 @@ def login(request: Request, response: Response, login_data: LoginRequest, db: Se
         value=refresh_token,
         httponly=True,
         secure=True, # Should be True in production (HTTPS), might need False for local dev if not localhost, but generally modern browsers accept Secure on localhost.
-        samesite="lax",
+        samesite="none",
         max_age=7 * 24 * 60 * 60 # 7 days
     )
     
@@ -78,7 +78,7 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
         value=new_refresh_token,
         httponly=True,
         secure=True,
-        samesite="lax",
+        samesite="none",
         max_age=7 * 24 * 60 * 60
     )
     
@@ -93,5 +93,5 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
 
 @router.post("/logout")
 def logout(response: Response):
-    response.delete_cookie(key="refresh_token", httponly=True, secure=True, samesite="lax")
+    response.delete_cookie(key="refresh_token", httponly=True, secure=True, samesite="none")
     return {"message": "Logged out successfully"}

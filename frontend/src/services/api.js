@@ -6,6 +6,9 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true, // Crucial for sending/receiving HTTP-only cookies
+  headers: {
+    'ngrok-skip-browser-warning': 'true'
+  }
 });
 
 export const authService = {
