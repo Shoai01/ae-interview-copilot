@@ -88,11 +88,11 @@ def get_all_modules(db: Session = Depends(get_db), current_user: User = Depends(
     return results
 
 @router.get("/questions", response_model=List[admin_schemas.QuestionResponse])
-def get_questions(module_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+def get_questions(module_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     return admin_service.get_questions_by_module(db, module_id=module_id)
 
 @router.post("/generate-set", response_model=List[admin_schemas.QuestionResponse])
-def generate_ai_set(module_id: int, set_name: str, count: int = 15, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+def generate_ai_set(module_id: int, set_name: str, count: int = 15, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     from services.knowledge_service import generate_dynamic_questions_for_session
     questions = generate_dynamic_questions_for_session(db, module_id, count=count, set_name=set_name)
     if not questions:
@@ -100,18 +100,18 @@ def generate_ai_set(module_id: int, set_name: str, count: int = 15, db: Session 
     return questions
 
 @router.post("/questions", response_model=admin_schemas.QuestionResponse, status_code=status.HTTP_201_CREATED)
-def create_question(question_data: admin_schemas.QuestionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+def create_question(question_data: admin_schemas.QuestionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     return admin_service.create_question(db, question=question_data)
 
 @router.put("/questions/{question_id}/toggle", response_model=admin_schemas.QuestionResponse)
-def toggle_question_status(question_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+def toggle_question_status(question_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     updated_question = admin_service.toggle_question_active_status(db, question_id=question_id)
     if not updated_question:
         raise HTTPException(status_code=404, detail="Question not found")
     return updated_question
 
 @router.delete("/questions/{question_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_question(question_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+def delete_question(question_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     try:
         success = admin_service.delete_question(db, question_id=question_id)
         if not success:
@@ -121,19 +121,19 @@ def delete_question(question_id: int, db: Session = Depends(get_db), current_use
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.put("/questions/{question_id}", response_model=admin_schemas.QuestionResponse)
-def update_question(question_id: int, update_data: admin_schemas.QuestionUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+def update_question(question_id: int, update_data: admin_schemas.QuestionUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     updated = admin_service.update_question(db, question_id, update_data)
     if not updated:
         raise HTTPException(status_code=404, detail="Question not found")
     return updated
 
 @router.put("/modules/{module_id}/sets/{set_name}", status_code=status.HTTP_204_NO_CONTENT)
-def rename_set(module_id: int, set_name: str, rename_data: admin_schemas.SetRename, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+def rename_set(module_id: int, set_name: str, rename_data: admin_schemas.SetRename, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     admin_service.rename_set(db, module_id, set_name, rename_data.new_set_name)
     return None
 
 @router.delete("/modules/{module_id}/sets/{set_name}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_set(module_id: int, set_name: str, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN]))):
+def delete_set(module_id: int, set_name: str, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     admin_service.delete_set(db, module_id, set_name)
     return None
 
