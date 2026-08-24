@@ -108,8 +108,26 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
     completion_rate = (completed_sessions / total_interviews * 100) if total_interviews > 0 else 0.0
     completion_rate = round(completion_rate, 1)
     
-    total_passed = report_query.filter(domain.VivaReport.ai_recommendation == domain.AIRecommendationType.PASS).count()
-    total_failed = report_query.filter(domain.VivaReport.ai_recommendation == domain.AIRecommendationType.FAIL).count()
+    from sqlalchemy import or_, and_
+    total_passed = report_query.filter(
+        or_(
+            domain.VivaReport.trainer_decision == domain.TrainerDecisionType.PASS,
+            and_(
+                domain.VivaReport.trainer_decision == None,
+                domain.VivaReport.ai_recommendation == domain.AIRecommendationType.PASS
+            )
+        )
+    ).count()
+    
+    total_failed = report_query.filter(
+        or_(
+            domain.VivaReport.trainer_decision == domain.TrainerDecisionType.FAIL,
+            and_(
+                domain.VivaReport.trainer_decision == None,
+                domain.VivaReport.ai_recommendation == domain.AIRecommendationType.FAIL
+            )
+        )
+    ).count()
     
     completed_reports_query = db.query(domain.VivaSession.start_time, domain.VivaReport.aggregate_score)\
         .join(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)\

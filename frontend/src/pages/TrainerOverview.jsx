@@ -63,7 +63,13 @@ export default function TrainerOverview() {
     bgcolor: '#ffffff',
     height: '100%',
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: '0 12px 24px -10px rgba(0,0,0,0.1)',
+      borderColor: 'rgba(242, 101, 34, 0.3)'
+    }
   };
 
   const iconWrapperSx = {
@@ -292,8 +298,12 @@ export default function TrainerOverview() {
                       <TableCell sx={{ borderBottom: 'none' }}>
                         {activity.status === 'COMPLETED' ? (
                            <Chip size="small" label="Complete" sx={{ bgcolor: 'rgba(74, 222, 128, 0.1)', color: 'success.dark', border: '1px solid rgba(74, 222, 128, 0.3)', borderRadius: 1 }} />
-                        ) : (
+                        ) : activity.status === 'IN_PROGRESS' ? (
                            <Chip size="small" label="In-Progress" icon={<Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'primary.main', animation: `${pulse} 2s infinite`, ml: 1 }} />} sx={{ bgcolor: 'rgba(0,0,0,0.04)', color: 'text.primary', borderRadius: 1, '& .MuiChip-icon': { color: 'primary.main' } }} />
+                        ) : activity.status === 'PENDING' ? (
+                           <Chip size="small" label="Not Started" sx={{ bgcolor: 'rgba(0,0,0,0.04)', color: 'text.secondary', borderRadius: 1 }} />
+                        ) : (
+                           <Chip size="small" label="Expired" sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', color: 'error.main', borderRadius: 1 }} />
                         )}
                       </TableCell>
                     </TableRow>

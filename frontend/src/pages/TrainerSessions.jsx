@@ -299,7 +299,7 @@ export default function TrainerSessions() {
                               {row.ai_recommendation} (AI)
                             </Typography>
                           </Stack>
-                        ) : row.status === 'Completed' ? (
+                        ) : row.status === 'Pending Review' ? (
                           <Typography variant="body2" color="text.secondary">Evaluating...</Typography>
                         ) : (
                           <Typography variant="body2" color="text.disabled">—</Typography>
@@ -313,9 +313,9 @@ export default function TrainerSessions() {
                           sx={{ 
                             height: 24, 
                             fontSize: '12px',
-                            bgcolor: row.status === 'Reviewed' ? 'rgba(0,0,0,0.04)' : row.status === 'Expired' ? 'rgba(220,38,38,0.1)' : 'transparent',
-                            borderColor: row.status === 'Reviewed' || row.status === 'Expired' ? 'transparent' : 'divider',
-                            color: row.status === 'Expired' ? '#dc2626' : 'text.secondary'
+                            bgcolor: row.status === 'Reviewed' ? 'rgba(34,197,94,0.1)' : row.status === 'Expired' ? 'rgba(239,68,68,0.1)' : row.status === 'In Progress' ? 'rgba(242,101,34,0.1)' : row.status === 'Pending Review' ? 'rgba(245,158,11,0.1)' : 'rgba(0,0,0,0.04)',
+                            borderColor: row.status === 'Assigned' ? 'divider' : 'transparent',
+                            color: row.status === 'Reviewed' ? '#16a34a' : row.status === 'Expired' ? '#dc2626' : row.status === 'In Progress' ? '#F26522' : row.status === 'Pending Review' ? '#d97706' : 'text.secondary'
                           }} 
                         />
                       </TableCell>

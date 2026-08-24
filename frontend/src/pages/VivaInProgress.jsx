@@ -38,7 +38,7 @@ export default function VivaInProgress() {
   const timerWarning = remainingSeconds <= 120 && remainingSeconds > 0; // last 2 min
 
   // Fraud detection runs in background
-  useFraudDetection(sessionId, currentQuestion?.viva_question_id);
+  const { detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id);
 
   // Timer tick — counts up every second
   useEffect(() => {

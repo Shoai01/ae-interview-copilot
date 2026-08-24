@@ -271,7 +271,7 @@ export default function TrainerReviewDetail() {
                         {(q.fraud_flags !== undefined) && (
                           <ScoreBar 
                             label="Fraud Events" 
-                            score={q.fraud_flags.length} 
+                            score={q.fraud_flags.reduce((sum, f) => sum + (f.count || 1), 0)} 
                             color={q.fraud_flags.length > 0 ? "#ef4444" : "#10b981"} 
                             isCount={true}
                           />

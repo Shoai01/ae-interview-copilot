@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { vivaService } from '@/services/api';
 import { globalState } from '@/store';
+import toast from 'react-hot-toast';
 
 /**
  * Background fraud detection hook for the Viva session.
@@ -55,6 +56,18 @@ export function useFraudDetection(sessionId, activeQuestionId) {
       addLog(flagType, `Skipped — no active question yet`, 'warn');
       return;
     }
+    
+    // User Warning Toast
+    if (flagType === 'TAB_SWITCH') {
+      toast.error('⚠️ Warning: Tab switching is not allowed and has been recorded.', { duration: 5000 });
+    } else if (flagType === 'FULLSCREEN_EXIT') {
+      toast.error('⚠️ Warning: Please remain in full-screen mode.', { duration: 5000 });
+    } else if (flagType === 'MULTIPLE_FACES') {
+      toast.error('⚠️ Warning: Multiple faces detected. Please ensure you are alone.', { duration: 5000 });
+    } else if (flagType === 'NO_FACE') {
+      toast.error('⚠️ Warning: Face not detected. Please stay in the camera frame.', { duration: 4000 });
+    }
+
     addLog(flagType, `Flagged on Q${qId}`, 'flag');
     vivaService.reportFraudFlag(sId, qId, flagType);
   }, [addLog]);
@@ -64,15 +77,19 @@ export function useFraudDetection(sessionId, activeQuestionId) {
   // ---------------------------------------------------------------
   useEffect(() => {
     isMountedRef.current = true;
+    let isActive = true;
     let intervalId = null;
     let consecutiveMisses = 0;
     let inAbsenceEvent = false;
+    let inMultipleFaceEvent = false;
     let videoEl = null;
 
     const startFaceDetection = async () => {
       try {
         const faceapi = await import('face-api.js');
         await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+        if (!isActive) return;
+        
         addLog('SYSTEM', 'Face detector model loaded', 'info');
         setDetectorStatus(prev => ({ ...prev, faceDetection: 'active' }));
 
@@ -89,11 +106,12 @@ export function useFraudDetection(sessionId, activeQuestionId) {
           videoEl.srcObject = globalState.mediaStream;
           await videoEl.play().catch(() => {});
         }
+        if (!isActive) return;
 
         const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
 
         intervalId = setInterval(async () => {
-          if (!isMountedRef.current) return;
+          if (!isMountedRef.current || !isActive) return;
           if (!videoEl || videoEl.readyState < 2) return;
 
           try {
@@ -109,12 +127,29 @@ export function useFraudDetection(sessionId, activeQuestionId) {
               } else if (consecutiveMisses === 1) {
                 addLog('NO_FACE', `No face detected (1st miss — waiting for confirmation)`, 'warn');
               }
-            } else {
+            } else if (faceCount > 1) {
               if (inAbsenceEvent) {
                 addLog('NO_FACE', `Face re-detected — absence event ended`, 'info');
               }
               consecutiveMisses = 0;
               inAbsenceEvent = false;
+              setDetectorStatus(prev => ({ ...prev, facePresent: true }));
+              
+              if (!inMultipleFaceEvent) {
+                inMultipleFaceEvent = true;
+                reportFlag('MULTIPLE_FACES');
+                addLog('MULTIPLE_FACES', `Multiple faces detected in frame`, 'warn');
+              }
+            } else {
+              if (inAbsenceEvent) {
+                addLog('NO_FACE', `Face re-detected — absence event ended`, 'info');
+              }
+              if (inMultipleFaceEvent) {
+                addLog('MULTIPLE_FACES', `Returned to single face`, 'info');
+              }
+              consecutiveMisses = 0;
+              inAbsenceEvent = false;
+              inMultipleFaceEvent = false;
               setDetectorStatus(prev => ({ ...prev, facePresent: true }));
             }
           } catch (e) {
@@ -122,6 +157,7 @@ export function useFraudDetection(sessionId, activeQuestionId) {
           }
         }, 4000);
       } catch (err) {
+        if (!isActive) return;
         addLog('SYSTEM', `Face detection init failed: ${err.message}`, 'error');
         setDetectorStatus(prev => ({ ...prev, faceDetection: 'error' }));
       }
@@ -131,6 +167,7 @@ export function useFraudDetection(sessionId, activeQuestionId) {
 
     return () => {
       isMountedRef.current = false;
+      isActive = false;
       if (intervalId) clearInterval(intervalId);
       const el = document.getElementById('__fraud_detection_video');
       if (el) { el.srcObject = null; el.remove(); }
@@ -151,8 +188,9 @@ export function useFraudDetection(sessionId, activeQuestionId) {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         if (!hasFiredForThisHide) {
+          if (debounceTimer) clearTimeout(debounceTimer);
           debounceTimer = setTimeout(() => {
-            if (document.hidden) {
+            if (document.hidden || !document.hasFocus()) {
               hasFiredForThisHide = true;
               reportFlag('TAB_SWITCH');
             }
@@ -169,6 +207,7 @@ export function useFraudDetection(sessionId, activeQuestionId) {
 
     const handleWindowBlur = () => {
       if (!hasFiredForThisHide) {
+        if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
           if (document.hidden || !document.hasFocus()) {
             hasFiredForThisHide = true;
@@ -216,6 +255,7 @@ export function useFraudDetection(sessionId, activeQuestionId) {
         setDetectorStatus(prev => ({ ...prev, fullscreen: 'active' }));
         addLog('FULLSCREEN', 'Re-entered fullscreen', 'info');
       } else if (wasFullscreen) {
+        wasFullscreen = false;
         setDetectorStatus(prev => ({ ...prev, fullscreen: 'inactive' }));
         reportFlag('FULLSCREEN_EXIT');
       }

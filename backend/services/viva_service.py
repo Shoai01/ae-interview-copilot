@@ -157,7 +157,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
         
         if not distinct_sets:
             # Revert session state if no questions available
-            db.delete(db_session)
+            db_session.status = domain.SessionStatus.PENDING
             db.commit()
             raise ValueError("Could not start session. No Question Sets are available for this module.")
             
@@ -310,7 +310,7 @@ def evaluate_session(db: Session, session_id: int):
     questions_data = []
     for q in session.questions:
         if q.answered_at and q.transcript:
-            flags = [f.flag_type for f in q.fraud_flags] if q.fraud_flags else []
+            flags = [f"{f.flag_type.value} (Count: {f.count})" for f in q.fraud_flags] if q.fraud_flags else []
             questions_data.append({
                 'viva_question_id': q.id,
                 'question_text': q.question_bank.text,
@@ -366,7 +366,7 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
             "transcript": q.transcript,
             "duration": int((q.answered_at - q.asked_at).total_seconds()) if q.answered_at and q.asked_at else 0,
             "evaluation": eval_data,
-            "fraud_flags": [f.flag_type.value for f in q.fraud_flags] if q.fraud_flags else []
+            "fraud_flags": [{"type": f.flag_type.value, "count": f.count} for f in q.fraud_flags] if q.fraud_flags else []
         })
         
     report_data = None
