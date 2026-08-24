@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Paper, Stack, Button, Table, TableBody, TableCell, TableHead, TableRow, TablePagination, IconButton, Avatar, Chip, keyframes, CircularProgress, Select, MenuItem } from '@mui/material';
 import Layout from '@/components/Layout';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
 import GroupIcon from '@mui/icons-material/Group';
 import GradeIcon from '@mui/icons-material/Grade';
 import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
@@ -10,6 +10,10 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import PercentIcon from '@mui/icons-material/Percent';
 import { adminService } from '@/services/api';
 
 // Pulse animation for the active session indicator
@@ -137,25 +141,39 @@ export default function TrainerOverview() {
         </Box>
 
         {/* Row 1: KPI Cards */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(5, 1fr)' }, gap: 2, width: '100%' }}>
-          {/* KPI 1 */}
-          <Paper elevation={0} sx={cardSx}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(6, 1fr)' }, gap: 2, width: '100%' }}>
+          {/* KPI 1: Total Interviews */}
+          <Paper elevation={0} sx={{ ...cardSx, borderLeft: '4px solid #475569' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-              <Box sx={iconWrapperSx}><GroupIcon /></Box>
+              <Box sx={{ ...iconWrapperSx, bgcolor: 'rgba(71, 85, 105, 0.1)', color: '#475569' }}><GroupIcon /></Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, mb: 0.5, whiteSpace: 'nowrap' }}>
               Total Interviews
             </Typography>
             <Typography variant="h4" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary' }}>
               {metrics.total_interviews}
             </Typography>
           </Paper>
-          {/* KPI 3 */}
-          <Paper elevation={0} sx={cardSx}>
+
+          {/* KPI 2: Average Score */}
+          <Paper elevation={0} sx={{ ...cardSx, borderLeft: '4px solid #eab308' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-              <Box sx={{ ...iconWrapperSx, bgcolor: 'rgba(74, 222, 128, 0.1)', color: 'success.main' }}><ThumbUpIcon /></Box>
+              <Box sx={{ ...iconWrapperSx, bgcolor: 'rgba(234, 179, 8, 0.1)', color: '#eab308' }}><GradeIcon /></Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, mb: 0.5, whiteSpace: 'nowrap' }}>
+              Average Score
+            </Typography>
+            <Typography variant="h4" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary' }}>
+              {metrics.avg_performance_score != null ? `${Number(metrics.avg_performance_score).toFixed(1)}/10` : '—'}
+            </Typography>
+          </Paper>
+
+          {/* KPI 3: Passed */}
+          <Paper elevation={0} sx={{ ...cardSx, borderLeft: '4px solid #22c55e' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+              <Box sx={{ ...iconWrapperSx, bgcolor: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}><ThumbUpIcon /></Box>
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, mb: 0.5, whiteSpace: 'nowrap' }}>
               Passed
             </Typography>
             <Typography variant="h4" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary' }}>
@@ -163,12 +181,12 @@ export default function TrainerOverview() {
             </Typography>
           </Paper>
 
-          {/* KPI 4 */}
-          <Paper elevation={0} sx={cardSx}>
+          {/* KPI 4: Failed */}
+          <Paper elevation={0} sx={{ ...cardSx, borderLeft: '4px solid #ef4444' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-              <Box sx={{ ...iconWrapperSx, bgcolor: 'rgba(239, 68, 68, 0.1)', color: 'error.main' }}><ThumbDownIcon /></Box>
+              <Box sx={{ ...iconWrapperSx, bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}><ThumbDownIcon /></Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, mb: 0.5, whiteSpace: 'nowrap' }}>
               Failed
             </Typography>
             <Typography variant="h4" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary' }}>
@@ -176,12 +194,12 @@ export default function TrainerOverview() {
             </Typography>
           </Paper>
 
-          {/* KPI 5 */}
-          <Paper elevation={0} sx={cardSx}>
+          {/* KPI 5: Active Sessions */}
+          <Paper elevation={0} sx={{ ...cardSx, borderLeft: '4px solid #F26522' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
               <Box sx={iconWrapperSx}><RecordVoiceOverIcon /></Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, mb: 0.5, whiteSpace: 'nowrap' }}>
               Active Sessions
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -194,12 +212,12 @@ export default function TrainerOverview() {
             </Box>
           </Paper>
 
-          {/* KPI 6 */}
-          <Paper elevation={0} sx={cardSx}>
+          {/* KPI 6: Completion Rate */}
+          <Paper elevation={0} sx={{ ...cardSx, borderLeft: '4px solid #3b82f6' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-              <Box sx={iconWrapperSx}><CheckCircleIcon /></Box>
+              <Box sx={{ ...iconWrapperSx, bgcolor: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}><CheckCircleIcon /></Box>
             </Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, mb: 0.5, whiteSpace: 'nowrap' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 600, mb: 0.5, whiteSpace: 'nowrap' }}>
               Completion Rate
             </Typography>
             <Typography variant="h4" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary' }}>
@@ -208,45 +226,87 @@ export default function TrainerOverview() {
           </Paper>
         </Box>
 
-        {/* Row 2: Performance & Activity */}
+        {/* Row 2: Analytics Trends & Performance */}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' }, gap: 3, width: '100%' }}>
-          
-          {/* Top Competencies */}
+          {/* Module Performance Donut */}
           <Paper elevation={0} sx={{ ...cardSx, minHeight: 400 }}>
             <Typography variant="h6" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, mb: 3 }}>
               Module Performance
             </Typography>
-            <Box sx={{ flex: 1, width: '100%', minHeight: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Box sx={{ flex: 1, width: '100%', minHeight: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
               {metrics.top_competencies.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={metrics.top_competencies}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="average_score"
-                      nameKey="module_name"
-                    >
-                      {metrics.top_competencies.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={compColors[index % compColors.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip 
-                      formatter={(value) => [`${value}%`, 'Avg Score']}
-                      contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif' }}
-                    />
-                    <Legend wrapperStyle={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12 }} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={metrics.top_competencies}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={70}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="average_score"
+                        nameKey="module_name"
+                      >
+                        {metrics.top_competencies.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={compColors[index % compColors.length]} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        formatter={(value) => [`${value}%`, 'Avg Score']}
+                        contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontFamily: 'DM Sans, sans-serif' }}
+                      />
+                      <Legend wrapperStyle={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  
+                  {/* Center Text Overlay */}
+                  <Box sx={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', top: 'calc(50% - 25px)' }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', lineHeight: 1.1 }}>
+                      {metrics.avg_performance_score != null ? Number(metrics.avg_performance_score).toFixed(1) : '0.0'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontFamily: 'DM Sans, sans-serif', fontSize: 11, textTransform: 'uppercase', mt: 0.2 }}>
+                      Avg Score
+                    </Typography>
+                  </Box>
+                </>
               ) : (
                 <Typography variant="body2" color="text.secondary">No module data available yet.</Typography>
               )}
             </Box>
           </Paper>
 
+          {/* Quick Actions */}
+          <Paper elevation={0} sx={cardSx}>
+            <Typography variant="h6" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, mb: 3 }}>
+              Quick Actions
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <QuickAction 
+                title="Create New Interview" 
+                subtitle="Set up a new AI session" 
+                icon={<AssignmentIcon />} 
+                onClick={() => navigate('/hr/sessions')} 
+              />
+              <QuickAction 
+                title="Manage Question Bank" 
+                subtitle="Edit core competencies" 
+                icon={<MenuBookIcon />} 
+                onClick={() => navigate('/hr/questions')} 
+              />
+              <QuickAction 
+                title="Invite Trainers" 
+                subtitle="Add users to workspace" 
+                icon={<PersonAddIcon />} 
+                onClick={() => navigate('/hr/users')} 
+              />
+            </Box>
+          </Paper>
+        </Box>
+
+        {/* Row 3: Activity & Quick Actions */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr' }, gap: 3, width: '100%' }}>
+          
           {/* Recent Activity Table */}
           <Paper elevation={0} sx={{ ...cardSx, p: 0, overflow: 'hidden', minHeight: 400, display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ p: 3, borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -262,7 +322,7 @@ export default function TrainerOverview() {
                 <TableHead>
                   <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
                     <TableCell sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', fontSize: 12 }}>Candidate</TableCell>
-                    <TableCell sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', fontSize: 12 }}>Role</TableCell>
+                    <TableCell sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', fontSize: 12 }}>Module</TableCell>
                     <TableCell sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', fontSize: 12 }}>Date</TableCell>
                     <TableCell sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', fontSize: 12 }}>Score</TableCell>
                     <TableCell sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', fontSize: 12 }}>Status</TableCell>
@@ -330,43 +390,37 @@ export default function TrainerOverview() {
           </Paper>
         </Box>
 
-        {/* Row 3: Table and Actions */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr' }, gap: 3, width: '100%' }}>
-          {/* Quick Actions */}
-          <Paper elevation={0} sx={cardSx}>
-            <Typography variant="h6" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, mb: 2 }}>
-              Quick Actions
-            </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 2 }}>
-              <QuickAction title="Create New Interview" subtitle="Set up a new AI session" onClick={() => navigate('/hr/sessions')} />
-              <QuickAction title="Manage Question Bank" subtitle="Edit core competencies" onClick={() => navigate('/hr/questions')} />
-              <QuickAction title="Invite Trainers" subtitle="Add users to workspace" onClick={() => navigate('/hr/users')} />
-            </Box>
-          </Paper>
-        </Box>
-
       </Box>
     </Layout>
   );
 }
 
 
-function QuickAction({ title, subtitle, onClick }) {
+function QuickAction({ title, subtitle, icon, onClick }) {
   return (
     <Box 
       onClick={onClick}
       sx={{ 
-      p: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.1)', cursor: 'pointer',
-      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      p: 2.5, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', cursor: 'pointer',
+      display: 'flex', gap: 2, alignItems: 'center',
       transition: 'all 0.2s',
       '&:hover': {
         borderColor: 'primary.main',
         bgcolor: 'rgba(242,101,34,0.04)',
-        '& .icon': { color: 'primary.main' },
+        '& .icon-wrapper': { bgcolor: 'rgba(242,101,34,0.1)', color: 'primary.main' },
         '& .title': { color: 'primary.main' }
       }
     }}>
-      <Box>
+      <Box className="icon-wrapper" sx={{ 
+        width: 44, height: 44, borderRadius: 2, 
+        bgcolor: 'rgba(0,0,0,0.03)', color: 'text.secondary',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.2s',
+        flexShrink: 0
+      }}>
+        {icon}
+      </Box>
+      <Box sx={{ flex: 1 }}>
         <Typography className="title" variant="body2" sx={{ fontWeight: 700, fontFamily: 'DM Sans, sans-serif', transition: 'color 0.2s' }}>
           {title}
         </Typography>
@@ -374,7 +428,7 @@ function QuickAction({ title, subtitle, onClick }) {
           {subtitle}
         </Typography>
       </Box>
-      <ArrowForwardIcon className="icon" sx={{ color: 'text.secondary', transition: 'color 0.2s', fontSize: 20 }} />
+      <ArrowForwardIcon className="arrow-icon" sx={{ color: 'text.secondary', opacity: 0.5, fontSize: 18 }} />
     </Box>
   );
 }

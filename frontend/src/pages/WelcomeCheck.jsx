@@ -228,7 +228,7 @@ export default function WelcomeCheck() {
                     <TimerOutlinedIcon sx={{ color: 'primary.main', fontSize: '22px' }} />
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>Duration</Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>Approximately 25-30 minutes. Ensure you have uninterrupted time.</Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>Approximately {currentSession?.duration_minutes || '15'} minutes. Ensure you have uninterrupted time.</Typography>
                     </Box>
                   </Box>
                   

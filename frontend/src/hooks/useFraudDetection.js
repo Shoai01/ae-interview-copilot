@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
  *
  * Returns a logs array for the debug monitor panel.
  */
-export function useFraudDetection(sessionId, activeQuestionId) {
+export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = null) {
   const questionIdRef = useRef(activeQuestionId);
   const sessionIdRef = useRef(sessionId);
   const isMountedRef = useRef(true);
@@ -50,6 +50,10 @@ export function useFraudDetection(sessionId, activeQuestionId) {
   // Shared flag reporter
   // ---------------------------------------------------------------
   const reportFlag = useCallback((flagType) => {
+    if (isEndingRef && isEndingRef.current) {
+      addLog(flagType, `Skipped — detection disabled (session ending)`, 'info');
+      return;
+    }
     const qId = questionIdRef.current;
     const sId = sessionIdRef.current;
     if (!sId || !qId) {

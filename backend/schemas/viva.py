@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
+from datetime import datetime
 
 class SessionCreate(BaseModel):
     trainee_id: Optional[int] = None
@@ -18,6 +19,7 @@ class SessionResponse(BaseModel):
     trainee_name: str
     duration_minutes: int
     total_questions: int
+    start_time: Optional[datetime] = None
     new_user_password: Optional[str] = None
     
     model_config = ConfigDict(from_attributes=True)

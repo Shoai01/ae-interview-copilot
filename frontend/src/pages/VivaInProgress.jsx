@@ -38,7 +38,8 @@ export default function VivaInProgress() {
   const timerWarning = remainingSeconds <= 120 && remainingSeconds > 0; // last 2 min
 
   // Fraud detection runs in background
-  const { detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id);
+  const isEndingRef = useRef(false);
+  const { detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
 
   // Timer tick — counts up every second
   useEffect(() => {
@@ -129,6 +130,7 @@ export default function VivaInProgress() {
         }
 
         // Exit fullscreen when the session finishes
+        isEndingRef.current = true;
         if (document.fullscreenElement) {
           document.exitFullscreen().catch(() => {});
         }

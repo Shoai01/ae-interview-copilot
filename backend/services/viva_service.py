@@ -81,6 +81,7 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate, curren
         trainee_name=trainee.full_name or trainee.username,
         duration_minutes=db_session.duration_minutes,
         total_questions=0,
+        start_time=db_session.start_time,
         new_user_password=new_user_password
     )
 def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas.SessionResponse:
@@ -234,7 +235,8 @@ def get_current_session(db: Session, trainee_id: int) -> viva_schemas.SessionRes
         module_name=session.module.name if session.module else "Unknown",
         trainee_name=session.trainee.full_name or session.trainee.username,
         duration_minutes=session.duration_minutes,
-        total_questions=len(session.questions)
+        total_questions=len(session.questions),
+        start_time=session.start_time
     )
 
 def get_next_question(db: Session, session_id: int) -> viva_schemas.NextQuestionResponse:
@@ -388,7 +390,8 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
         module_name=session.module.name if session.module else "Unknown",
         trainee_name=session.trainee.full_name or session.trainee.username if session.trainee else "Candidate",
         duration_minutes=session.duration_minutes,
-        total_questions=summary.total_questions
+        total_questions=summary.total_questions,
+        start_time=session.start_time
     )
 
     trainee_response = viva_schemas.TraineeResponse(
