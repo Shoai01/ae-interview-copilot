@@ -48,6 +48,20 @@ export default function WelcomeCheck() {
   const [stream, setStream] = useState(null);
   const [traineeName, setTraineeName] = useState("Loading...");
   const [currentSession, setCurrentSession] = useState(null);
+  const [isFetchingSession, setIsFetchingSession] = useState(true);
+
+  const fetchSession = async () => {
+    setIsFetchingSession(true);
+    try {
+      const session = await vivaService.getCurrentSession();
+      setCurrentSession(session);
+    } catch (err) {
+      console.error("Failed to fetch current session:", err);
+      setCurrentSession(null);
+    } finally {
+      setIsFetchingSession(false);
+    }
+  };
 
   useEffect(() => {
     // Fetch Trainee Details
@@ -63,16 +77,6 @@ export default function WelcomeCheck() {
       }
     };
     fetchTrainee();
-
-    // Fetch assigned session
-    const fetchSession = async () => {
-      try {
-        const session = await vivaService.getCurrentSession();
-        setCurrentSession(session);
-      } catch (err) {
-        console.error("Failed to fetch current session:", err);
-      }
-    };
     fetchSession();
 
     // Network listener
@@ -186,7 +190,32 @@ export default function WelcomeCheck() {
 
       {/* Main Content */}
       <Box component="main" sx={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', p: { xs: 2, md: 4 }, width: '100%', maxWidth: 1440, mx: 'auto' }}>
-        <Box sx={{ width: '100%', maxWidth: 860, display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center', my: 'auto' }}>
+        
+        {isFetchingSession ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 'auto', gap: 2 }}>
+            <CircularProgress sx={{ color: 'primary.main' }} />
+            <Typography variant="body2" color="text.secondary">Checking for active sessions...</Typography>
+          </Box>
+        ) : !currentSession ? (
+          <Box sx={{ width: '100%', maxWidth: 500, display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center', my: 'auto', textAlign: 'center' }}>
+            <Box sx={{ width: 80, height: 80, borderRadius: '50%', bgcolor: 'rgba(242,101,34,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', mb: 1 }}>
+              <FactCheckOutlinedIcon sx={{ fontSize: 40 }} />
+            </Box>
+            <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>No Session Assigned</Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+              You currently do not have any active or pending interview sessions. Please wait for your trainer or administrator to assign a module to your account.
+            </Typography>
+            <Button 
+              variant="outlined" 
+              onClick={fetchSession}
+              startIcon={<SyncIcon />}
+              sx={{ mt: 2, borderRadius: 2, textTransform: 'none', px: 4 }}
+            >
+              Check Again
+            </Button>
+          </Box>
+        ) : (
+          <Box sx={{ width: '100%', maxWidth: 860, display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center', my: 'auto' }}>
           
           {/* Welcome Header */}
           <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
@@ -236,7 +265,7 @@ export default function WelcomeCheck() {
                     <FormatListNumberedOutlinedIcon sx={{ color: 'primary.main', fontSize: '22px' }} />
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>Questions</Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>Dynamic questions tailored to your {currentSession?.module_name || ''} profile.</Typography>
+                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>{currentSession?.total_questions ? `${currentSession.total_questions} questions` : 'A series of questions'} focusing on {currentSession?.module_name ? `the ${currentSession.module_name} module` : 'your assigned module'}.</Typography>
                     </Box>
                   </Box>
                   
@@ -364,7 +393,8 @@ export default function WelcomeCheck() {
             )}
           </Box>
 
-        </Box>
+          </Box>
+        )}
       </Box>
     </Box>
   );
