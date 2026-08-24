@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -20,7 +20,7 @@ def get_dashboard_metrics(module_id: Optional[int] = None, db: Session = Depends
     return admin_service.get_dashboard_metrics(db, module_id=module_id)
 
 @router.post("/users", response_model=user_schemas.UserResponse, status_code=status.HTTP_201_CREATED)
-def create_user(user: user_schemas.UserCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+def create_user(user: user_schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     # Only Admin can create Trainers. Trainer can create Trainees.
     if user.role == UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create ADMIN accounts via API.")
@@ -31,7 +31,19 @@ def create_user(user: user_schemas.UserCreate, db: Session = Depends(get_db), cu
     if existing_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
         
-    return user_service.create_user(db, user=user, created_by_id=current_user.id)
+    created_user = user_service.create_user(db, user=user, created_by_id=current_user.id)
+    
+    # Send welcome email in the background (non-blocking)
+    from services.email_service import send_welcome_email
+    background_tasks.add_task(
+        send_welcome_email,
+        to_email=created_user.username,
+        username=created_user.username,
+        password=user.password,
+        full_name=created_user.full_name
+    )
+    
+    return created_user
 
 @router.get("/users", response_model=List[user_schemas.UserResponse])
 def get_all_users(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
@@ -93,7 +105,7 @@ def get_questions(module_id: int, db: Session = Depends(get_db), current_user: U
 
 @router.post("/generate-set", response_model=List[admin_schemas.QuestionResponse])
 def generate_ai_set(module_id: int, set_name: str, count: int = 15, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
-    from services.knowledge_service import generate_dynamic_questions_for_session
+    from ai.question_gen import generate_dynamic_questions_for_session
     questions = generate_dynamic_questions_for_session(db, module_id, count=count, set_name=set_name)
     if not questions:
         raise HTTPException(status_code=400, detail="Could not generate questions. Make sure you have uploaded PDFs for this module.")

@@ -55,6 +55,30 @@ def delete_user(db: Session, user_id: int) -> bool:
     db_user = get_user_by_id(db, user_id)
     if not db_user:
         return False
-    db.delete(db_user)
-    db.commit()
-    return True
+        
+    try:
+        if db_user.role == UserRole.TRAINEE:
+            # Manually delete their sessions to avoid FK constraints
+            for session in db_user.sessions:
+                if session.report:
+                    db.delete(session.report)
+                for q in session.questions:
+                    if q.evaluation:
+                        db.delete(q.evaluation)
+                    for f in q.fraud_flags:
+                        db.delete(f)
+                    db.delete(q)
+                db.delete(session)
+                
+        elif db_user.role in [UserRole.TRAINER, UserRole.ADMIN]:
+            # Nullify created_by and reviewed_by fields to avoid FK constraints
+            from models.domain import VivaReport, User
+            db.query(User).filter(User.created_by == user_id).update({"created_by": None})
+            db.query(VivaReport).filter(VivaReport.reviewed_by == user_id).update({"reviewed_by": None})
+
+        db.delete(db_user)
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        raise e

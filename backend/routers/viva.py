@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -7,6 +7,7 @@ from schemas import viva as viva_schemas
 from services import viva_service, user_service
 from core.deps import get_current_user, require_role
 from models.domain import User, UserRole
+from models import domain
 
 router = APIRouter(
     prefix="/viva",
@@ -14,16 +15,73 @@ router = APIRouter(
 )
 
 @router.post("/sessions/assign", response_model=viva_schemas.SessionResponse, status_code=status.HTTP_201_CREATED)
-def assign_session(session_data: viva_schemas.SessionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+def assign_session(session_data: viva_schemas.SessionCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     try:
-        return viva_service.assign_session(db, session_data, current_user_id=current_user.id)
+        session_result = viva_service.assign_session(db, session_data, current_user_id=current_user.id)
+        
+        # Dispatch emails in background (non-blocking)
+        from services.email_service import send_welcome_email, send_session_assignment_email
+        if session_result.new_user_password:
+            # Trainee was auto-created during assignment
+            username = session_data.trainee_identifier
+            background_tasks.add_task(
+                send_welcome_email,
+                to_email=username,
+                username=username,
+                password=session_result.new_user_password,
+                full_name=session_result.trainee_name
+            )
+            to_email = username
+        else:
+            # Look up trainee's username (email)
+            trainee = db.query(User).filter(User.id == session_result.trainee_id).first()
+            to_email = trainee.username if trainee else None
+            
+        if to_email:
+            background_tasks.add_task(
+                send_session_assignment_email,
+                to_email=to_email,
+                module_name=session_result.module_name,
+                duration_minutes=session_result.duration_minutes,
+                full_name=session_result.trainee_name,
+                question_count=session_result.total_questions
+            )
+            
+        return session_result
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/sessions/assign/bulk", response_model=viva_schemas.BulkSessionResponse, status_code=status.HTTP_201_CREATED)
-def assign_session_bulk(bulk_data: viva_schemas.BulkSessionCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+def assign_session_bulk(bulk_data: viva_schemas.BulkSessionCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     # Bulk handler catches ValueError internally and returns it in the response payload
-    return viva_service.assign_session_bulk(db, bulk_data, current_user_id=current_user.id)
+    bulk_result = viva_service.assign_session_bulk(db, bulk_data, current_user_id=current_user.id)
+    
+    # Dispatch emails for successful assignments in background (non-blocking)
+    from services.email_service import send_welcome_email, send_session_assignment_email
+    
+    module = db.query(domain.TrainingModule).filter(domain.TrainingModule.id == bulk_data.module_id).first()
+    module_name = module.name if module else "Unknown"
+    
+    for item in bulk_result.results:
+        if not item.error and item.session_id:
+            to_email = item.identifier
+            if item.new_user_password:
+                background_tasks.add_task(
+                    send_welcome_email,
+                    to_email=to_email,
+                    username=to_email,
+                    password=item.new_user_password,
+                    full_name=item.full_name
+                )
+            background_tasks.add_task(
+                send_session_assignment_email,
+                to_email=to_email,
+                module_name=module_name,
+                duration_minutes=bulk_data.duration_minutes,
+                full_name=item.full_name
+            )
+            
+    return bulk_result
 
 @router.post("/sessions/start", response_model=viva_schemas.SessionResponse, status_code=status.HTTP_201_CREATED)
 def start_session(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):

@@ -45,7 +45,7 @@ class User(Base):
     username = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     full_name = Column(String, nullable=True)
-    employee_id = Column(String, nullable=True) # Relevant for trainees
+    employee_id = Column(String, nullable=True) # Relevant for trainers (AE Code)
     is_active = Column(Boolean, default=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True) # Who provisioned this account
     created_at = Column(DateTime, default=datetime.utcnow)

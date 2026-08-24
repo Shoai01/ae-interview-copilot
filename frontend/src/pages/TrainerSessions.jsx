@@ -77,10 +77,7 @@ export default function TrainerSessions() {
           assignForm.durationMinutes,
           assignForm.questionCount
         );
-        toast.success('Session assigned successfully!');
-        if (result.new_user_password) {
-          toast.success(`New user created. Password: ${result.new_user_password}`, { duration: 8000 });
-        }
+        toast.success('Session assigned successfully! Email notification is being sent.');
         setOpenAssignModal(false);
         fetchSessions();
       } catch (err) {
@@ -129,7 +126,7 @@ export default function TrainerSessions() {
           assignForm.questionCount,
           trainees
         );
-        toast.success(`Successfully assigned ${result.success_count} sessions.`);
+        toast.success(`Successfully assigned ${result.success_count} sessions. Email notifications are being sent.`);
         setBulkResults(result.results);
         setOpenAssignModal(false);
         fetchSessions();
@@ -537,7 +534,7 @@ export default function TrainerSessions() {
                         <Typography variant="body2" color="error.main" sx={{ mt: 0.5 }}>Error: {res.error}</Typography>
                       ) : (
                         <Typography variant="body2" sx={{ color: 'success.main', mt: 0.5 }}>
-                          Assigned successfully! {res.new_user_password && `New User Password: ${res.new_user_password}`}
+                          Assigned successfully!
                         </Typography>
                       )
                     }

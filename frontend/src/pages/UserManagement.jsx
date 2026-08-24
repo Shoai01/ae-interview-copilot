@@ -82,7 +82,7 @@ export default function UserManagement() {
       const createdUser = await adminService.createUser(payload);
       
       setUsers(prev => [...prev, createdUser]);
-      setSuccessMsg(`Successfully created ${payload.role.toLowerCase()} account for ${payload.username}`);
+      setSuccessMsg(`Successfully created ${payload.role.toLowerCase()} account for ${payload.username}. An email has been sent with their credentials.`);
       setFormData({
         username: '',
         password: '',
@@ -414,11 +414,11 @@ export default function UserManagement() {
                 />
               </Grid>
 
-              {formData.role === 'TRAINEE' && (
+              {formData.role === 'TRAINER' && (
                 <>
                   <Grid item xs={12} sm={12}>
                     <Typography variant="caption" color="text.secondary" sx={labelSx}>
-                      Employee ID
+                      AE Code (Employee ID)
                     </Typography>
                     <TextField 
                       fullWidth 
@@ -426,7 +426,7 @@ export default function UserManagement() {
                       name="employee_id"
                       value={formData.employee_id}
                       onChange={handleChange}
-                      placeholder="EMP-001"
+                      placeholder="AE-001"
                       sx={inputSx}
                     />
                   </Grid>
@@ -520,10 +520,10 @@ export default function UserManagement() {
                 </Select>
               </Grid>
 
-              {editFormData.role === 'TRAINEE' && (
+              {editFormData.role === 'TRAINER' && (
                 <Grid item xs={12} sm={6}>
                   <Typography variant="caption" color="text.secondary" sx={labelSx}>
-                    Employee ID
+                    AE Code (Employee ID)
                   </Typography>
                   <TextField 
                     fullWidth 

@@ -7,4 +7,7 @@ def get_embeddings_model():
     return VertexAIEmbeddings(model_name="text-embedding-004")
 
 def get_chat_model(temperature=0.7):
-    return ChatVertexAI(model_name="gemini-2.5-flash", temperature=temperature)
+    return ChatVertexAI(
+        model_name="gemini-2.5-flash", 
+        temperature=temperature
+    )
