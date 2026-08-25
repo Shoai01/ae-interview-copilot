@@ -8,6 +8,7 @@ import TrainerReviewDetail from './pages/TrainerReviewDetail';
 import AdminQuestionBank from './pages/AdminQuestionBank';
 import UserManagement from './pages/UserManagement';
 import KnowledgeBase from './pages/KnowledgeBase';
+import AuditLogs from './pages/AuditLogs';
 import Login from './pages/Login';
 import { AuthProvider } from './store/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -37,6 +38,7 @@ function App() {
             <Route path="/hr/questions" element={<AdminQuestionBank />} />
             <Route path="/hr/knowledge" element={<KnowledgeBase />} />
             <Route path="/hr/users" element={<UserManagement />} />
+            <Route path="/hr/logs" element={<AuditLogs />} />
           </Route>
         </Routes>
       </BrowserRouter>

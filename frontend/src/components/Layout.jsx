@@ -8,6 +8,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import PeopleIcon from '@mui/icons-material/People';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import HistoryIcon from '@mui/icons-material/History';
 import { useAuth } from '@/store/AuthContext';
 
 const drawerWidth = 268;
@@ -29,6 +30,7 @@ export default function Layout({ children }) {
     { text: 'Question Bank', icon: <SourceIcon />, path: '/hr/questions' },
     { text: 'Knowledge Base', icon: <MenuBookIcon />, path: '/hr/knowledge' },
     { text: 'Users & Access', icon: <PeopleIcon />, path: '/hr/users' },
+    { text: 'Activity Log', icon: <HistoryIcon />, path: '/hr/logs' },
   ];
 
   const drawerContent = (

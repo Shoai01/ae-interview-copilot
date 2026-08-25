@@ -4,7 +4,7 @@ from schemas import viva as viva_schemas
 from repositories import viva_repository
 import datetime
 
-def assign_session(db: Session, session_data: viva_schemas.SessionCreate, current_user_id: int = 1) -> viva_schemas.SessionResponse:
+def assign_session(db: Session, session_data: viva_schemas.SessionCreate, current_user_id: int = 1, skip_audit: bool = False) -> viva_schemas.SessionResponse:
     """
     Assign a new viva session to a trainee. If the trainee does not exist by identifier,
     auto-create their account.
@@ -74,6 +74,16 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate, curren
     )
     
     module = get_module_by_id(db, session_data.module_id)
+
+    if not skip_audit:
+        from services.audit_service import log_action
+        from models.domain import AuditActionType
+        creator = db.query(domain.User).filter(domain.User.id == current_user_id).first()
+        actor_name = creator.full_name or creator.username if creator else "System"
+        
+        with log_action(db, AuditActionType.SESSION_ASSIGNED, current_user_id, actor_name) as log:
+            log['target'] = trainee.full_name or trainee.username
+            log['details'] = {"module_id": session_data.module_id, "session_id": db_session.id}
 
     return viva_schemas.SessionResponse(
         id=db_session.id,
@@ -514,76 +524,100 @@ def create_fraud_flag(db: Session, session_id: int, flag_data: viva_schemas.Frau
         detected_at = dt.utcnow()
     return viva_repository.create_fraud_flag(db, flag_data.viva_question_id, flag_data.flag_type, detected_at)
 
+from services.audit_service import log_action
+from models.domain import AuditActionType
+
 def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewer_id: int):
     """
     Save a trainer's manual review decision for a completed session.
-    
-    Args:
-        db (Session): Database session.
-        session_id (int): ID of the session.
-        decision_data (TrainerDecisionCreate): The decision payload (PASS/FAIL/HOLD and notes).
-        reviewer_id (int): User ID of the trainer reviewing it.
-        
-    Returns:
-        VivaReport: The updated report, or None if session not found.
     """
     session = viva_repository.get_session_by_id(db, session_id)
     if not session or not session.report:
         return None
-    
-    report = session.report
-    report.trainer_decision = domain.TrainerDecisionType(decision_data.decision)
-    report.reviewed_by = reviewer_id
-    report.reviewed_at = datetime.datetime.utcnow()
-    
-    # Store notes in dedicated field
-    if decision_data.notes:
-        report.trainer_notes = decision_data.notes
-    
-    db.commit()
-    db.refresh(report)
+        
+    reviewer = db.query(domain.User).filter(domain.User.id == reviewer_id).first()
+    reviewer_name = reviewer.full_name or reviewer.username if reviewer else None
+
+    from services.audit_service import log_action
+    from models.domain import AuditActionType
+
+    with log_action(db, AuditActionType.TRAINER_DECISION_SUBMITTED, reviewer_id, reviewer_name) as log:
+        report = session.report
+        report.trainer_decision = domain.TrainerDecisionType(decision_data.decision)
+        report.reviewed_by = reviewer_id
+        report.reviewed_at = datetime.datetime.utcnow()
+        
+        # Store notes in dedicated field
+        if decision_data.notes:
+            report.trainer_notes = decision_data.notes
+        
+        db.commit()
+        db.refresh(report)
+        
+        log['target'] = f"Session: {session.id}"
+        log['details'] = {
+            "decision": decision_data.decision,
+            "trainee_id": session.trainee_id
+        }
+        
     return report
 
 def assign_session_bulk(db: Session, bulk_data: viva_schemas.BulkSessionCreate, current_user_id: int) -> viva_schemas.BulkSessionResponse:
-    
-    success_count = 0
-    failed_count = 0
-    results = []
-    
-    for trainee in bulk_data.trainees:
-        result_item = viva_schemas.BulkSessionResultItem(
-            identifier=trainee.trainee_identifier,
-            full_name=trainee.trainee_full_name
-        )
+    creator = db.query(domain.User).filter(domain.User.id == current_user_id).first()
+    actor_name = creator.full_name or creator.username if creator else None
+
+    with log_action(db, AuditActionType.BULK_SESSION_ASSIGNED, current_user_id, actor_name) as log:
+        success_count = 0
+        failed_count = 0
+        results = []
+        assigned_trainees = []
         
-        try:
-            # Create standard SessionCreate payload
-            single_session_data = viva_schemas.SessionCreate(
-                trainee_identifier=trainee.trainee_identifier,
-                trainee_full_name=trainee.trainee_full_name,
-                module_id=bulk_data.module_id,
-                duration_minutes=bulk_data.duration_minutes,
-                question_count=bulk_data.question_count
+        for trainee in bulk_data.trainees:
+            result_item = viva_schemas.BulkSessionResultItem(
+                identifier=trainee.trainee_identifier,
+                full_name=trainee.trainee_full_name
             )
             
-            # Delegate to existing logic
-            assigned = assign_session(db, single_session_data, current_user_id)
+            try:
+                # Create standard SessionCreate payload
+                single_session_data = viva_schemas.SessionCreate(
+                    trainee_identifier=trainee.trainee_identifier,
+                    trainee_full_name=trainee.trainee_full_name,
+                    module_id=bulk_data.module_id,
+                    duration_minutes=bulk_data.duration_minutes,
+                    question_count=bulk_data.question_count
+                )
+                
+                # Delegate to existing logic
+                assigned = assign_session(db, single_session_data, current_user_id, skip_audit=True)
+                
+                result_item.session_id = assigned.id
+                result_item.new_user_password = assigned.new_user_password
+                success_count += 1
+                assigned_trainees.append(trainee.trainee_full_name or trainee.trainee_identifier)
+                
+            except ValueError as e:
+                result_item.error = str(e)
+                failed_count += 1
+            except Exception as e:
+                result_item.error = str(e)
+                failed_count += 1
+                
+            results.append(result_item)
             
-            result_item.session_id = assigned.id
-            result_item.new_user_password = assigned.new_user_password
-            success_count += 1
-            
-        except ValueError as e:
-            result_item.error = str(e)
-            failed_count += 1
-        except Exception as e:
-            result_item.error = str(e)
-            failed_count += 1
-            
-        results.append(result_item)
+        bulk_result = viva_schemas.BulkSessionResponse(
+            success_count=success_count,
+            failed_count=failed_count,
+            results=results
+        )
         
-    return viva_schemas.BulkSessionResponse(
-        success_count=success_count,
-        failed_count=failed_count,
-        results=results
-    )
+        log['target'] = f"Module: {bulk_data.module_id}"
+        log['details'] = {
+            "module_id": bulk_data.module_id,
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "assigned_trainees": assigned_trainees,
+            "total_trainees": len(bulk_data.trainees)
+        }
+
+    return bulk_result

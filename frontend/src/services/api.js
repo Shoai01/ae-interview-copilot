@@ -106,6 +106,10 @@ export const adminService = {
   deleteUser: async (userId) => {
     await api.delete(`/admin/users/${userId}`);
     return true;
+  },
+  getAuditLogs: async (params) => {
+    const response = await api.get('/admin/audit-logs', { params });
+    return response.data;
   }
 };
 

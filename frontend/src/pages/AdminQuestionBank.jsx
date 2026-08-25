@@ -519,18 +519,23 @@ export default function AdminQuestionBank() {
               </TableBody>
             </Table>
           </TableContainer>
-          <Box sx={{ borderTop: '1px solid rgba(225,191,179,0.5)', bgcolor: '#eff4ff' }}>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={filteredQuestions.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              sx={{ color: 'text.secondary', fontFamily: 'DM Sans, sans-serif' }}
-            />
-          </Box>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={filteredQuestions.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{
+              borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+              fontFamily: 'DM Sans, sans-serif',
+              '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                fontFamily: 'DM Sans, sans-serif',
+                fontSize: '0.875rem'
+              }
+            }}
+          />
         </Card>
 
       </Box>

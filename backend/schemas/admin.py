@@ -105,3 +105,22 @@ class DashboardResponse(BaseModel):
     trends: list[TrendData]
     top_competencies: list[CompetencyData]
     recent_activity: list[RecentActivity]
+
+from datetime import datetime
+from typing import Any, Dict
+
+class AuditLogResponse(BaseModel):
+    id: int
+    actor_id: Optional[int] = None
+    actor_name: Optional[str] = None
+    category: Optional[str] = None
+    action_type: str
+    target: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+    created_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class AuditLogCursorPage(BaseModel):
+    items: List[AuditLogResponse]
+    next_cursor: Optional[str] = None

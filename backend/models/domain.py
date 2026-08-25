@@ -164,3 +164,48 @@ class VivaReport(Base):
 
     session = relationship("VivaSession", back_populates="report")
     reviewer = relationship("User", back_populates="reviewed_reports", foreign_keys=[reviewed_by])
+
+class AuditLogCategory(str, enum.Enum):
+    USER_MANAGEMENT = "USER_MANAGEMENT"
+    SESSION_TRAINING = "SESSION_TRAINING"
+    QUESTION_BANK = "QUESTION_BANK"
+    KNOWLEDGE_BASE = "KNOWLEDGE_BASE"
+
+class AuditActionType(str, enum.Enum):
+    USER_CREATED = "USER_CREATED"
+    USER_UPDATED = "USER_UPDATED"
+    USER_DELETED = "USER_DELETED"
+    SESSION_ASSIGNED = "SESSION_ASSIGNED"
+    BULK_SESSION_ASSIGNED = "BULK_SESSION_ASSIGNED"
+    QUESTION_CREATED = "QUESTION_CREATED"
+    BULK_QUESTION_UPLOAD = "BULK_QUESTION_UPLOAD"
+    AI_QUESTION_GENERATED = "AI_QUESTION_GENERATED"
+    QUESTION_UPDATED = "QUESTION_UPDATED"
+    QUESTION_STATUS_TOGGLED = "QUESTION_STATUS_TOGGLED"
+    TRAINER_DECISION_SUBMITTED = "TRAINER_DECISION_SUBMITTED"
+    DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED"
+    DOCUMENT_DELETED = "DOCUMENT_DELETED"
+
+from sqlalchemy import JSON, Index
+from sqlalchemy.dialects.postgresql import JSONB
+
+JSONType = JSON().with_variant(JSONB, 'postgresql')
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    actor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    actor_name = Column(String, nullable=True) # Denormalized
+    category = Column(SQLEnum(AuditLogCategory), nullable=False, index=True)
+    action_type = Column(SQLEnum(AuditActionType), nullable=False)
+    target = Column(String, nullable=True)
+    details = Column(JSONType, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    actor = relationship("User")
+
+    __table_args__ = (
+        Index('ix_audit_logs_category', 'category'),
+        Index('ix_audit_logs_actor_action', 'actor_id', 'action_type'),
+    )

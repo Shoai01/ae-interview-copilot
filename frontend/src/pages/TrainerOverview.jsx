@@ -621,11 +621,12 @@ export default function TrainerOverview() {
               page={page}
               onPageChange={handleChangePage}
               onRowsPerPageChange={handleChangeRowsPerPage}
-              sx={{ 
-                borderTop: '1px solid rgba(0,0,0,0.04)',
-                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+              sx={{
+                borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+                fontFamily: 'DM Sans, sans-serif',
+                '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
                   fontFamily: 'DM Sans, sans-serif',
-                  fontSize: '0.8rem'
+                  fontSize: '0.875rem'
                 }
               }}
             />

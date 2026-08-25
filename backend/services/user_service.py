@@ -30,6 +30,9 @@ def get_user_by_id(db: Session, user_id: int) -> User:
     """
     return user_repository.get_user_by_id(db, user_id)
 
+from services.audit_service import log_action
+from models.domain import AuditActionType
+
 def create_user(db: Session, user: UserCreate, created_by_id: int) -> User:
     """
     Create a new user account with a hashed password.
@@ -42,8 +45,17 @@ def create_user(db: Session, user: UserCreate, created_by_id: int) -> User:
     Returns:
         User: The newly created user object.
     """
-    password_hash = get_password_hash(user.password)
-    return user_repository.create_user(db, user, password_hash, created_by_id)
+    creator = get_user_by_id(db, created_by_id)
+    actor_name = creator.full_name or creator.username if creator else None
+    
+    with log_action(db, AuditActionType.USER_CREATED, created_by_id, actor_name) as log:
+        password_hash = get_password_hash(user.password)
+        db_user = user_repository.create_user(db, user, password_hash, created_by_id)
+        
+        log['target'] = f"User: {db_user.username}"
+        log['details'] = {"role": db_user.role.value, "new_user_id": db_user.id}
+        
+    return db_user
 
 def get_all_users(db: Session, current_user_role: UserRole) -> list[User]:
     """
@@ -59,7 +71,7 @@ def get_all_users(db: Session, current_user_role: UserRole) -> list[User]:
     """
     return user_repository.get_all_users_by_role(db, current_user_role)
 
-def update_user(db: Session, user_id: int, user_data: UserUpdate) -> User:
+def update_user(db: Session, user_id: int, user_data: UserUpdate, actor_id: int = None, actor_name: str = None) -> User:
     """
     Update an existing user's details, including rehashing their password if provided.
     
@@ -71,20 +83,25 @@ def update_user(db: Session, user_id: int, user_data: UserUpdate) -> User:
     Returns:
         User: The updated user object, or None if the user was not found.
     """
-    db_user = get_user_by_id(db, user_id)
-    if not db_user:
-        return None
-    
-    update_data = user_data.model_dump(exclude_unset=True)
-    
-    if 'password' in update_data and update_data['password']:
-        update_data['password_hash'] = get_password_hash(update_data.pop('password'))
-    elif 'password' in update_data:
-        update_data.pop('password')
+    with log_action(db, AuditActionType.USER_UPDATED, actor_id, actor_name) as log:
+        db_user = get_user_by_id(db, user_id)
+        if not db_user:
+            return None
         
-    return user_repository.update_user_fields(db, db_user, update_data)
+        update_data = user_data.model_dump(exclude_unset=True)
+        
+        if 'password' in update_data and update_data['password']:
+            update_data['password_hash'] = get_password_hash(update_data.pop('password'))
+        elif 'password' in update_data:
+            update_data.pop('password')
+            
+        result = user_repository.update_user_fields(db, db_user, update_data)
+        
+        log['target'] = f"User: {db_user.username}"
+        log['details'] = {"updated_fields": list(update_data.keys())}
+        return result
 
-def delete_user(db: Session, user_id: int) -> bool:
+def delete_user(db: Session, user_id: int, actor_id: int = None, actor_name: str = None) -> bool:
     """
     Delete a user account and cascade delete or nullify related records safely.
     
@@ -95,17 +112,21 @@ def delete_user(db: Session, user_id: int) -> bool:
     Returns:
         bool: True if the user was successfully deleted, False if not found.
     """
-    db_user = get_user_by_id(db, user_id)
-    if not db_user:
-        return False
-        
-    try:
-        if db_user.role == UserRole.TRAINEE:
-            user_repository.delete_trainee_cascade(db, db_user)
-        elif db_user.role in [UserRole.TRAINER, UserRole.ADMIN]:
-            user_repository.delete_trainer_admin_cascade(db, db_user, user_id)
+    with log_action(db, AuditActionType.USER_DELETED, actor_id, actor_name) as log:
+        db_user = get_user_by_id(db, user_id)
+        if not db_user:
+            return False
             
-        return True
-    except Exception as e:
-        db.rollback()
-        raise e
+        log['target'] = f"User: {db_user.username}"
+        log['details'] = {"deleted_user_id": user_id, "role": db_user.role.value}
+            
+        try:
+            if db_user.role == UserRole.TRAINEE:
+                user_repository.delete_trainee_cascade(db, db_user)
+            elif db_user.role in [UserRole.TRAINER, UserRole.ADMIN]:
+                user_repository.delete_trainer_admin_cascade(db, db_user, user_id)
+                
+            return True
+        except Exception as e:
+            db.rollback()
+            raise e

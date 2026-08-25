@@ -4,7 +4,7 @@ import {
   Select, MenuItem, Alert, CircularProgress, Stack, Grid,
   Table, TableBody, TableCell, TableHead, TableRow, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  IconButton, Avatar, Switch, InputAdornment, TableContainer
+  IconButton, Avatar, Switch, InputAdornment, TableContainer, TablePagination
 } from '@mui/material';
 import Layout from '@/components/Layout';
 import { adminService } from '@/services/api';
@@ -20,9 +20,11 @@ import SyncIcon from '@mui/icons-material/Sync';
 export default function UserManagement() {
   const { user } = useAuth();
   
-    const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   
@@ -183,6 +185,17 @@ export default function UserManagement() {
     (u.username && u.username.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const paginatedUsers = filteredUsers.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   return (
     <Layout>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, width: '100%' }}>
@@ -254,7 +267,7 @@ export default function UserManagement() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredUsers.map((u) => (
+                {paginatedUsers.map((u) => (
                   <TableRow key={u.id} hover>
                     <TableCell>
                       <Stack direction="row" alignItems="center" spacing={2}>
@@ -310,9 +323,9 @@ export default function UserManagement() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredUsers.length === 0 && (
+                {paginatedUsers.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                    <TableCell colSpan={5} align="center" sx={{ py: 6, color: 'text.secondary' }}>
                       No users found.
                     </TableCell>
                   </TableRow>
@@ -321,6 +334,23 @@ export default function UserManagement() {
             </Table>
           )}
         </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={filteredUsers.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          sx={{
+            borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+            fontFamily: 'DM Sans, sans-serif',
+            '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+              fontFamily: 'DM Sans, sans-serif',
+              fontSize: '0.875rem'
+            }
+          }}
+        />
         </Card>
 
       </Box>

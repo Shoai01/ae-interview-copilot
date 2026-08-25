@@ -350,7 +350,14 @@ export default function TrainerSessions() {
               page={page}
               onPageChange={handleChangePage}
               onRowsPerPageChange={handleChangeRowsPerPage}
-              sx={{ borderTop: '1px solid rgba(225,191,179,0.5)',  }}
+              sx={{
+                borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+                fontFamily: 'DM Sans, sans-serif',
+                '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontSize: '0.875rem'
+                }
+              }}
             />
           )}
         </Card>

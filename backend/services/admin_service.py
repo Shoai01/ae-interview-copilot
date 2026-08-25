@@ -33,48 +33,76 @@ def get_modules_with_counts(db: Session) -> List[dict]:
 def get_questions_by_module(db: Session, module_id: int) -> List[domain.QuestionBank]:
     return admin_repository.get_questions_by_module(db, module_id)
 
-def create_question(db: Session, question: admin_schemas.QuestionCreate) -> domain.QuestionBank:
-    return admin_repository.create_question(db, question)
+from services.audit_service import log_action
+from models.domain import AuditActionType
 
-def create_questions_bulk(db: Session, bulk_data: admin_schemas.BulkQuestionCreate) -> admin_schemas.BulkQuestionResponse:
-    count = 0
-    for q in bulk_data.questions:
-        q_create = admin_schemas.QuestionCreate(
-            module_id=bulk_data.module_id,
-            text=q.text,
-            ideal_answer=q.ideal_answer,
-            difficulty=q.difficulty,
-            set_name=q.set_name
-        )
-        admin_repository.create_question(db, q_create)
-        count += 1
-    return admin_schemas.BulkQuestionResponse(message="Successfully created questions in bulk", count=count)
+def create_question(db: Session, question: admin_schemas.QuestionCreate, actor_id: int = None, actor_name: str = None) -> domain.QuestionBank:
+    with log_action(db, AuditActionType.QUESTION_CREATED, actor_id, actor_name) as log:
+        new_q = admin_repository.create_question(db, question)
+        log['target'] = f"Question: {new_q.id} (Set: {new_q.set_name})"
+        log['details'] = {"module_id": new_q.module_id, "difficulty": new_q.difficulty.value}
+        return new_q
 
-def toggle_question_active_status(db: Session, question_id: int) -> domain.QuestionBank:
-    question = admin_repository.get_question_by_id(db, question_id)
-    if question:
-        question.is_active = not question.is_active
-        return admin_repository.save_question(db, question)
-    return None
+def create_questions_bulk(db: Session, bulk_data: admin_schemas.BulkQuestionCreate, actor_id: int = None, actor_name: str = None) -> admin_schemas.BulkQuestionResponse:
+    with log_action(db, AuditActionType.BULK_QUESTION_UPLOAD, actor_id, actor_name) as log:
+        count = 0
+        for q in bulk_data.questions:
+            q_create = admin_schemas.QuestionCreate(
+                module_id=bulk_data.module_id,
+                text=q.text,
+                ideal_answer=q.ideal_answer,
+                difficulty=q.difficulty,
+                set_name=q.set_name
+            )
+            admin_repository.create_question(db, q_create)
+            count += 1
+        
+        log['target'] = f"Module: {bulk_data.module_id}"
+        log['details'] = {"count": count}
+        return admin_schemas.BulkQuestionResponse(message="Successfully created questions in bulk", count=count)
 
-def delete_question(db: Session, question_id: int) -> bool:
-    question = admin_repository.get_question_by_id(db, question_id)
-    if question:
-        admin_repository.delete_question(db, question)
-        return True
-    return False
+def toggle_question_active_status(db: Session, question_id: int, actor_id: int = None, actor_name: str = None) -> domain.QuestionBank:
+    with log_action(db, AuditActionType.QUESTION_STATUS_TOGGLED, actor_id, actor_name) as log:
+        question = admin_repository.get_question_by_id(db, question_id)
+        if question:
+            question.is_active = not question.is_active
+            result = admin_repository.save_question(db, question)
+            log['target'] = f"Question: {question.id}"
+            log['details'] = {"new_status": question.is_active}
+            return result
+        return None
+
+def delete_question(db: Session, question_id: int, actor_id: int = None, actor_name: str = None) -> bool:
+    with log_action(db, AuditActionType.QUESTION_UPDATED, actor_id, actor_name) as log:
+        question = admin_repository.get_question_by_id(db, question_id)
+        if question:
+            log['target'] = f"Question: {question.id}"
+            log['details'] = {"action": "deleted", "text_preview": question.text[:50] if question.text else ""}
+            admin_repository.delete_question(db, question)
+            return True
+        return False
 
 def get_dashboard_metrics(db: Session, module_id: Optional[int] = None) -> dict:
     return admin_repository.get_dashboard_metrics(db, module_id)
 
-def update_question(db: Session, question_id: int, update_data: admin_schemas.QuestionUpdate) -> domain.QuestionBank:
-    question = admin_repository.get_question_by_id(db, question_id)
-    if question:
-        return admin_repository.update_question(db, question, update_data.model_dump(exclude_unset=True))
-    return None
+def update_question(db: Session, question_id: int, update_data: admin_schemas.QuestionUpdate, actor_id: int = None, actor_name: str = None) -> domain.QuestionBank:
+    with log_action(db, AuditActionType.QUESTION_UPDATED, actor_id, actor_name) as log:
+        question = admin_repository.get_question_by_id(db, question_id)
+        if question:
+            result = admin_repository.update_question(db, question, update_data.model_dump(exclude_unset=True))
+            log['target'] = f"Question: {question.id}"
+            log['details'] = {"updated_fields": list(update_data.model_dump(exclude_unset=True).keys())}
+            return result
+        return None
 
-def rename_set(db: Session, module_id: int, old_set_name: str, new_set_name: str) -> None:
-    admin_repository.rename_set_questions(db, module_id, old_set_name, new_set_name)
+def rename_set(db: Session, module_id: int, old_set_name: str, new_set_name: str, actor_id: int = None, actor_name: str = None) -> None:
+    with log_action(db, AuditActionType.QUESTION_UPDATED, actor_id, actor_name) as log:
+        admin_repository.rename_set_questions(db, module_id, old_set_name, new_set_name)
+        log['target'] = f"Set: {old_set_name} -> {new_set_name}"
+        log['details'] = {"module_id": module_id}
 
-def delete_set(db: Session, module_id: int, set_name: str) -> None:
-    admin_repository.delete_set_questions(db, module_id, set_name)
+def delete_set(db: Session, module_id: int, set_name: str, actor_id: int = None, actor_name: str = None) -> None:
+    with log_action(db, AuditActionType.QUESTION_UPDATED, actor_id, actor_name) as log:
+        admin_repository.delete_set_questions(db, module_id, set_name)
+        log['target'] = f"Set: {set_name}"
+        log['details'] = {"module_id": module_id, "action": "deleted"}
