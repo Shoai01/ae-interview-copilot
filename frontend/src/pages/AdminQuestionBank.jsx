@@ -27,7 +27,7 @@ export default function AdminQuestionBank() {
   const [open, setOpen] = useState(false);
   const [newQuestion, setNewQuestion] = useState({ text: '', ideal_answer: '', difficulty: 'MEDIUM', setNameSelection: '' });
   const [openGenerate, setOpenGenerate] = useState(false);
-  const [generateConfig, setGenerateConfig] = useState({ count: 15 });
+  const [generateConfig, setGenerateConfig] = useState({ count: 15, setNameSelection: '+ Auto-Create New Set' });
   const [isGenerating, setIsGenerating] = useState(false);
   // Edit Question State
   const [editMode, setEditMode] = useState(false);
@@ -251,10 +251,18 @@ export default function AdminQuestionBank() {
 
   const handleGenerateAISet = async () => {
     try {
+      if (!generateConfig.setNameSelection) {
+        toast.error("Please select a target set.");
+        return;
+      }
       setIsGenerating(true);
-      await adminService.generateSetViaAI(activeModuleId, nextAvailableSetName, generateConfig.count);
+      const targetSetName = generateConfig.setNameSelection === '+ Auto-Create New Set' 
+        ? nextAvailableSetName 
+        : generateConfig.setNameSelection;
+
+      await adminService.generateSetViaAI(activeModuleId, targetSetName, generateConfig.count);
       setOpenGenerate(false);
-      toast.success(`Successfully generated ${generateConfig.count} questions for ${nextAvailableSetName}!`);
+      toast.success(`Successfully generated ${generateConfig.count} questions for ${targetSetName}!`);
       fetchQuestions(activeModuleId);
     } catch (err) {
       console.error("Failed to generate set:", err);
@@ -682,19 +690,39 @@ export default function AdminQuestionBank() {
             The AI will read the uploaded Knowledge Documents for this module and generate a brand new set of questions.
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <TextField 
-              label="Auto-Generated Set Name" 
-              fullWidth 
-              value={nextAvailableSetName}
-              disabled
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-            />
+            <FormControl fullWidth>
+              <InputLabel>Target Set</InputLabel>
+              <Select
+                value={generateConfig.setNameSelection}
+                label="Target Set"
+                onChange={(e) => setGenerateConfig({ ...generateConfig, setNameSelection: e.target.value })}
+                sx={{ borderRadius: 2 }}
+                disabled={isGenerating}
+              >
+                <MenuItem value="+ Auto-Create New Set" sx={{ fontWeight: 'bold', color: 'primary.main' }}>+ Auto-Create New Set</MenuItem>
+                {existingSetsOnly.map(set => (
+                  <MenuItem key={set} value={set}>{set}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {generateConfig.setNameSelection === '+ Auto-Create New Set' && (
+              <TextField 
+                label="Auto-Generated Set Name" 
+                fullWidth 
+                value={nextAvailableSetName}
+                disabled
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+              />
+            )}
+            
             <TextField 
               label="Number of Questions" 
               type="number"
               fullWidth 
               value={generateConfig.count}
               onChange={(e) => setGenerateConfig({ ...generateConfig, count: parseInt(e.target.value) || 15 })}
+              disabled={isGenerating}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
           </Box>
