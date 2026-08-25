@@ -232,9 +232,12 @@ export default function TrainerOverview() {
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 animation: `${fadeInUp} 0.5s ease-out ${index * 0.05}s both`,
                 '&:hover': {
-                  transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 25px -5px rgba(0,0,0,0.08)',
-                  borderColor: 'rgba(0,0,0,0.12)',
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 12px 28px -4px rgba(0,0,0,0.15)',
+                  borderColor: 'rgba(0,0,0,0.15)',
+                  '& .kpi-icon-box': {
+                    transform: 'scale(1.1) rotate(5deg)',
+                  }
                 },
                 '&::before': {
                   content: '""',
@@ -248,13 +251,14 @@ export default function TrainerOverview() {
                 }
               }}
             >
-              <Box sx={{ 
+              <Box className="kpi-icon-box" sx={{ 
                 width: 36, height: 36, 
                 borderRadius: 2, 
                 background: kpi.lightBg,
                 color: kpi.color,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                mb: 1.5
+                mb: 1.5,
+                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
               }}>
                 {kpi.icon}
               </Box>
@@ -309,7 +313,12 @@ export default function TrainerOverview() {
             bgcolor: '#fff',
             display: 'flex',
             flexDirection: 'column',
-            animation: `${fadeInUp} 0.5s ease-out 0.3s both`
+            animation: `${fadeInUp} 0.5s ease-out 0.3s both`,
+            transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
+            '&:hover': {
+              boxShadow: '0 8px 24px -4px rgba(0,0,0,0.06)',
+              borderColor: 'rgba(0,0,0,0.1)'
+            }
           }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Box>
@@ -410,7 +419,12 @@ export default function TrainerOverview() {
             bgcolor: '#fff',
             display: 'flex',
             flexDirection: 'column',
-            animation: `${fadeInUp} 0.5s ease-out 0.35s both`
+            animation: `${fadeInUp} 0.5s ease-out 0.35s both`,
+            transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
+            '&:hover': {
+              boxShadow: '0 8px 24px -4px rgba(0,0,0,0.06)',
+              borderColor: 'rgba(0,0,0,0.1)'
+            }
           }}>
             <Box sx={{ mb: 2 }}>
               <Typography sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.1rem', color: '#0a1628' }}>
@@ -452,7 +466,12 @@ export default function TrainerOverview() {
           border: '1px solid rgba(0,0,0,0.06)', 
           bgcolor: '#fff',
           overflow: 'hidden',
-          animation: `${fadeInUp} 0.5s ease-out 0.4s both`
+          animation: `${fadeInUp} 0.5s ease-out 0.4s both`,
+          transition: 'box-shadow 0.3s ease, border-color 0.3s ease',
+          '&:hover': {
+            boxShadow: '0 8px 24px -4px rgba(0,0,0,0.06)',
+            borderColor: 'rgba(0,0,0,0.1)'
+          }
         }}>
           <Box sx={{ 
             p: 3, 

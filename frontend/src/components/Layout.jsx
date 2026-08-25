@@ -58,20 +58,45 @@ export default function Layout({ children }) {
                 onClick={() => navigate(item.path)}
                 sx={{ 
                   borderRadius: 2,
-                  py: 1,
+                  py: 1.2,
+                  px: 2,
+                  mb: 0.5,
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  '&:hover': {
+                    bgcolor: 'rgba(0,0,0,0.03)',
+                    transform: 'translateX(2px)'
+                  },
                   '&.Mui-selected': {
                     bgcolor: 'rgba(242, 101, 34, 0.08)',
-                    color: 'primary.main',
-                    borderRight: '3px solid #F26522',
-                    '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.12)' },
-                    '& .MuiListItemIcon-root': { color: 'primary.main' }
+                    color: '#F26522',
+                    boxShadow: 'inset 4px 0 0 0 #F26522',
+                    '&:hover': { 
+                      bgcolor: 'rgba(242, 101, 34, 0.12)',
+                      transform: 'translateX(2px)'
+                    },
+                    '& .MuiListItemIcon-root': { 
+                      color: '#F26522',
+                      transform: 'scale(1.1)',
+                      transition: 'transform 0.2s'
+                    }
                   }
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}>
+                <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary', transition: 'all 0.2s' }}>
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText primary={item.text} primaryTypographyProps={{ variant: 'body2', fontWeight: isSelected ? 600 : 500 }} />
+                <ListItemText 
+                  primary={item.text} 
+                  slotProps={{ 
+                    primary: { 
+                      variant: 'body2', 
+                      fontFamily: 'DM Sans, sans-serif',
+                      fontWeight: isSelected ? 700 : 500,
+                      color: isSelected ? '#F26522' : 'text.secondary',
+                      transition: 'color 0.2s'
+                    }
+                  }} 
+                />
               </ListItemButton>
             </ListItem>
           );
@@ -83,9 +108,37 @@ export default function Layout({ children }) {
         <List disablePadding>
 
           <ListItem disablePadding>
-            <ListItemButton sx={{ borderRadius: 2, py: 1 }} onClick={handleLogout}>
-              <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><LogoutIcon /></ListItemIcon>
-              <ListItemText primary="Sign Out" primaryTypographyProps={{ variant: 'body2', color: 'text.secondary', fontWeight: 500 }} />
+            <ListItemButton 
+              sx={{ 
+                borderRadius: 2, 
+                py: 1.2,
+                px: 2,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  bgcolor: 'rgba(239, 68, 68, 0.08)',
+                  color: '#ef4444',
+                  transform: 'translateX(2px)',
+                  '& .MuiListItemIcon-root': { color: '#ef4444' },
+                  '& .MuiListItemText-primary': { color: '#ef4444' }
+                }
+              }} 
+              onClick={handleLogout}
+            >
+              <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary', transition: 'color 0.2s' }}>
+                <LogoutIcon />
+              </ListItemIcon>
+              <ListItemText 
+                primary="Sign Out" 
+                slotProps={{ 
+                  primary: { 
+                    variant: 'body2', 
+                    color: 'text.secondary', 
+                    fontWeight: 600,
+                    fontFamily: 'DM Sans, sans-serif',
+                    transition: 'color 0.2s'
+                  } 
+                }} 
+              />
             </ListItemButton>
           </ListItem>
         </List>
