@@ -79,25 +79,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User 
 
 @router.get("/modules", response_model=List[admin_schemas.ModuleResponse])
 def get_all_modules(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE]))):
-    modules = admin_service.get_modules(db)
-    results = []
-    from sqlalchemy import func
-    for m in modules:
-        counts = db.query(func.count(domain.QuestionBank.id)).filter(
-            domain.QuestionBank.module_id == m.id,
-            domain.QuestionBank.is_active == True
-        ).group_by(domain.QuestionBank.set_name).all()
-        
-        max_count = max([c[0] for c in counts]) if counts else 0
-        
-        m_dict = {
-            "id": m.id,
-            "name": m.name,
-            "description": m.description,
-            "max_questions_per_set": max_count
-        }
-        results.append(m_dict)
-    return results
+    return admin_service.get_modules_with_counts(db)
 
 @router.get("/questions", response_model=List[admin_schemas.QuestionResponse])
 def get_questions(module_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):

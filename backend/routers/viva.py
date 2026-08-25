@@ -34,7 +34,7 @@ def assign_session(session_data: viva_schemas.SessionCreate, background_tasks: B
             to_email = username
         else:
             # Look up trainee's username (email)
-            trainee = db.query(User).filter(User.id == session_result.trainee_id).first()
+            trainee = user_service.get_user_by_id(db, session_result.trainee_id)
             to_email = trainee.username if trainee else None
             
         if to_email:
@@ -58,8 +58,9 @@ def assign_session_bulk(bulk_data: viva_schemas.BulkSessionCreate, background_ta
     
     # Dispatch emails for successful assignments in background (non-blocking)
     from services.email_service import send_welcome_email, send_session_assignment_email
+    from services.admin_service import get_module_by_id
     
-    module = db.query(domain.TrainingModule).filter(domain.TrainingModule.id == bulk_data.module_id).first()
+    module = get_module_by_id(db, bulk_data.module_id)
     module_name = module.name if module else "Unknown"
     
     for item in bulk_result.results:

@@ -14,6 +14,7 @@ import { globalState } from '@/store';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis';
 import { useFraudDetection } from '@/hooks/useFraudDetection';
+import toast from 'react-hot-toast';
 
 export default function VivaInProgress() {
   const navigate = useNavigate();
@@ -75,6 +76,7 @@ export default function VivaInProgress() {
       resetTranscript();
     } catch (err) {
       console.error("Failed to fetch question:", err);
+      toast.error("Failed to load the next question. Please refresh.");
     } finally {
       setLoading(false);
     }
@@ -136,13 +138,17 @@ export default function VivaInProgress() {
         }
 
         // Trigger AI evaluation in the background before navigating
-        vivaService.evaluateSession(sessionId).catch(e => console.error("Evaluation failed", e));
+        vivaService.evaluateSession(sessionId).catch(e => {
+          console.error("Evaluation failed", e);
+          toast.error(e.response?.data?.detail || "Failed to submit evaluation.");
+        });
         navigate('/complete', { state: { sessionId } });
       } else {
         fetchQuestion();
       }
     } catch (err) {
       console.error("Failed to submit answer:", err);
+      toast.error(err.response?.data?.detail || "Failed to submit answer.");
     } finally {
       setSubmitting(false);
     }

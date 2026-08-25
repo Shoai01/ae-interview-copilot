@@ -5,8 +5,22 @@ from repositories import viva_repository
 import datetime
 
 def assign_session(db: Session, session_data: viva_schemas.SessionCreate, current_user_id: int = 1) -> viva_schemas.SessionResponse:
-    from services.user_service import get_user_by_id
-    from models.domain import User, UserRole
+    """
+    Assign a new viva session to a trainee. If the trainee does not exist by identifier,
+    auto-create their account.
+    
+    Args:
+        db (Session): Database session.
+        session_data (SessionCreate): Details of the session to create.
+        current_user_id (int): ID of the user assigning the session.
+        
+    Returns:
+        SessionResponse: The created session details including any auto-generated password.
+    """
+    from services.user_service import get_user_by_id, get_user_by_username
+    from repositories.user_repository import create_trainee
+    from repositories.admin_repository import get_module_by_id
+    from models.domain import UserRole
     import random
     import string
     
@@ -15,62 +29,51 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate, curren
     
     if session_data.trainee_id:
         trainee = get_user_by_id(db, session_data.trainee_id)
-        if not trainee or trainee.role != domain.UserRole.TRAINEE:
+        if not trainee or trainee.role != UserRole.TRAINEE:
             raise ValueError("Invalid trainee ID.")
     elif session_data.trainee_identifier:
         # Search only by username
         identifier = session_data.trainee_identifier.strip()
-        trainee = db.query(User).filter(
-            User.username == identifier,
-            User.role == UserRole.TRAINEE
-        ).first()
+        trainee = get_user_by_username(db, identifier)
+        if trainee and trainee.role != UserRole.TRAINEE:
+             raise ValueError("User exists but is not a trainee.")
         
         if not trainee:
             # Auto-create the trainee
             new_user_password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
             from core.security import get_password_hash
-            trainee = User(
-                username=identifier,
-                full_name=session_data.trainee_full_name,
-                password_hash=get_password_hash(new_user_password),
-                role=UserRole.TRAINEE,
-                created_by=current_user_id
+            trainee = create_trainee(
+                db, 
+                username=identifier, 
+                full_name=session_data.trainee_full_name, 
+                password_hash=get_password_hash(new_user_password), 
+                created_by_id=current_user_id
             )
-            db.add(trainee)
-            db.commit()
-            db.refresh(trainee)
     else:
         raise ValueError("Must provide trainee_id or trainee_identifier.")
         
-    existing_session = db.query(domain.VivaSession).filter(
-        domain.VivaSession.trainee_id == trainee.id,
-        domain.VivaSession.status.in_([domain.SessionStatus.IN_PROGRESS, domain.SessionStatus.PENDING])
-    ).first()
+    existing_session = viva_repository.get_active_session_by_trainee_id(db, trainee.id)
     
     if existing_session:
         if existing_session.status == domain.SessionStatus.PENDING and existing_session.start_time:
             now = datetime.datetime.utcnow()
             if (now - existing_session.start_time).total_seconds() > 86400: # 24 hours
                 existing_session.status = domain.SessionStatus.EXPIRED
-                db.commit()
+                viva_repository.save_session(db, existing_session)
                 existing_session = None # It's expired, so they CAN have a new one
 
     if existing_session:
         raise ValueError("Trainee already has an active or pending session.")
 
-    db_session = domain.VivaSession(
+    db_session = viva_repository.create_pending_session(
+        db,
         trainee_id=trainee.id,
         module_id=session_data.module_id,
         duration_minutes=session_data.duration_minutes,
-        question_count=session_data.question_count,
-        status=domain.SessionStatus.PENDING,
-        start_time=datetime.datetime.utcnow()
+        question_count=session_data.question_count
     )
-    db.add(db_session)
-    db.commit()
-    db.refresh(db_session)
     
-    module = db.query(domain.TrainingModule).filter(domain.TrainingModule.id == session_data.module_id).first()
+    module = get_module_by_id(db, session_data.module_id)
 
     return viva_schemas.SessionResponse(
         id=db_session.id,
@@ -84,12 +87,23 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate, curren
         start_time=db_session.start_time,
         new_user_password=new_user_password
     )
+
 def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas.SessionResponse:
+    """
+    Check if a trainee has an IN_PROGRESS session and resume it.
+    If not, look for a PENDING session and start it by assigning questions.
+    
+    Args:
+        db (Session): Database session.
+        trainee (domain.User): The trainee user object.
+        
+    Returns:
+        SessionResponse: The started or resumed session details.
+    """
+    from repositories.admin_repository import get_distinct_active_sets_by_module, get_active_questions_by_set, get_fallback_questions
+    
     # Check for existing in-progress session
-    existing_session = db.query(domain.VivaSession).filter(
-        domain.VivaSession.trainee_id == trainee.id,
-        domain.VivaSession.status == domain.SessionStatus.IN_PROGRESS
-    ).first()
+    existing_session = viva_repository.get_in_progress_session_by_trainee_id(db, trainee.id)
 
     if existing_session:
         db_session = existing_session
@@ -108,15 +122,9 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
                 
                 if len(dynamic_questions) < 5:
                     print(f"Partial generation: Requested 5, generated {len(dynamic_questions)}. Falling back to predefined to fill gap.")
-                    from sqlalchemy.sql.expression import func
                     needed = 5 - len(dynamic_questions)
                     exclude_ids = [q.id for q in dynamic_questions]
-                    fallback_questions = db.query(domain.QuestionBank).filter(
-                        domain.QuestionBank.module_id == db_session.module_id,
-                        domain.QuestionBank.is_active == True,
-                        ~domain.QuestionBank.id.in_(exclude_ids) if exclude_ids else True
-                    ).order_by(func.random()).limit(needed).all()
-                    
+                    fallback_questions = get_fallback_questions(db, db_session.module_id, exclude_ids, limit=needed)
                     dynamic_questions.extend(fallback_questions)
                     
                 for i, qb_item in enumerate(dynamic_questions):
@@ -127,10 +135,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
 
     if not existing_session:
         # If no in_progress session, look for a PENDING one
-        pending_session = db.query(domain.VivaSession).filter(
-            domain.VivaSession.trainee_id == trainee.id,
-            domain.VivaSession.status == domain.SessionStatus.PENDING
-        ).first()
+        pending_session = viva_repository.get_pending_session_by_trainee_id(db, trainee.id)
         
         if not pending_session:
             raise ValueError("No session has been assigned to you by an admin or trainer.")
@@ -140,38 +145,29 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
             now = datetime.datetime.utcnow()
             if (now - pending_session.start_time).total_seconds() > 86400: # 24 hours
                 pending_session.status = domain.SessionStatus.EXPIRED
-                db.commit()
+                viva_repository.save_session(db, pending_session)
                 raise ValueError("This session assignment has expired. Please contact your trainer.")
                 
         db_session = pending_session
         db_session.status = domain.SessionStatus.IN_PROGRESS
         db_session.start_time = datetime.datetime.utcnow()
-        db.commit()
+        viva_repository.save_session(db, db_session)
         
         # Phase 2: Pull questions from a pre-defined Set (Deterministic Pooling)
-        # Find all distinct set_names for this module
-        from sqlalchemy.sql.expression import func
-        distinct_sets = db.query(domain.QuestionBank.set_name).filter(
-            domain.QuestionBank.module_id == db_session.module_id,
-            domain.QuestionBank.is_active == True
-        ).distinct().all()
+        distinct_sets = get_distinct_active_sets_by_module(db, db_session.module_id)
         
         if not distinct_sets:
             # Revert session state if no questions available
             db_session.status = domain.SessionStatus.PENDING
-            db.commit()
+            viva_repository.save_session(db, db_session)
             raise ValueError("Could not start session. No Question Sets are available for this module.")
             
         import random
         # Pick a random set
-        chosen_set = random.choice([s[0] for s in distinct_sets])
+        chosen_set = random.choice(distinct_sets)
         
         # Get all questions from the chosen set
-        available_questions = db.query(domain.QuestionBank).filter(
-            domain.QuestionBank.module_id == db_session.module_id,
-            domain.QuestionBank.set_name == chosen_set,
-            domain.QuestionBank.is_active == True
-        ).order_by(func.random()).all()
+        available_questions = get_active_questions_by_set(db, db_session.module_id, chosen_set)
         
         if getattr(db_session, 'question_count', None) and db_session.question_count > 0:
             needed = db_session.question_count
@@ -198,7 +194,6 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
     if total_questions == 0:
         raise ValueError("Could not generate questions. AI generation failed, and there are no predefined questions available for this module.")
 
-
     return viva_schemas.SessionResponse(
         id=db_session.id,
         trainee_id=db_session.trainee_id,
@@ -211,19 +206,17 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
     )
 
 def get_current_session(db: Session, trainee_id: int) -> viva_schemas.SessionResponse:
-    # Look for IN_PROGRESS first
-    session = db.query(domain.VivaSession).filter(
-        domain.VivaSession.trainee_id == trainee_id,
-        domain.VivaSession.status == domain.SessionStatus.IN_PROGRESS
-    ).first()
+    """
+    Get the currently active or pending session for a trainee.
     
-    if not session:
-        # Fallback to PENDING
-        session = db.query(domain.VivaSession).filter(
-            domain.VivaSession.trainee_id == trainee_id,
-            domain.VivaSession.status == domain.SessionStatus.PENDING
-        ).first()
+    Args:
+        db (Session): Database session.
+        trainee_id (int): Trainee's ID.
         
+    Returns:
+        SessionResponse: Details of the session, or None if no session exists.
+    """
+    session = viva_repository.get_active_session_by_trainee_id(db, trainee_id)
     if not session:
         return None
         
@@ -240,6 +233,16 @@ def get_current_session(db: Session, trainee_id: int) -> viva_schemas.SessionRes
     )
 
 def get_next_question(db: Session, session_id: int) -> viva_schemas.NextQuestionResponse:
+    """
+    Get the next unanswered question for a session.
+    
+    Args:
+        db (Session): Database session.
+        session_id (int): Session ID.
+        
+    Returns:
+        NextQuestionResponse: The question details, or None if all are answered.
+    """
     session = viva_repository.get_session_by_id(db, session_id)
     if not session:
         return None
@@ -271,6 +274,17 @@ def get_next_question(db: Session, session_id: int) -> viva_schemas.NextQuestion
     )
 
 def submit_answer(db: Session, session_id: int, answer_data: viva_schemas.AnswerSubmit) -> bool:
+    """
+    Submit a transcript answer for a question in a session.
+    
+    Args:
+        db (Session): Database session.
+        session_id (int): Session ID.
+        answer_data (AnswerSubmit): Submission data with transcript.
+        
+    Returns:
+        bool: True if saved successfully, False if question not found.
+    """
     viva_question = viva_repository.get_viva_question(db, answer_data.viva_question_id, session_id)
     if viva_question:
         viva_repository.update_viva_question_answer(db, viva_question, answer_data.transcript)
@@ -278,6 +292,16 @@ def submit_answer(db: Session, session_id: int, answer_data: viva_schemas.Answer
     return False
 
 def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSummaryResponse:
+    """
+    Calculate and retrieve summary metrics for a session.
+    
+    Args:
+        db (Session): Database session.
+        session_id (int): Session ID.
+        
+    Returns:
+        SessionSummaryResponse: Summary data including duration and answered count.
+    """
     session = viva_repository.get_session_by_id(db, session_id)
     if not session:
         return None
@@ -305,6 +329,16 @@ def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSum
 from ai import evaluator as ai_service
 
 def evaluate_session(db: Session, session_id: int):
+    """
+    Evaluate a completed session using the AI service.
+    
+    Args:
+        db (Session): Database session.
+        session_id (int): Session ID to evaluate.
+        
+    Returns:
+        bool: True if evaluation completed, False if session not found.
+    """
     session = viva_repository.get_session_by_id(db, session_id)
     if not session:
         return False
@@ -408,11 +442,17 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
     )
 
 def get_all_sessions(db: Session):
-    # Auto-expire PENDING sessions older than 24h
+    """
+    Fetch all sessions. Auto-expire PENDING sessions older than 24h.
+    
+    Args:
+        db (Session): Database session.
+        
+    Returns:
+        List[SessionListItem]: A list of session summaries for the dashboard.
+    """
     now = datetime.datetime.utcnow()
-    pending_sessions = db.query(domain.VivaSession).filter(
-        domain.VivaSession.status == domain.SessionStatus.PENDING
-    ).all()
+    pending_sessions = viva_repository.get_pending_sessions(db)
     
     dirty = False
     for ps in pending_sessions:
@@ -450,6 +490,17 @@ def get_all_sessions(db: Session):
     return result
 
 def create_fraud_flag(db: Session, session_id: int, flag_data: viva_schemas.FraudFlagCreate):
+    """
+    Record a fraud flag detected by the frontend (e.g. TAB_SWITCH, NO_FACE) for a question.
+    
+    Args:
+        db (Session): Database session.
+        session_id (int): ID of the session.
+        flag_data (FraudFlagCreate): Data about the fraud flag.
+        
+    Returns:
+        FraudFlag: The newly created or updated fraud flag, or None if invalid.
+    """
     from datetime import datetime as dt
     session = viva_repository.get_session_by_id(db, session_id)
     if not session:
@@ -464,7 +515,19 @@ def create_fraud_flag(db: Session, session_id: int, flag_data: viva_schemas.Frau
     return viva_repository.create_fraud_flag(db, flag_data.viva_question_id, flag_data.flag_type, detected_at)
 
 def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewer_id: int):
-    session = db.query(domain.VivaSession).filter(domain.VivaSession.id == session_id).first()
+    """
+    Save a trainer's manual review decision for a completed session.
+    
+    Args:
+        db (Session): Database session.
+        session_id (int): ID of the session.
+        decision_data (TrainerDecisionCreate): The decision payload (PASS/FAIL/HOLD and notes).
+        reviewer_id (int): User ID of the trainer reviewing it.
+        
+    Returns:
+        VivaReport: The updated report, or None if session not found.
+    """
+    session = viva_repository.get_session_by_id(db, session_id)
     if not session or not session.report:
         return None
     

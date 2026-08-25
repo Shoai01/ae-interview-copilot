@@ -4,8 +4,31 @@ from schemas import admin as admin_schemas
 from typing import List, Optional
 from repositories import admin_repository
 
-def get_modules(db: Session) -> List[domain.TrainingModule]:
-    return admin_repository.get_modules(db)
+def get_module_by_id(db: Session, module_id: int) -> domain.TrainingModule:
+    """
+    Fetch a single training module by its ID.
+    
+    Args:
+        db (Session): Database session.
+        module_id (int): ID of the module to fetch.
+        
+    Returns:
+        TrainingModule: The module object if found.
+    """
+    return admin_repository.get_module_by_id(db, module_id)
+
+def get_modules_with_counts(db: Session) -> List[dict]:
+    """
+    Fetch all training modules and include the maximum number of active questions 
+    available in any single set for each module.
+    
+    Args:
+        db (Session): Database session.
+        
+    Returns:
+        List[dict]: List of modules with 'max_questions_per_set'.
+    """
+    return admin_repository.get_modules_with_max_questions(db)
 
 def get_questions_by_module(db: Session, module_id: int) -> List[domain.QuestionBank]:
     return admin_repository.get_questions_by_module(db, module_id)

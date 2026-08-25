@@ -6,8 +6,52 @@ from typing import List
 def get_modules(db: Session) -> List[domain.TrainingModule]:
     return db.query(domain.TrainingModule).all()
 
+def get_module_by_id(db: Session, module_id: int) -> domain.TrainingModule:
+    return db.query(domain.TrainingModule).filter(domain.TrainingModule.id == module_id).first()
+
+from sqlalchemy import func
+def get_modules_with_max_questions(db: Session) -> List[dict]:
+    modules = db.query(domain.TrainingModule).all()
+    results = []
+    for m in modules:
+        counts = db.query(func.count(domain.QuestionBank.id)).filter(
+            domain.QuestionBank.module_id == m.id,
+            domain.QuestionBank.is_active == True
+        ).group_by(domain.QuestionBank.set_name).all()
+        max_count = max([c[0] for c in counts]) if counts else 0
+        results.append({
+            "id": m.id,
+            "name": m.name,
+            "description": m.description,
+            "max_questions_per_set": max_count
+        })
+    return results
+
 def get_questions_by_module(db: Session, module_id: int) -> List[domain.QuestionBank]:
     return db.query(domain.QuestionBank).filter(domain.QuestionBank.module_id == module_id).order_by(domain.QuestionBank.id.desc()).all()
+
+def get_distinct_active_sets_by_module(db: Session, module_id: int) -> List[str]:
+    sets = db.query(domain.QuestionBank.set_name).filter(
+        domain.QuestionBank.module_id == module_id,
+        domain.QuestionBank.is_active == True
+    ).distinct().all()
+    return [s[0] for s in sets]
+
+def get_active_questions_by_set(db: Session, module_id: int, set_name: str) -> List[domain.QuestionBank]:
+    from sqlalchemy.sql.expression import func
+    return db.query(domain.QuestionBank).filter(
+        domain.QuestionBank.module_id == module_id,
+        domain.QuestionBank.set_name == set_name,
+        domain.QuestionBank.is_active == True
+    ).order_by(func.random()).all()
+
+def get_fallback_questions(db: Session, module_id: int, exclude_ids: List[int], limit: int) -> List[domain.QuestionBank]:
+    from sqlalchemy.sql.expression import func
+    return db.query(domain.QuestionBank).filter(
+        domain.QuestionBank.module_id == module_id,
+        domain.QuestionBank.is_active == True,
+        ~domain.QuestionBank.id.in_(exclude_ids) if exclude_ids else True
+    ).order_by(func.random()).limit(limit).all()
 
 def create_question(db: Session, question: admin_schemas.QuestionCreate) -> domain.QuestionBank:
     db_question = domain.QuestionBank(

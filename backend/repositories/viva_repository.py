@@ -20,6 +20,48 @@ def get_session_by_id(db: Session, session_id: int) -> domain.VivaSession:
 def get_all_sessions(db: Session) -> List[domain.VivaSession]:
     return db.query(domain.VivaSession).order_by(domain.VivaSession.start_time.desc()).all()
 
+def get_pending_sessions(db: Session) -> List[domain.VivaSession]:
+    return db.query(domain.VivaSession).filter(
+        domain.VivaSession.status == domain.SessionStatus.PENDING
+    ).all()
+
+def get_active_session_by_trainee_id(db: Session, trainee_id: int) -> domain.VivaSession:
+    return db.query(domain.VivaSession).filter(
+        domain.VivaSession.trainee_id == trainee_id,
+        domain.VivaSession.status.in_([domain.SessionStatus.IN_PROGRESS, domain.SessionStatus.PENDING])
+    ).first()
+
+def get_in_progress_session_by_trainee_id(db: Session, trainee_id: int) -> domain.VivaSession:
+    return db.query(domain.VivaSession).filter(
+        domain.VivaSession.trainee_id == trainee_id,
+        domain.VivaSession.status == domain.SessionStatus.IN_PROGRESS
+    ).first()
+
+def get_pending_session_by_trainee_id(db: Session, trainee_id: int) -> domain.VivaSession:
+    return db.query(domain.VivaSession).filter(
+        domain.VivaSession.trainee_id == trainee_id,
+        domain.VivaSession.status == domain.SessionStatus.PENDING
+    ).order_by(domain.VivaSession.start_time.desc()).first()
+
+def create_pending_session(db: Session, trainee_id: int, module_id: int, duration_minutes: int, question_count: int) -> domain.VivaSession:
+    db_session = domain.VivaSession(
+        trainee_id=trainee_id,
+        module_id=module_id,
+        duration_minutes=duration_minutes,
+        question_count=question_count,
+        status=domain.SessionStatus.PENDING,
+        start_time=datetime.datetime.utcnow()
+    )
+    db.add(db_session)
+    db.commit()
+    db.refresh(db_session)
+    return db_session
+
+def save_session(db: Session, session: domain.VivaSession) -> domain.VivaSession:
+    db.commit()
+    db.refresh(session)
+    return session
+
 def count_active_questions(db: Session, module_id: int) -> int:
     return db.query(domain.QuestionBank).filter(
         domain.QuestionBank.module_id == module_id,

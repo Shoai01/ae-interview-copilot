@@ -1,38 +1,76 @@
 from sqlalchemy.orm import Session
 from models.domain import User, UserRole
-from schemas.user import UserCreate
+from schemas.user import UserCreate, UserUpdate
 from core.security import get_password_hash
+from repositories import user_repository
 
 def get_user_by_username(db: Session, username: str) -> User:
-    return db.query(User).filter(User.username == username).first()
+    """
+    Fetch a user by their username.
+    
+    Args:
+        db (Session): Database session.
+        username (str): The username to query.
+        
+    Returns:
+        User: The user object if found, otherwise None.
+    """
+    return user_repository.get_user_by_username(db, username)
 
 def get_user_by_id(db: Session, user_id: int) -> User:
-    return db.query(User).filter(User.id == user_id).first()
+    """
+    Fetch a user by their unique database ID.
+    
+    Args:
+        db (Session): Database session.
+        user_id (int): The unique ID of the user.
+        
+    Returns:
+        User: The user object if found, otherwise None.
+    """
+    return user_repository.get_user_by_id(db, user_id)
 
 def create_user(db: Session, user: UserCreate, created_by_id: int) -> User:
-    db_user = User(
-        username=user.username,
-        password_hash=get_password_hash(user.password),
-        role=user.role,
-        full_name=user.full_name,
-        employee_id=user.employee_id,
-        created_by=created_by_id
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    """
+    Create a new user account with a hashed password.
+    
+    Args:
+        db (Session): Database session.
+        user (UserCreate): Pydantic schema containing user details and raw password.
+        created_by_id (int): ID of the admin/trainer provisioning this account.
+        
+    Returns:
+        User: The newly created user object.
+    """
+    password_hash = get_password_hash(user.password)
+    return user_repository.create_user(db, user, password_hash, created_by_id)
 
 def get_all_users(db: Session, current_user_role: UserRole) -> list[User]:
-    # Trainers might only need to see trainees, but for now let's return all non-admins if trainer, or all if admin
-    if current_user_role == UserRole.ADMIN:
-        return db.query(User).order_by(User.id.desc()).all()
-    else:
-        return db.query(User).filter(User.role == UserRole.TRAINEE).order_by(User.id.desc()).all()
-
-from schemas.user import UserUpdate
+    """
+    Fetch a list of users based on the requester's role. 
+    Admins see everyone, Trainers see only Trainees.
+    
+    Args:
+        db (Session): Database session.
+        current_user_role (UserRole): Role of the requesting user.
+        
+    Returns:
+        list[User]: List of users visible to the requester.
+    """
+    return user_repository.get_all_users_by_role(db, current_user_role)
 
 def update_user(db: Session, user_id: int, user_data: UserUpdate) -> User:
+    """
+    Update an existing user's details, including rehashing their password if provided.
+    
+    Args:
+        db (Session): Database session.
+        user_id (int): ID of the user to update.
+        user_data (UserUpdate): Pydantic schema containing fields to update.
+        
+    Returns:
+        User: The updated user object, or None if the user was not found.
+    """
     db_user = get_user_by_id(db, user_id)
     if not db_user:
         return None
@@ -44,40 +82,29 @@ def update_user(db: Session, user_id: int, user_data: UserUpdate) -> User:
     elif 'password' in update_data:
         update_data.pop('password')
         
-    for key, value in update_data.items():
-        setattr(db_user, key, value)
-        
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    return user_repository.update_user_fields(db, db_user, update_data)
 
 def delete_user(db: Session, user_id: int) -> bool:
+    """
+    Delete a user account and cascade delete or nullify related records safely.
+    
+    Args:
+        db (Session): Database session.
+        user_id (int): ID of the user to delete.
+        
+    Returns:
+        bool: True if the user was successfully deleted, False if not found.
+    """
     db_user = get_user_by_id(db, user_id)
     if not db_user:
         return False
         
     try:
         if db_user.role == UserRole.TRAINEE:
-            # Manually delete their sessions to avoid FK constraints
-            for session in db_user.sessions:
-                if session.report:
-                    db.delete(session.report)
-                for q in session.questions:
-                    if q.evaluation:
-                        db.delete(q.evaluation)
-                    for f in q.fraud_flags:
-                        db.delete(f)
-                    db.delete(q)
-                db.delete(session)
-                
+            user_repository.delete_trainee_cascade(db, db_user)
         elif db_user.role in [UserRole.TRAINER, UserRole.ADMIN]:
-            # Nullify created_by and reviewed_by fields to avoid FK constraints
-            from models.domain import VivaReport, User
-            db.query(User).filter(User.created_by == user_id).update({"created_by": None})
-            db.query(VivaReport).filter(VivaReport.reviewed_by == user_id).update({"reviewed_by": None})
-
-        db.delete(db_user)
-        db.commit()
+            user_repository.delete_trainer_admin_cascade(db, db_user, user_id)
+            
         return True
     except Exception as e:
         db.rollback()
