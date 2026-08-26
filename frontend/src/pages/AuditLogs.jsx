@@ -1,12 +1,340 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Button, Select, MenuItem, CircularProgress, IconButton, Tooltip, TablePagination, Menu, Checkbox, ListItemText, Collapse } from '@mui/material';
+import { 
+  Box, Typography, Card, Table, TableBody, TableCell, TableContainer, 
+  TableHead, TableRow, Chip, Button, Select, MenuItem, CircularProgress, 
+  IconButton, Tooltip, TablePagination, Menu, Checkbox, ListItemText, 
+  Collapse, Avatar, TextField, InputAdornment 
+} from '@mui/material';
 import { adminService } from '@/services/api';
 import Layout from '@/components/Layout';
 import SyncIcon from '@mui/icons-material/Sync';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { List, ListItem } from '@mui/material';
+import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
+import SearchIcon from '@mui/icons-material/Search';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckIcon from '@mui/icons-material/Check';
+import ClearIcon from '@mui/icons-material/Clear';
+import toast from 'react-hot-toast';
+
+const AVATAR_PALETTE = [
+  '#0284c7', // sky
+  '#7c3aed', // violet
+  '#059669', // emerald
+  '#d97706', // amber
+  '#e11d48', // rose
+  '#4f46e5', // indigo
+  '#0d9488', // teal
+  '#ea580c', // orange
+];
+
+function getAvatarBgColor(str = '') {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
+
+function getInitials(name = '') {
+  if (!name) return '?';
+  const clean = name.trim();
+  const parts = clean.split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return clean.slice(0, 2).toUpperCase();
+}
+
+function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
+  const [search, setSearch] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const getTraineeName = (item) => {
+    if (typeof item === 'string') return item;
+    return item?.name || item?.full_name || item?.trainee_full_name || item?.identifier || JSON.stringify(item);
+  };
+
+  const traineeNames = trainees.map(getTraineeName);
+
+  const filtered = traineeNames.filter(name => 
+    name.toLowerCase().includes(search.trim().toLowerCase())
+  );
+
+  const handleCopyAll = () => {
+    if (!traineeNames.length) return;
+    navigator.clipboard.writeText(traineeNames.join('\n'));
+    setCopied(true);
+    toast.success(`Copied ${traineeNames.length} trainee names to clipboard`);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Box 
+      sx={{ 
+        m: 1.5, 
+        p: { xs: 1.5, sm: 2 }, 
+        bgcolor: '#ffffff', 
+        borderRadius: 2, 
+        border: '1px solid rgba(0, 0, 0, 0.08)',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
+      }}
+    >
+      {/* Header Bar */}
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          gap: 1.5, 
+          pb: 1.5,
+          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+          mb: 1.5
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexWrap: 'wrap' }}>
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              width: 32, 
+              height: 32, 
+              borderRadius: '8px', 
+              bgcolor: 'rgba(242, 101, 34, 0.1)', 
+              color: 'primary.main' 
+            }}
+          >
+            <PeopleAltOutlinedIcon sx={{ fontSize: 18 }} />
+          </Box>
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary', fontSize: '0.9rem', lineHeight: 1.2 }}>
+              Assigned Trainees
+            </Typography>
+            <Typography variant="caption" sx={{ fontFamily: 'DM Sans, sans-serif', color: 'text.secondary', fontSize: '0.75rem' }}>
+              Bulk enrollment recipient list
+            </Typography>
+          </Box>
+          
+          <Chip 
+            label={`${trainees.length} Total`} 
+            size="small" 
+            sx={{ 
+              height: 22, 
+              fontSize: '11px', 
+              fontWeight: 700, 
+              fontFamily: 'DM Sans, sans-serif',
+              bgcolor: 'rgba(242, 101, 34, 0.1)', 
+              color: 'primary.main', 
+              borderRadius: '6px' 
+            }} 
+          />
+          {successCount !== undefined && successCount !== '-' && (
+            <Chip 
+              label={`${successCount} Successful`} 
+              size="small" 
+              sx={{ 
+                height: 22, 
+                fontSize: '11px', 
+                fontWeight: 600, 
+                fontFamily: 'DM Sans, sans-serif',
+                bgcolor: 'rgba(74, 222, 128, 0.15)', 
+                color: '#15803d', 
+                borderRadius: '6px' 
+              }} 
+            />
+          )}
+          {failedCount !== undefined && failedCount !== '-' && Number(failedCount) > 0 && (
+            <Chip 
+              label={`${failedCount} Failed`} 
+              size="small" 
+              sx={{ 
+                height: 22, 
+                fontSize: '11px', 
+                fontWeight: 600, 
+                fontFamily: 'DM Sans, sans-serif',
+                bgcolor: 'rgba(239, 68, 68, 0.12)', 
+                color: 'error.main', 
+                borderRadius: '6px' 
+              }} 
+            />
+          )}
+        </Box>
+
+        {/* Action Controls */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {trainees.length > 5 && (
+            <TextField
+              size="small"
+              placeholder="Search trainees..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: search ? (
+                  <InputAdornment position="end">
+                    <IconButton size="small" onClick={() => setSearch('')} sx={{ p: 0.2 }}>
+                      <ClearIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              }}
+              sx={{
+                width: { xs: 150, sm: 190 },
+                '& .MuiOutlinedInput-root': {
+                  height: 32,
+                  fontSize: 12,
+                  fontFamily: 'DM Sans, sans-serif',
+                  bgcolor: '#f8fafc',
+                  borderRadius: 1.5,
+                  '& fieldset': {
+                    borderColor: 'rgba(0, 0, 0, 0.12)'
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'primary.main'
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: 'primary.main'
+                  }
+                }
+              }}
+            />
+          )}
+
+          <Tooltip title={copied ? "Copied to clipboard!" : "Copy all trainee names"}>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={handleCopyAll}
+              startIcon={copied ? <CheckIcon sx={{ fontSize: '15px !important' }} /> : <ContentCopyIcon sx={{ fontSize: '15px !important' }} />}
+              sx={{
+                height: 32,
+                fontSize: 12,
+                fontFamily: 'DM Sans, sans-serif',
+                textTransform: 'none',
+                fontWeight: 600,
+                color: copied ? '#15803d' : 'text.secondary',
+                borderColor: copied ? '#86efac' : 'rgba(0, 0, 0, 0.15)',
+                bgcolor: copied ? 'rgba(74, 222, 128, 0.1)' : '#ffffff',
+                '&:hover': {
+                  borderColor: 'primary.main',
+                  bgcolor: 'rgba(242, 101, 34, 0.04)',
+                  color: 'primary.main'
+                }
+              }}
+            >
+              {copied ? 'Copied' : 'Copy All'}
+            </Button>
+          </Tooltip>
+        </Box>
+      </Box>
+
+      {/* Trainees Grid Area */}
+      {filtered.length === 0 ? (
+        <Box sx={{ py: 3, textAlign: 'center' }}>
+          <Typography variant="body2" sx={{ fontFamily: 'DM Sans', color: 'text.secondary', fontSize: 13 }}>
+            No trainees match "{search}"
+          </Typography>
+          <Button size="small" onClick={() => setSearch('')} sx={{ mt: 1, textTransform: 'none', fontSize: 12, fontFamily: 'DM Sans' }}>
+            Clear filter
+          </Button>
+        </Box>
+      ) : (
+        <Box 
+          sx={{ 
+            maxHeight: 280, 
+            overflowY: 'auto',
+            pr: 0.5,
+            display: 'grid', 
+            gridTemplateColumns: { 
+              xs: '1fr', 
+              sm: 'repeat(auto-fill, minmax(220px, 1fr))' 
+            }, 
+            gap: 1,
+            '&::-webkit-scrollbar': { width: '5px' },
+            '&::-webkit-scrollbar-track': { bgcolor: 'transparent' },
+            '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.15)', borderRadius: '4px' },
+            '&::-webkit-scrollbar-thumb:hover': { bgcolor: 'rgba(0,0,0,0.25)' }
+          }}
+        >
+          {filtered.map((traineeName, idx) => (
+            <Tooltip key={idx} title={traineeName} placement="top" arrow>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.2,
+                  p: '6px 10px',
+                  bgcolor: '#f8fafc',
+                  border: '1px solid rgba(0, 0, 0, 0.06)',
+                  borderRadius: 1.5
+                }}
+              >
+                <Avatar
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fontFamily: 'DM Sans, sans-serif',
+                    bgcolor: getAvatarBgColor(traineeName),
+                    color: '#ffffff',
+                    flexShrink: 0
+                  }}
+                >
+                  {getInitials(traineeName)}
+                </Avatar>
+                <Typography
+                  noWrap
+                  sx={{
+                    fontFamily: 'DM Sans, sans-serif',
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: 'text.primary',
+                    flex: 1
+                  }}
+                >
+                  {traineeName}
+                </Typography>
+                <Typography
+                  component="span"
+                  sx={{
+                    fontFamily: 'DM Sans, sans-serif',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: 'text.disabled',
+                    bgcolor: 'rgba(0, 0, 0, 0.04)',
+                    px: 0.6,
+                    py: 0.2,
+                    borderRadius: 0.8,
+                    flexShrink: 0
+                  }}
+                >
+                  #{idx + 1}
+                </Typography>
+              </Box>
+            </Tooltip>
+          ))}
+        </Box>
+      )}
+
+      {/* Filter Info Footer */}
+      {search && (
+        <Box sx={{ mt: 1.2, pt: 1, borderTop: '1px solid rgba(0, 0, 0, 0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="caption" sx={{ fontFamily: 'DM Sans', color: 'text.secondary', fontSize: 11 }}>
+            Showing {filtered.length} of {trainees.length} trainees
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
+}
 
 function LogRow({ log, visibleCols, modules, formatTarget }) {
   const [open, setOpen] = useState(false);
@@ -66,12 +394,30 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
 
   return (
     <React.Fragment>
-      <TableRow hover sx={{ '& > *': { borderBottom: isExpandable ? 'none' : '1px solid rgba(224, 224, 224, 1)' } }}>
+      <TableRow 
+        hover 
+        sx={{ 
+          bgcolor: open ? 'rgba(242, 101, 34, 0.02)' : 'inherit',
+          '& > *': { borderBottom: isExpandable && open ? 'none' : '1px solid rgba(224, 224, 224, 1)' },
+          transition: 'background-color 0.2s ease'
+        }}
+      >
         <TableCell padding="checkbox" sx={{ width: 40 }}>
           {isExpandable && (
-            <IconButton aria-label="expand row" size="small" onClick={() => setOpen(!open)}>
-              {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-            </IconButton>
+            <Tooltip title={open ? "Hide trainees" : "View trainees"}>
+              <IconButton 
+                aria-label="expand row" 
+                size="small" 
+                onClick={() => setOpen(!open)}
+                sx={{
+                  color: open ? 'primary.main' : 'text.secondary',
+                  bgcolor: open ? 'rgba(242, 101, 34, 0.08)' : 'transparent',
+                  '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.15)' }
+                }}
+              >
+                {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+              </IconButton>
+            </Tooltip>
           )}
         </TableCell>
         {visibleCols.includes('date') && (
@@ -99,7 +445,34 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
         )}
         {visibleCols.includes('target') && (
           <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14 }}>
-            {formatTarget(log)}
+            {isExpandable ? (
+              <Tooltip title={open ? "Click to collapse" : "Click to view assigned trainees"}>
+                <Chip
+                  icon={<PeopleAltOutlinedIcon sx={{ fontSize: '15px !important', color: open ? '#ffffff !important' : 'primary.main !important' }} />}
+                  label={`${assignedTrainees.length} ${assignedTrainees.length === 1 ? 'Trainee' : 'Trainees'}`}
+                  size="small"
+                  onClick={() => setOpen(!open)}
+                  sx={{
+                    fontFamily: 'DM Sans, sans-serif',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    bgcolor: open ? 'primary.main' : 'rgba(242, 101, 34, 0.08)',
+                    color: open ? '#ffffff' : 'primary.main',
+                    border: '1px solid',
+                    borderColor: open ? 'primary.main' : 'rgba(242, 101, 34, 0.25)',
+                    borderRadius: 1.5,
+                    transition: 'all 0.15s ease',
+                    '&:hover': {
+                      bgcolor: open ? 'primary.dark' : 'rgba(242, 101, 34, 0.16)',
+                      transform: 'translateY(-1px)'
+                    }
+                  }}
+                />
+              </Tooltip>
+            ) : (
+              formatTarget(log)
+            )}
           </TableCell>
         )}
         {visibleCols.includes('decision') && (
@@ -123,27 +496,19 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
           </TableCell>
         )}
       </TableRow>
-      <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={visibleCols.length + 1}>
-          <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ margin: 1, p: 2, bgcolor: '#fafafa', borderRadius: 1, border: '1px solid rgba(0, 0, 0, 0.08)' }}>
-              <Typography variant="subtitle2" gutterBottom component="div" sx={{ fontFamily: 'DM Sans', fontWeight: 700, color: 'text.primary', mb: 1 }}>
-                Assigned Trainees ({assignedTrainees.length})
-              </Typography>
-              <List dense sx={{ width: '100%', maxWidth: 500, pt: 0 }}>
-                {assignedTrainees.map((traineeName, idx) => (
-                  <ListItem key={idx} sx={{ py: 0.5, px: 2, borderBottom: '1px solid rgba(0,0,0,0.04)', '&:last-child': { borderBottom: 'none' } }}>
-                    <ListItemText 
-                      primary={`•  ${traineeName}`} 
-                      primaryTypographyProps={{ fontSize: 14, fontFamily: 'DM Sans', color: 'text.secondary', fontWeight: 500 }} 
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          </Collapse>
-        </TableCell>
-      </TableRow>
+      {isExpandable && (
+        <TableRow sx={{ bgcolor: open ? 'rgba(242, 101, 34, 0.015)' : 'inherit' }}>
+          <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={visibleCols.length + 1}>
+            <Collapse in={open} timeout="auto" unmountOnExit>
+              <AssignedTraineesView 
+                trainees={assignedTrainees} 
+                successCount={sCount} 
+                failedCount={fCount} 
+              />
+            </Collapse>
+          </TableCell>
+        </TableRow>
+      )}
     </React.Fragment>
   );
 }
