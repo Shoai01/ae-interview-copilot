@@ -16,7 +16,7 @@ The **Viva Copilot** project follows a modular layered architecture ensuring a c
 - **Role:** Contains core business logic.
 - **Modules:** 
   - `user_service.py`: User creation and management.
-  - `viva_service.py`: Exam session assignment and lifecycle management.
+  - `viva_service.py`: Exam session assignment and lifecycle management. Features deterministic question set selection (assigning a specific set vs. deferred randomized selection).
   - `email_service.py`: **[NEW]** Handles sending SMTP notifications to users (Mocked if SMTP not configured).
   - `knowledge_service.py`: Manages knowledge base document ingestion.
 

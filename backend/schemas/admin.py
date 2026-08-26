@@ -10,6 +10,10 @@ class ModuleResponse(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
+class ModuleSetResponse(BaseModel):
+    name: str
+    count: int
+
 class QuestionBankBase(BaseModel):
     module_id: int
     text: str

@@ -70,7 +70,8 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate, curren
         trainee_id=trainee.id,
         module_id=session_data.module_id,
         duration_minutes=session_data.duration_minutes,
-        question_count=session_data.question_count
+        question_count=session_data.question_count,
+        set_name=session_data.set_name
     )
     
     module = get_module_by_id(db, session_data.module_id)
@@ -173,8 +174,12 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
             raise ValueError("Could not start session. No Question Sets are available for this module.")
             
         import random
-        # Pick a random set
-        chosen_set = random.choice(distinct_sets)
+        # Pick the requested set, or a random one if not specified or not found
+        chosen_set = None
+        if getattr(db_session, 'set_name', None) and db_session.set_name in distinct_sets:
+            chosen_set = db_session.set_name
+        else:
+            chosen_set = random.choice(distinct_sets)
         
         # Get all questions from the chosen set
         available_questions = get_active_questions_by_set(db, db_session.module_id, chosen_set)
@@ -585,7 +590,8 @@ def assign_session_bulk(db: Session, bulk_data: viva_schemas.BulkSessionCreate, 
                     trainee_full_name=trainee.trainee_full_name,
                     module_id=bulk_data.module_id,
                     duration_minutes=bulk_data.duration_minutes,
-                    question_count=bulk_data.question_count
+                    question_count=bulk_data.question_count,
+                    set_name=bulk_data.set_name
                 )
                 
                 # Delegate to existing logic

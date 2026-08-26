@@ -43,12 +43,13 @@ def get_pending_session_by_trainee_id(db: Session, trainee_id: int) -> domain.Vi
         domain.VivaSession.status == domain.SessionStatus.PENDING
     ).order_by(domain.VivaSession.start_time.desc()).first()
 
-def create_pending_session(db: Session, trainee_id: int, module_id: int, duration_minutes: int, question_count: int) -> domain.VivaSession:
+def create_pending_session(db: Session, trainee_id: int, module_id: int, duration_minutes: int, question_count: int, set_name: str = None) -> domain.VivaSession:
     db_session = domain.VivaSession(
         trainee_id=trainee_id,
         module_id=module_id,
         duration_minutes=duration_minutes,
         question_count=question_count,
+        set_name=set_name,
         status=domain.SessionStatus.PENDING,
         start_time=datetime.datetime.utcnow()
     )

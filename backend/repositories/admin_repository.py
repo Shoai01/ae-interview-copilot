@@ -37,6 +37,18 @@ def get_distinct_active_sets_by_module(db: Session, module_id: int) -> List[str]
     ).distinct().all()
     return [s[0] for s in sets]
 
+def get_active_sets_with_counts_by_module(db: Session, module_id: int) -> List[dict]:
+    from sqlalchemy import func
+    results = db.query(
+        domain.QuestionBank.set_name,
+        func.count(domain.QuestionBank.id)
+    ).filter(
+        domain.QuestionBank.module_id == module_id,
+        domain.QuestionBank.is_active == True
+    ).group_by(domain.QuestionBank.set_name).all()
+    
+    return [{"name": r[0], "count": r[1]} for r in results]
+
 def get_active_questions_by_set(db: Session, module_id: int, set_name: str) -> List[domain.QuestionBank]:
     from sqlalchemy.sql.expression import func
     return db.query(domain.QuestionBank).filter(

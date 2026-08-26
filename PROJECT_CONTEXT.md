@@ -15,6 +15,11 @@ The system allows trainers/admins to upload knowledge documents, generate questi
   - The system now automatically sends a "Welcome" email containing the username and a temporary password when a Trainee is newly created via the admin dashboard or auto-created during session assignment.
   - The system sends a "New Exam Session Assigned" email containing the module name and duration when a session is assigned to a trainee (both single and bulk assignments).
   - Toast notifications in the frontend have been updated to reflect that emails are being dispatched.
+- **Question Set Selection**:
+  - Implemented the ability for trainers to optionally specify an exact "Question Set" when assigning sessions (both single and bulk), rather than always defaulting to a random set.
+  - Added `set_name` to the `VivaSession` domain model and schema, with an Alembic migration.
+  - Updated frontend `TrainerSessions.jsx` assignment modal to dynamically fetch and display active sets for the selected module.
+  - Modified `resolve_or_create_session` to respect the pre-assigned set name instead of randomizing.
 
 ## Development Guidelines
 - Always maintain modular layered architecture.

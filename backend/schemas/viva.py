@@ -9,6 +9,7 @@ class SessionCreate(BaseModel):
     module_id: int
     duration_minutes: int = 15
     question_count: Optional[int] = None
+    set_name: Optional[str] = None
 
 class SessionResponse(BaseModel):
     id: int
@@ -111,6 +112,7 @@ class BulkSessionCreate(BaseModel):
     module_id: int
     duration_minutes: int = 15
     question_count: Optional[int] = None
+    set_name: Optional[str] = None
     trainees: list[BulkSessionTrainee]
 
 class BulkSessionResultItem(BaseModel):

@@ -100,6 +100,7 @@ class VivaSession(Base):
     module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=False)
     duration_minutes = Column(Integer, default=15) # default session length
     question_count = Column(Integer, nullable=True) # Optional explicitly set question count
+    set_name = Column(String, nullable=True) # Optional explicitly assigned set name
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime, nullable=True)
     status = Column(SQLEnum(SessionStatus), nullable=False, default=SessionStatus.IN_PROGRESS)

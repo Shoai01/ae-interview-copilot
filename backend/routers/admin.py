@@ -214,6 +214,11 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User 
 def get_all_modules(db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER, UserRole.TRAINEE]))):
     return admin_service.get_modules_with_counts(db)
 
+@router.get("/modules/{module_id}/sets", response_model=List[admin_schemas.ModuleSetResponse])
+def get_module_sets(module_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    from repositories.admin_repository import get_active_sets_with_counts_by_module
+    return get_active_sets_with_counts_by_module(db, module_id)
+
 @router.get("/questions", response_model=List[admin_schemas.QuestionResponse])
 def get_questions(module_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     return admin_service.get_questions_by_module(db, module_id=module_id)

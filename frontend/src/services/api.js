@@ -118,7 +118,11 @@ export const vivaService = {
     const response = await api.get(`/viva/trainee/${userId}`);
     return response.data;
   },
-  assignSession: async (traineeId, traineeIdentifier, traineeFullName, moduleId, durationMinutes = 15, questionCount = null) => {
+  getModuleSets: async (moduleId) => {
+    const response = await api.get(`/admin/modules/${moduleId}/sets`);
+    return response.data;
+  },
+  assignSession: async (traineeId, traineeIdentifier, traineeFullName, moduleId, durationMinutes = 15, questionCount = null, setName = '') => {
     const payload = {
       module_id: moduleId,
       duration_minutes: durationMinutes
@@ -127,17 +131,19 @@ export const vivaService = {
     if (traineeIdentifier) payload.trainee_identifier = traineeIdentifier;
     if (traineeFullName) payload.trainee_full_name = traineeFullName;
     if (questionCount !== null && questionCount !== "") payload.question_count = parseInt(questionCount);
+    if (setName) payload.set_name = setName;
     
     const response = await api.post('/viva/sessions/assign', payload);
     return response.data;
   },
-  assignSessionBulk: async (moduleId, durationMinutes, questionCount, trainees) => {
+  assignSessionBulk: async (moduleId, durationMinutes, questionCount, setName, trainees) => {
     const payload = {
       module_id: moduleId,
       duration_minutes: durationMinutes,
       trainees: trainees
     };
     if (questionCount !== null && questionCount !== "") payload.question_count = parseInt(questionCount);
+    if (setName) payload.set_name = setName;
     
     const response = await api.post('/viva/sessions/assign/bulk', payload);
     return response.data;

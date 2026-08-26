@@ -27,8 +27,9 @@ export default function TrainerSessions() {
   const fileInputRef = useRef(null);
   const [trainees, setTrainees] = useState([]);
   const [modulesList, setModulesList] = useState([]);
-  const [assignForm, setAssignForm] = useState({ traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15, questionCount: '' });
+  const [assignForm, setAssignForm] = useState({ traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15, questionCount: '', setName: '' });
   const [assigning, setAssigning] = useState(false);
+  const [moduleSets, setModuleSets] = useState([]);
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -61,6 +62,19 @@ export default function TrainerSessions() {
     fetchAssignData();
   }, []);
 
+  useEffect(() => {
+    if (assignForm.moduleId) {
+      vivaService.getModuleSets(assignForm.moduleId)
+        .then(sets => setModuleSets(sets || []))
+        .catch(err => {
+          console.error("Failed to fetch module sets:", err);
+          setModuleSets([]);
+        });
+    } else {
+      setModuleSets([]);
+    }
+  }, [assignForm.moduleId]);
+
   const handleAssignSubmit = async () => {
     if (assignMode === 'single') {
       if (!assignForm.traineeIdentifier) {
@@ -75,7 +89,8 @@ export default function TrainerSessions() {
           assignForm.traineeFullName,
           assignForm.moduleId,
           assignForm.durationMinutes,
-          assignForm.questionCount
+          assignForm.questionCount,
+          assignForm.setName
         );
         toast.success('Session assigned successfully! Email notification is being sent.');
         setOpenAssignModal(false);
@@ -124,6 +139,7 @@ export default function TrainerSessions() {
           assignForm.moduleId,
           assignForm.durationMinutes,
           assignForm.questionCount,
+          assignForm.setName,
           trainees
         );
         toast.success(`Successfully assigned ${result.success_count} sessions. Email notifications are being sent.`);
@@ -183,10 +199,18 @@ export default function TrainerSessions() {
 
   
   const selectedModule = modulesList.find(m => m.id === assignForm.moduleId);
-  const maxAvailable = selectedModule?.max_questions_per_set || null;
-  const helperText = maxAvailable 
+  let maxAvailable = selectedModule?.max_questions_per_set || null;
+  let helperText = maxAvailable 
     ? `Max available in a single set: ${maxAvailable}. Leave empty to auto-calculate.`
     : `Leave empty to auto-calculate based on duration`;
+    
+  if (assignForm.setName) {
+    const selectedSet = moduleSets.find(s => s.name === assignForm.setName);
+    if (selectedSet) {
+      maxAvailable = selectedSet.count;
+      helperText = `Max available in selected set: ${maxAvailable}. Leave empty to auto-calculate.`;
+    }
+  }
 
   return (
     <Layout>
@@ -482,6 +506,20 @@ export default function TrainerSessions() {
               >
                 {modulesList.map(m => (
                   <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth disabled={!assignForm.moduleId}>
+              <InputLabel>Question Set (Optional)</InputLabel>
+              <Select
+                label="Question Set (Optional)"
+                value={assignForm.setName || ''}
+                onChange={(e) => setAssignForm({ ...assignForm, setName: e.target.value })}
+              >
+                <MenuItem value=""><em>Random Set (Default)</em></MenuItem>
+                {moduleSets.map(set => (
+                  <MenuItem key={set.name} value={set.name}>{set.name} ({set.count} Qs)</MenuItem>
                 ))}
               </Select>
             </FormControl>
