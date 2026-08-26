@@ -302,6 +302,20 @@ export default function VivaInProgress() {
                 setFinalText(e.target.value);
                 setLiveText('');
               }}
+              onPaste={(e) => {
+                e.preventDefault();
+                toast.error("Pasting is not allowed during the exam.");
+              }}
+              onCopy={(e) => {
+                e.preventDefault();
+              }}
+              onCut={(e) => {
+                e.preventDefault();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                toast.error("Drag and drop is not allowed.");
+              }}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   fontSize: '18px',
