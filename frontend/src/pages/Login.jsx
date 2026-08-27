@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
@@ -7,249 +7,486 @@ import {
   Button,
   InputAdornment,
   IconButton,
-  Alert
+  Alert,
+  CircularProgress,
+  Stack
 } from '@mui/material';
 import MailOutlinedIcon from '@mui/icons-material/MailOutlined';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import GraphicEqOutlinedIcon from '@mui/icons-material/GraphicEqOutlined';
+import PsychologyOutlinedIcon from '@mui/icons-material/PsychologyOutlined';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import { useAuth } from '@/store/AuthContext';
 
 export default function Login() {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const { login, isAuthenticated, user } = useAuth();
-    
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isAuthenticated, user } = useAuth();
 
-    // Redirect if already authenticated
-    React.useEffect(() => {
-        if (isAuthenticated && user) {
-            if (user.must_change_password) {
-                navigate('/change-password');
-            } else if (user.role === 'TRAINEE') {
-                navigate('/welcome');
-            } else {
-                navigate('/hr/dashboard');
-            }
-        }
-    }, [isAuthenticated, user, navigate]);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
-        try {
-            const data = await login(username, password);
-            if (data.must_change_password) {
-                navigate('/change-password', { replace: true });
-                return;
-            }
-            const from = location.state?.from?.pathname;
-            
-            if (from && from !== '/') {
-                navigate(from, { replace: true });
-            } else if (data.role === 'TRAINEE') {
-                navigate('/welcome');
-            } else {
-                navigate('/hr/dashboard');
-            }
-        } catch (err) {
-            if (err.response?.status === 429) {
-                setError("Too many login attempts. Please try again in a minute.");
-            } else {
-                setError(err.response?.data?.detail || 'Invalid username or password');
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.must_change_password) {
+        navigate('/change-password');
+      } else if (user.role === 'TRAINEE') {
+        navigate('/welcome');
+      } else {
+        navigate('/hr/dashboard');
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
-    return (
-        <Box sx={{ display: 'flex', height: '100vh', overflowY: 'auto', flexDirection: { xs: 'column', lg: 'row' }, bgcolor: 'background.default' }}>
-            
-            {/* Left Side (Info Panel) */}
-            <Box sx={{ 
-                width: { xs: '100%', lg: '50%' }, 
-                display: 'flex', 
-                flexDirection: 'column', 
-                justifyContent: 'center',
-                px: { xs: 4, sm: 8, lg: 12 },
-                py: { xs: 8, lg: 10 },
-                background: 'linear-gradient(to bottom right, #FFDBCE, #D7E3FC)',
-                position: 'relative',
-                borderRight: '1px solid rgba(0,0,0,0.05)',
-                overflow: 'hidden'
-            }}>
-                <Box sx={{ position: 'absolute', top: '-10%', right: '-10%', width: 500, height: 500, bgcolor: 'rgba(242, 101, 34, 0.2)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
-                <Box sx={{ position: 'absolute', bottom: '-10%', left: '-10%', width: 400, height: 400, bgcolor: 'rgba(0, 154, 222, 0.15)', borderRadius: '50%', filter: 'blur(80px)', pointerEvents: 'none' }} />
-                <Box sx={{ maxWidth: 500, position: 'relative', zIndex: 1 }}>
-                    <Typography variant="h2" color="text.primary" sx={{ fontWeight: 700, mb: 3, lineHeight: 1.2 }}>
-                        AI-powered interviews, <Box component="span" color="primary.main">evaluated in real time</Box>
-                    </Typography>
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const data = await login(username, password);
+      if (data.must_change_password) {
+        navigate('/change-password', { replace: true });
+        return;
+      }
+      const from = location.state?.from?.pathname;
 
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 5, fontSize: '1.1rem', lineHeight: 1.6 }}>
-                        Empower your recruitment with precision AI that analyzes technical depth, communication skills, and candidate confidence in every spoken response.
-                    </Typography>
-                </Box>
+      if (from && from !== '/') {
+        navigate(from, { replace: true });
+      } else if (data.role === 'TRAINEE') {
+        navigate('/welcome');
+      } else {
+        navigate('/hr/dashboard');
+      }
+    } catch (err) {
+      if (err.response?.status === 429) {
+        setError('Too many login attempts. Please try again in a minute.');
+      } else {
+        setError(err.response?.data?.detail || 'Invalid username or password');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                <Box sx={{ position: 'absolute', bottom: 40, left: { xs: 32, sm: 64, lg: 96 }, width: 'calc(100% - 192px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ opacity: 0.7 }}>
-                        © 2026 AutomationEdge Technologies. All rights reserved.
-                    </Typography>
-                </Box>
-            </Box>
-
-            {/* Right Side (Form Panel) */}
-            <Box sx={{ 
-                width: { xs: '100%', lg: '50%' }, 
-                display: 'flex', 
-                alignItems: 'flex-start', 
-                justifyContent: 'center',
-                position: 'relative',
-                py: { xs: 8, lg: 0 },
-                px: { xs: 4, sm: 8 },
-                bgcolor: 'background.default'
-            }}>
-                <Box sx={{ 
-                    my: 'auto',
-                    maxWidth: 420, 
-                    width: '100%', 
-                    bgcolor: 'background.paper',
-                    p: { xs: 4, sm: 5 }, 
-                    borderRadius: 3, 
-                    border: '1px solid rgba(255,255,255,0.6)',
-                    boxShadow: '0px 10px 30px rgba(0, 0, 0, 0.05)',
-                    position: 'relative',
-                    zIndex: 1
-                }}>
-                    <Box sx={{ mb: 4 }}>
-                        <Typography variant="h4" color="text.primary" sx={{ fontWeight: 700, mb: 1 }}>
-                            Welcome back 👋
-                        </Typography>
-                    </Box>
-
-                    {error && (
-                        <Alert severity="error" sx={{ mb: 3 }}>
-                            {error}
-                        </Alert>
-                    )}
-
-                    <form onSubmit={handleLogin}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <Box>
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1, ml: 0.5, fontWeight: 500 }}>
-                                    Username or Email
-                                </Typography>
-                                <TextField 
-                                    fullWidth
-                                    placeholder="admin / you@company.com"
-                                    required
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    variant="outlined"
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <MailOutlinedIcon color="action" sx={{ fontSize: 20 }} />
-                                            </InputAdornment>
-                                        ),
-                                    }}
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            bgcolor: 'white',
-                                            borderRadius: 2,
-                                            transition: 'all 0.2s ease',
-                                            '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
-                                            '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.2)' },
-                                            '&.Mui-focused fieldset': { 
-                                                borderColor: 'primary.main',
-                                                borderWidth: '1px',
-                                            },
-                                            '&.Mui-focused': {
-                                                boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.15)',
-                                            }
-                                        }
-                                    }}
-                                />
-                            </Box>
-
-                            <Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1, px: 0.5 }}>
-                                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
-                                        Password
-                                    </Typography>
-                                </Box>
-                                <TextField 
-                                    fullWidth
-                                    placeholder="••••••••"
-                                    required
-                                    type={showPassword ? "text" : "password"}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    InputProps={{
-                                        startAdornment: (
-                                            <InputAdornment position="start">
-                                                <LockOutlinedIcon color="action" sx={{ fontSize: 20 }} />
-                                            </InputAdornment>
-                                        ),
-                                        endAdornment: (
-                                            <InputAdornment position="end">
-                                                <IconButton edge="end" size="small" onClick={() => setShowPassword(!showPassword)}>
-                                                    {showPassword ? <VisibilityOutlinedIcon color="action" sx={{ fontSize: 20 }} /> : <VisibilityOffOutlinedIcon color="action" sx={{ fontSize: 20 }} />}
-                                                </IconButton>
-                                            </InputAdornment>
-                                        )
-                                    }}
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            bgcolor: 'white',
-                                            borderRadius: 2,
-                                            transition: 'all 0.2s ease',
-                                            '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
-                                            '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.2)' },
-                                            '&.Mui-focused fieldset': { 
-                                                borderColor: 'primary.main',
-                                                borderWidth: '1px',
-                                            },
-                                            '&.Mui-focused': {
-                                                boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.15)',
-                                            }
-                                        }
-                                    }}
-                                />
-                            </Box>
-
-                            <Button 
-                                type="submit" 
-                                variant="contained" 
-                                color="primary" 
-                                fullWidth 
-                                size="large"
-                                disabled={loading}
-                                sx={{ 
-                                    py: 1.5, 
-                                    fontWeight: 700, 
-                                    mt: 2, 
-                                    borderRadius: 2,
-                                    textTransform: 'none',
-                                    fontSize: '1rem',
-                                    boxShadow: '0 4px 12px rgba(242, 101, 34, 0.2)',
-                                    '&:hover': {
-                                        boxShadow: '0 6px 16px rgba(242, 101, 34, 0.3)',
-                                    }
-                                }}
-                            >
-                                {loading ? 'Signing in...' : 'Sign In'}
-                            </Button>
-                        </Box>
-                    </form>
-                </Box>
-            </Box>
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh', width: '100%', flexDirection: { xs: 'column', lg: 'row' }, bgcolor: '#131C2E' }}>
+      
+      {/* ─── Left Side: Clean, Spacious Product Showcase ─── */}
+      <Box
+        sx={{
+          width: { xs: '100%', lg: '58%', xl: '60%' },
+          display: { xs: 'none', lg: 'flex' },
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          p: { lg: 6, xl: 8 },
+          position: 'relative',
+          overflow: 'hidden',
+          bgcolor: '#131C2E',
+          color: '#FFFFFF',
+          borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundImage: `
+            radial-gradient(ellipse 70% 55% at 20% 20%, rgba(242, 101, 34, 0.15) 0%, transparent 65%),
+            radial-gradient(circle at 85% 75%, rgba(56, 189, 248, 0.08) 0%, transparent 55%)
+          `,
+        }}
+      >
+        {/* Top Brand Header */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, zIndex: 1 }}>
+          <Box
+            component="img"
+            src="/ae-icon.png"
+            alt="AutomationEdge"
+            sx={{ height: 28, width: 'auto', objectFit: 'contain' }}
+          />
+          <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '-0.01em', fontSize: '1.1rem' }}>
+            Viva Copilot
+          </Typography>
         </Box>
-    );
+
+        {/* Center: Spacious, Minimalist Value Narrative */}
+        <Box sx={{ my: 'auto', maxWidth: 520, zIndex: 1 }}>
+          <Typography
+            variant="h2"
+            sx={{
+              fontWeight: 700,
+              fontFamily: 'Syne, sans-serif',
+              fontSize: { lg: '2.2rem', xl: '2.6rem' },
+              lineHeight: 1.25,
+              letterSpacing: '-0.03em',
+              color: '#F8FAFC',
+              mb: 2.5,
+            }}
+          >
+            Intelligent viva evaluations,{' '}
+            <Box component="span" sx={{ color: 'primary.main' }}>
+              delivered with precision.
+            </Box>
+          </Typography>
+
+          <Typography
+            variant="body1"
+            sx={{
+              color: '#94A3B8',
+              lineHeight: 1.65,
+              fontSize: '1rem',
+              fontFamily: 'DM Sans, sans-serif',
+              mb: 4.5,
+            }}
+          >
+            Streamline your technical assessment pipelines with automated spoken viva interviews, calibrated depth scoring, and objective candidate analytics.
+          </Typography>
+
+          {/* Minimalist 3-Column Capability Row */}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 3,
+              pt: 4,
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            {[
+              {
+                step: '01',
+                title: 'Spoken Viva',
+                desc: 'Real-time conversational voice evaluation',
+              },
+              {
+                step: '02',
+                title: 'Depth Scoring',
+                desc: 'Calibrated technical mastery metrics',
+              },
+              {
+                step: '03',
+                title: 'Integrity',
+                desc: 'Continuous proctoring & gaze verification',
+              },
+            ].map((col, idx) => (
+              <Box
+                key={col.step}
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                  pr: idx < 2 ? 2 : 0,
+                  borderRight: idx < 2 ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontFamily: 'monospace',
+                    fontSize: '0.72rem',
+                    color: 'primary.main',
+                    fontWeight: 700,
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  {col.step}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 700,
+                    color: '#F8FAFC',
+                    fontSize: '0.92rem',
+                    fontFamily: 'Syne, sans-serif',
+                  }}
+                >
+                  {col.title}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: '#94A3B8',
+                    lineHeight: 1.45,
+                    fontSize: '0.78rem',
+                    fontFamily: 'DM Sans, sans-serif',
+                  }}
+                >
+                  {col.desc}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+
+        {/* Footer */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            zIndex: 1,
+            pt: 3,
+            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+          }}
+        >
+          <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.75rem' }}>
+            &copy; 2026 AutomationEdge Technologies &bull; All rights reserved
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#4ade80' }} />
+            <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.75rem', fontWeight: 500 }}>
+              All systems operational
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+
+      {/* ─── Right Side: Focused Login Form ─── */}
+      <Box
+        sx={{
+          width: { xs: '100%', lg: '42%', xl: '40%' },
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          px: { xs: 3, sm: 6, lg: 5, xl: 7 },
+          py: { xs: 6, lg: 6 },
+          bgcolor: '#FFFFFF',
+        }}
+      >
+        <Box sx={{ width: '100%', maxWidth: 380 }}>
+          
+          {/* Official AutomationEdge Logo Header */}
+          <Box sx={{ mb: 3.5, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <Box
+              component="img"
+              src="/ae-full-logo.png"
+              alt="AutomationEdge"
+              sx={{
+                height: 38,
+                width: 'auto',
+                objectFit: 'contain',
+                mb: 2.5,
+              }}
+            />
+            <Box sx={{ mb: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '-0.02em' }}>
+                Viva Copilot
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'DM Sans, sans-serif' }}>
+              Sign in with your work credentials to access your session.
+            </Typography>
+          </Box>
+
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                mb: 3,
+                borderRadius: 2,
+                fontSize: '0.85rem',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                '& .MuiAlert-icon': { color: '#ef4444' },
+              }}
+            >
+              {error}
+            </Alert>
+          )}
+
+          {/* Login Form */}
+          <Box component="form" onSubmit={handleLogin} noValidate>
+            <Stack spacing={2.5}>
+              <Box>
+                <Typography
+                  component="label"
+                  htmlFor="username-input"
+                  variant="caption"
+                  sx={{
+                    display: 'block',
+                    mb: 0.75,
+                    fontWeight: 600,
+                    color: '#334155',
+                    fontSize: '0.825rem',
+                  }}
+                >
+                  Username or Work Email
+                </Typography>
+                <TextField
+                  id="username-input"
+                  fullWidth
+                  placeholder="name@company.com"
+                  required
+                  autoFocus
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <MailOutlinedIcon sx={{ fontSize: 19, color: '#94A3B8' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: '#F8FAFC',
+                      borderRadius: 2,
+                      fontSize: '0.925rem',
+                      fontFamily: 'DM Sans, sans-serif',
+                      transition: 'all 0.18s ease',
+                      '& fieldset': {
+                        borderColor: '#E2E8F0',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#CBD5E1',
+                      },
+                      '&.Mui-focused': {
+                        bgcolor: '#FFFFFF',
+                        boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.12)',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: 'primary.main',
+                        borderWidth: '1.5px',
+                      },
+                    },
+                  }}
+                />
+              </Box>
+
+              <Box>
+                <Typography
+                  component="label"
+                  htmlFor="password-input"
+                  variant="caption"
+                  sx={{
+                    display: 'block',
+                    mb: 0.75,
+                    fontWeight: 600,
+                    color: '#334155',
+                    fontSize: '0.825rem',
+                  }}
+                >
+                  Password
+                </Typography>
+                <TextField
+                  id="password-input"
+                  fullWidth
+                  placeholder="••••••••••••"
+                  required
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LockOutlinedIcon sx={{ fontSize: 19, color: '#94A3B8' }} />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          edge="end"
+                          size="small"
+                          onClick={() => setShowPassword(!showPassword)}
+                          sx={{ color: '#94A3B8', '&:hover': { color: '#475569' } }}
+                        >
+                          {showPassword ? <VisibilityOutlinedIcon sx={{ fontSize: 18 }} /> : <VisibilityOffOutlinedIcon sx={{ fontSize: 18 }} />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      bgcolor: '#F8FAFC',
+                      borderRadius: 2,
+                      fontSize: '0.925rem',
+                      fontFamily: 'DM Sans, sans-serif',
+                      transition: 'all 0.18s ease',
+                      '& fieldset': {
+                        borderColor: '#E2E8F0',
+                      },
+                      '&:hover fieldset': {
+                        borderColor: '#CBD5E1',
+                      },
+                      '&.Mui-focused': {
+                        bgcolor: '#FFFFFF',
+                        boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.12)',
+                      },
+                      '&.Mui-focused fieldset': {
+                        borderColor: 'primary.main',
+                        borderWidth: '1.5px',
+                      },
+                    },
+                  }}
+                />
+              </Box>
+
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                fullWidth
+                disabled={loading}
+                sx={{
+                  py: 1.35,
+                  fontWeight: 600,
+                  mt: 1,
+                  borderRadius: 2,
+                  fontSize: '0.95rem',
+                  fontFamily: 'DM Sans, sans-serif',
+                  color: '#FFFFFF',
+                  background: 'linear-gradient(135deg, #F26522 0%, #EA580C 100%)',
+                  boxShadow: '0 2px 8px rgba(242, 101, 34, 0.22)',
+                  '&:hover': {
+                    color: '#FFFFFF',
+                    background: 'linear-gradient(135deg, #EA580C 0%, #D9531E 100%)',
+                    boxShadow: '0 4px 14px rgba(242, 101, 34, 0.32)',
+                  },
+                  '&:disabled': {
+                    bgcolor: 'rgba(242, 101, 34, 0.65)',
+                    color: '#FFFFFF',
+                    boxShadow: 'none',
+                  },
+                }}
+              >
+                {loading ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: '#FFFFFF' }}>
+                    <CircularProgress size={18} sx={{ color: '#FFFFFF' }} thickness={4} />
+                    <span style={{ color: '#FFFFFF' }}>Signing In...</span>
+                  </Box>
+                ) : (
+                  <span style={{ color: '#FFFFFF' }}>Sign In</span>
+                )}
+              </Button>
+            </Stack>
+          </Box>
+
+          {/* Security Footnote */}
+          <Box
+            sx={{
+              mt: 4.5,
+              pt: 2.5,
+              borderTop: '1px solid #F1F5F9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1,
+              color: '#94A3B8',
+            }}
+          >
+            <ShieldOutlinedIcon sx={{ fontSize: 15, color: '#94A3B8' }} />
+            <Typography variant="caption" sx={{ fontSize: '0.75rem', fontWeight: 500 }}>
+              End-to-end encrypted session &bull; Role-based access
+            </Typography>
+          </Box>
+
+        </Box>
+      </Box>
+
+    </Box>
+  );
 }
+

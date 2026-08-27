@@ -136,7 +136,7 @@ export default function Layout({ children, breadcrumbs }) {
         </Box>
         <Box>
           <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', lineHeight: 1.2 }}>
-            Viva Copilot<Typography component="span" sx={{ color: 'primary.main', fontWeight: 700 }}>.</Typography>
+            Viva Copilot
           </Typography>
 
         </Box>

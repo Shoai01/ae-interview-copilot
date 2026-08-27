@@ -173,7 +173,7 @@ export default function WelcomeCheck() {
       {/* Header */}
       <Box component="header" sx={{ width: '100%', px: 4, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, position: 'sticky', top: 0, zIndex: 50, bgcolor: 'background.default' }}>
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', color: 'text.primary', fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>
-          Viva Copilot<Typography component="span" variant="h6" color="primary.main" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>.</Typography>
+          Viva Copilot
         </Typography>
         <Button 
           variant="outlined" 
