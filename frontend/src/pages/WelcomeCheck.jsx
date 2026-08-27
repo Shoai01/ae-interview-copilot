@@ -85,8 +85,17 @@ export default function WelcomeCheck() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    let activeStream = null;
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [user]);
 
+  useEffect(() => {
+    // Only ask for camera/mic permissions if they actually have an assigned session
+    if (!currentSession) return;
+
+    let activeStream = null;
     const setupMedia = async () => {
       try {
         if (!globalState.mediaStream) {
@@ -117,12 +126,7 @@ export default function WelcomeCheck() {
     };
 
     setupMedia();
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [user]);
+  }, [currentSession]);
 
   const [isStartingSession, setIsStartingSession] = useState(false);
 

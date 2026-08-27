@@ -11,7 +11,9 @@ export const AuthProvider = ({ children }) => {
 
   // Keep latest token in a ref so interceptor always has access to it immediately
   const tokenRef = useRef(accessToken);
-  tokenRef.current = accessToken;
+  useEffect(() => {
+    tokenRef.current = accessToken;
+  }, [accessToken]);
 
   // Configure axios interceptor for token injection
   useEffect(() => {
@@ -41,7 +43,13 @@ export const AuthProvider = ({ children }) => {
             const data = await authService.refresh();
             if (data.access_token) {
               setAccessToken(data.access_token);
-              setUser({ id: data.id, role: data.role, username: data.username, moduleId: data.module_id });
+              setUser({
+                id: data.id,
+                role: data.role,
+                username: data.username,
+                moduleId: data.module_id,
+                must_change_password: Boolean(data.must_change_password)
+              });
               originalRequest.headers.Authorization = `Bearer ${data.access_token}`;
               return api(originalRequest);
             }
@@ -67,7 +75,13 @@ export const AuthProvider = ({ children }) => {
         const data = await authService.refresh();
         if (data.access_token) {
           setAccessToken(data.access_token);
-          setUser({ id: data.id, role: data.role, username: data.username, moduleId: data.module_id });
+          setUser({
+            id: data.id,
+            role: data.role,
+            username: data.username,
+            moduleId: data.module_id,
+            must_change_password: Boolean(data.must_change_password)
+          });
         }
       } catch {
         // No active session
@@ -82,8 +96,18 @@ export const AuthProvider = ({ children }) => {
   const login = async (username, password) => {
     const data = await authService.login(username, password);
     setAccessToken(data.access_token);
-    setUser({ id: data.id, role: data.role, username: data.username, moduleId: data.module_id });
+    setUser({
+      id: data.id,
+      role: data.role,
+      username: data.username,
+      moduleId: data.module_id,
+      must_change_password: Boolean(data.must_change_password)
+    });
     return data;
+  };
+
+  const setMustChangePassword = (val = false) => {
+    setUser((prev) => (prev ? { ...prev, must_change_password: val } : prev));
   };
 
   const logout = async () => {
@@ -108,7 +132,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, login, logout, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, setUser, accessToken, login, logout, setMustChangePassword, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

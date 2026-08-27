@@ -16,6 +16,7 @@ export default function TrainerSessions() {
   const [loading, setLoading] = useState(true);
   const [filterModule, setFilterModule] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterResult, setFilterResult] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   
@@ -185,7 +186,9 @@ export default function TrainerSessions() {
   const filteredSessions = sessions.filter(session => {
     const matchModule = filterModule === '' || session.module_name === filterModule;
     const matchStatus = filterStatus === '' || session.status === filterStatus;
-    return matchModule && matchStatus;
+    const effectiveResult = session.trainer_decision || session.ai_recommendation;
+    const matchResult = filterResult === '' || effectiveResult === filterResult;
+    return matchModule && matchStatus && matchResult;
   });
 
   const handleChangePage = (event, newPage) => {
@@ -252,6 +255,13 @@ export default function TrainerSessions() {
               {uniqueStatuses.map(status => (
                 <MenuItem key={status} value={status}>{status}</MenuItem>
               ))}
+            </Select>
+            <Select size="small" value={filterResult} onChange={(e) => setFilterResult(e.target.value)} displayEmpty sx={{ minWidth: 140, bgcolor: '#ffffff', borderRadius: 2, fontFamily: 'DM Sans, sans-serif', '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#f26522', borderWidth: 1, boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.1)' } }}>
+              <MenuItem value="">All Results</MenuItem>
+              <MenuItem value="PASS">Pass</MenuItem>
+              <MenuItem value="FAIL">Fail</MenuItem>
+              <MenuItem value="BORDERLINE">Borderline</MenuItem>
+              <MenuItem value="HOLD">Hold</MenuItem>
             </Select>
           </Box>
         </Box>

@@ -44,7 +44,7 @@ def assign_session(session_data: viva_schemas.SessionCreate, background_tasks: B
                 module_name=session_result.module_name,
                 duration_minutes=session_result.duration_minutes,
                 full_name=session_result.trainee_name,
-                question_count=session_result.total_questions
+                question_count=session_data.question_count
             )
             
         return session_result
@@ -79,7 +79,8 @@ def assign_session_bulk(bulk_data: viva_schemas.BulkSessionCreate, background_ta
                 to_email=to_email,
                 module_name=module_name,
                 duration_minutes=bulk_data.duration_minutes,
-                full_name=item.full_name
+                full_name=item.full_name,
+                question_count=bulk_data.question_count
             )
             
     return bulk_result

@@ -29,7 +29,9 @@ export default function Login() {
     // Redirect if already authenticated
     React.useEffect(() => {
         if (isAuthenticated && user) {
-            if (user.role === 'TRAINEE') {
+            if (user.must_change_password) {
+                navigate('/change-password');
+            } else if (user.role === 'TRAINEE') {
                 navigate('/welcome');
             } else {
                 navigate('/hr/dashboard');
@@ -43,6 +45,10 @@ export default function Login() {
         setLoading(true);
         try {
             const data = await login(username, password);
+            if (data.must_change_password) {
+                navigate('/change-password', { replace: true });
+                return;
+            }
             const from = location.state?.from?.pathname;
             
             if (from && from !== '/') {

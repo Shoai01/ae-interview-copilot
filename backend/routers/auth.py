@@ -44,7 +44,8 @@ def login(request: Request, response: Response, login_data: LoginRequest, db: Se
         "id": user.id,
         "role": user.role,
         "username": user.username,
-        "employee_id": user.employee_id
+        "employee_id": user.employee_id,
+        "must_change_password": bool(user.must_change_password)
     }
 
 @router.post("/refresh", response_model=LoginResponse)
@@ -88,10 +89,31 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
         "id": user.id,
         "role": user.role,
         "username": user.username,
-        "employee_id": user.employee_id
+        "employee_id": user.employee_id,
+        "must_change_password": bool(user.must_change_password)
     }
 
 @router.post("/logout")
 def logout(response: Response):
     response.delete_cookie(key="refresh_token", httponly=True, secure=True, samesite="none")
     return {"message": "Logged out successfully"}
+
+from schemas.auth import ChangePasswordRequest
+from core.security import verify_password, get_password_hash
+from core.deps import get_current_user
+from models.domain import User
+
+@router.post("/change-password")
+def change_password(
+    request: ChangePasswordRequest, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    if not verify_password(request.old_password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect old password")
+        
+    current_user.password_hash = get_password_hash(request.new_password)
+    current_user.must_change_password = False
+    db.commit()
+    
+    return {"message": "Password changed successfully"}

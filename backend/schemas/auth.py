@@ -13,3 +13,8 @@ class LoginResponse(BaseModel):
     role: UserRole
     username: str
     employee_id: Optional[str] = None
+    must_change_password: bool = False
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str

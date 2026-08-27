@@ -47,6 +47,7 @@ class User(Base):
     full_name = Column(String, nullable=True)
     employee_id = Column(String, nullable=True) # Relevant for trainers (AE Code)
     is_active = Column(Boolean, default=True)
+    must_change_password = Column(Boolean, default=False)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True) # Who provisioned this account
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -210,3 +211,9 @@ class AuditLog(Base):
         Index('ix_audit_logs_category', 'category'),
         Index('ix_audit_logs_actor_action', 'actor_id', 'action_type'),
     )
+
+class TokenBlacklist(Base):
+    __tablename__ = "token_blacklist"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    token = Column(String, unique=True, index=True, nullable=False)
+    blacklisted_at = Column(DateTime, default=datetime.utcnow)

@@ -10,6 +10,7 @@ import UserManagement from './pages/UserManagement';
 import KnowledgeBase from './pages/KnowledgeBase';
 import AuditLogs from './pages/AuditLogs';
 import Login from './pages/Login';
+import ForcePasswordChange from './pages/ForcePasswordChange';
 import { AuthProvider } from './store/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
@@ -23,7 +24,10 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/hr/login" element={<Navigate to="/" replace />} />
           
-          {/* Trainee Flows */}
+          {/* Password Change Flow (Protected for authenticated users) */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/change-password" element={<ForcePasswordChange />} />
+          </Route>
           <Route element={<ProtectedRoute allowedRoles={['TRAINEE']} />}>
             <Route path="/welcome" element={<WelcomeCheck />} />
             <Route path="/interview" element={<VivaInProgress />} />

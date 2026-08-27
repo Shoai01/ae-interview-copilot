@@ -15,7 +15,8 @@ def create_user(db: Session, user: UserCreate, password_hash: str, created_by_id
         role=user.role,
         full_name=user.full_name,
         employee_id=user.employee_id,
-        created_by=created_by_id
+        created_by=created_by_id,
+        must_change_password=True
     )
     db.add(db_user)
     db.commit()
@@ -28,7 +29,8 @@ def create_trainee(db: Session, username: str, full_name: str, password_hash: st
         full_name=full_name,
         password_hash=password_hash,
         role=UserRole.TRAINEE,
-        created_by=created_by_id
+        created_by=created_by_id,
+        must_change_password=True
     )
     db.add(db_user)
     db.commit()
