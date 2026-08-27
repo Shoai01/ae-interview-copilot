@@ -204,11 +204,11 @@ export default function KnowledgeBase() {
               <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
                 Active Module
               </Typography>
-              <Typography variant="h6" sx={{ color: '#6366F1', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <Typography variant="h6" sx={{ color: '#7C3AED', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {activeModuleName}
               </Typography>
             </Box>
-            <Box sx={{ width: 46, height: 46, borderRadius: 2, bgcolor: 'rgba(99, 102, 241, 0.1)', color: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Box sx={{ width: 46, height: 46, borderRadius: 2, bgcolor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <FolderCopyOutlinedIcon sx={{ fontSize: 24 }} />
             </Box>
           </Card>
@@ -232,11 +232,11 @@ export default function KnowledgeBase() {
               <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
                 Corpus Format
               </Typography>
-              <Typography variant="h6" sx={{ color: '#0EA5E9', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h6" sx={{ color: '#059669', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
                 PDF Standard
               </Typography>
             </Box>
-            <Box sx={{ width: 46, height: 46, borderRadius: 2, bgcolor: 'rgba(14, 165, 233, 0.1)', color: '#0EA5E9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Box sx={{ width: 46, height: 46, borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.1)', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <PictureAsPdfOutlinedIcon sx={{ fontSize: 24 }} />
             </Box>
           </Card>

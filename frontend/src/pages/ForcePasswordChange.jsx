@@ -8,12 +8,16 @@ import {
   Button,
   InputAdornment,
   IconButton,
-  CircularProgress
+  CircularProgress,
+  Stack,
+  Alert
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/store/AuthContext';
 import { authService } from '@/services/api';
@@ -31,54 +35,57 @@ export default function ForcePasswordChange() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
 
     if (!oldPassword) {
-      toast.error('Please enter your current password');
+      setErrorMsg('Please enter your temporary/current password.');
       return;
     }
 
     if (!newPassword) {
-      toast.error('Please enter a new password');
+      setErrorMsg('Please enter a new password.');
       return;
     }
 
     if (newPassword.length < 4) {
-      toast.error('Password must be at least 4 characters long');
+      setErrorMsg('Password must be at least 4 characters long.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
+      setErrorMsg('New passwords do not match.');
       return;
     }
 
     setLoading(true);
     try {
       await authService.changePassword(oldPassword, newPassword);
-      toast.success('Password changed successfully');
+      toast.success('Password changed successfully! Redirecting...');
 
-      // Update AuthContext state
       if (setMustChangePassword) {
         setMustChangePassword(false);
       }
 
-      // Redirect user to their designated dashboard
       if (user?.role === 'TRAINEE') {
         navigate('/welcome', { replace: true });
       } else {
         navigate('/hr/dashboard', { replace: true });
       }
     } catch (err) {
-      const errorMsg =
-        err.response?.data?.detail || 'Failed to update password. Please try again.';
-      toast.error(errorMsg);
+      const msg = err.response?.data?.detail || 'Failed to update password. Please verify your temporary password.';
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
+
+  const isLengthValid = newPassword.length >= 4;
+  const isMatchValid = newPassword.length > 0 && newPassword === confirmPassword;
 
   return (
     <Box
@@ -87,89 +94,91 @@ export default function ForcePasswordChange() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'background.default',
+        bgcolor: '#131C2E',
         px: { xs: 2, sm: 3 },
         py: 4,
         position: 'relative',
         overflow: 'hidden'
       }}
     >
-      {/* Background ambient lighting */}
+      {/* Background ambient radial gradients */}
       <Box
         sx={{
           position: 'absolute',
-          top: '-10%',
+          top: '-15%',
           right: '-10%',
-          width: 500,
-          height: 500,
-          bgcolor: 'rgba(242, 101, 34, 0.12)',
+          width: 600,
+          height: 600,
+          background: 'radial-gradient(circle, rgba(242, 101, 34, 0.15) 0%, transparent 70%)',
           borderRadius: '50%',
-          filter: 'blur(90px)',
           pointerEvents: 'none'
         }}
       />
       <Box
         sx={{
           position: 'absolute',
-          bottom: '-10%',
+          bottom: '-15%',
           left: '-10%',
-          width: 450,
-          height: 450,
-          bgcolor: 'rgba(0, 154, 222, 0.1)',
+          width: 600,
+          height: 600,
+          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%)',
           borderRadius: '50%',
-          filter: 'blur(90px)',
           pointerEvents: 'none'
         }}
       />
 
       {/* Centered Card */}
       <Card
+        elevation={0}
         sx={{
-          maxWidth: 440,
+          maxWidth: 460,
           width: '100%',
           p: { xs: 3.5, sm: 4.5 },
           borderRadius: 3,
-          border: '1px solid rgba(0, 0, 0, 0.08)',
-          boxShadow: '0px 10px 30px rgba(0, 0, 0, 0.05)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 24px 64px rgba(0, 0, 0, 0.35)',
           position: 'relative',
           zIndex: 1,
-          bgcolor: 'background.paper'
+          bgcolor: '#FFFFFF'
         }}
       >
-        <Box sx={{ mb: 3.5 }}>
+        {/* Brand Banner */}
+        <Box sx={{ mb: 3.5, textAlign: 'center' }}>
           <Box
             sx={{
-              width: 48,
-              height: 48,
-              borderRadius: 2,
+              width: 52,
+              height: 52,
+              borderRadius: 2.5,
               bgcolor: 'rgba(242, 101, 34, 0.1)',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              mb: 2.5,
+              mb: 2,
               color: '#F26522'
             }}
           >
-            <KeyOutlinedIcon sx={{ fontSize: 26 }} />
+            <KeyOutlinedIcon sx={{ fontSize: 28 }} />
           </Box>
-          <Typography variant="h4" color="text.primary" sx={{ fontWeight: 700, mb: 1 }}>
-            Password Change Required
+          <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', letterSpacing: '-0.02em', mb: 1 }}>
+            Reset Password
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
-            For your security, please update your temporary password to a new password before accessing your account.
+          <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5 }}>
+            Welcome, <strong>{user?.full_name || user?.username}</strong>! For your account security, please update your temporary credentials before continuing.
           </Typography>
         </Box>
 
+        {errorMsg && (
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2, fontFamily: 'DM Sans, sans-serif' }}>
+            {errorMsg}
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+          <Stack spacing={2.5}>
             {/* Current Password Field */}
             <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: 'block', mb: 0.75, ml: 0.5, fontWeight: 500 }}
-              >
-                Current Password
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155', fontFamily: 'DM Sans, sans-serif' }}>
+                Temporary / Current Password *
               </Typography>
               <TextField
                 fullWidth
@@ -181,7 +190,7 @@ export default function ForcePasswordChange() {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <LockOutlinedIcon color="action" sx={{ fontSize: 20 }} />
+                      <LockOutlinedIcon sx={{ color: '#94A3B8', fontSize: 18 }} />
                     </InputAdornment>
                   ),
                   endAdornment: (
@@ -192,9 +201,9 @@ export default function ForcePasswordChange() {
                         onClick={() => setShowOldPassword(!showOldPassword)}
                       >
                         {showOldPassword ? (
-                          <VisibilityOutlinedIcon color="action" sx={{ fontSize: 20 }} />
+                          <VisibilityOutlinedIcon sx={{ color: '#64748B', fontSize: 18 }} />
                         ) : (
-                          <VisibilityOffOutlinedIcon color="action" sx={{ fontSize: 20 }} />
+                          <VisibilityOffOutlinedIcon sx={{ color: '#64748B', fontSize: 18 }} />
                         )}
                       </IconButton>
                     </InputAdornment>
@@ -202,18 +211,12 @@ export default function ForcePasswordChange() {
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
-                    bgcolor: 'white',
+                    bgcolor: '#F8FAFC',
                     borderRadius: 2,
-                    transition: 'all 0.2s ease',
-                    '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
-                    '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.2)' },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#F26522',
-                      borderWidth: '1.5px'
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.15)'
-                    }
+                    fontFamily: 'DM Sans, sans-serif',
+                    '& fieldset': { borderColor: '#E2E8F0' },
+                    '&:hover fieldset': { borderColor: '#CBD5E1' },
+                    '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '1.5px' },
                   }
                 }}
               />
@@ -221,12 +224,8 @@ export default function ForcePasswordChange() {
 
             {/* New Password Field */}
             <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: 'block', mb: 0.75, ml: 0.5, fontWeight: 500 }}
-              >
-                New Password
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155', fontFamily: 'DM Sans, sans-serif' }}>
+                New Password *
               </Typography>
               <TextField
                 fullWidth
@@ -238,7 +237,7 @@ export default function ForcePasswordChange() {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <LockOutlinedIcon color="action" sx={{ fontSize: 20 }} />
+                      <ShieldOutlinedIcon sx={{ color: '#94A3B8', fontSize: 18 }} />
                     </InputAdornment>
                   ),
                   endAdornment: (
@@ -249,9 +248,9 @@ export default function ForcePasswordChange() {
                         onClick={() => setShowNewPassword(!showNewPassword)}
                       >
                         {showNewPassword ? (
-                          <VisibilityOutlinedIcon color="action" sx={{ fontSize: 20 }} />
+                          <VisibilityOutlinedIcon sx={{ color: '#64748B', fontSize: 18 }} />
                         ) : (
-                          <VisibilityOffOutlinedIcon color="action" sx={{ fontSize: 20 }} />
+                          <VisibilityOffOutlinedIcon sx={{ color: '#64748B', fontSize: 18 }} />
                         )}
                       </IconButton>
                     </InputAdornment>
@@ -259,18 +258,12 @@ export default function ForcePasswordChange() {
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
-                    bgcolor: 'white',
+                    bgcolor: '#F8FAFC',
                     borderRadius: 2,
-                    transition: 'all 0.2s ease',
-                    '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
-                    '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.2)' },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#F26522',
-                      borderWidth: '1.5px'
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.15)'
-                    }
+                    fontFamily: 'DM Sans, sans-serif',
+                    '& fieldset': { borderColor: '#E2E8F0' },
+                    '&:hover fieldset': { borderColor: '#CBD5E1' },
+                    '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '1.5px' },
                   }
                 }}
               />
@@ -278,12 +271,8 @@ export default function ForcePasswordChange() {
 
             {/* Confirm New Password Field */}
             <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: 'block', mb: 0.75, ml: 0.5, fontWeight: 500 }}
-              >
-                Confirm New Password
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155', fontFamily: 'DM Sans, sans-serif' }}>
+                Confirm New Password *
               </Typography>
               <TextField
                 fullWidth
@@ -295,7 +284,7 @@ export default function ForcePasswordChange() {
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <LockOutlinedIcon color="action" sx={{ fontSize: 20 }} />
+                      <ShieldOutlinedIcon sx={{ color: '#94A3B8', fontSize: 18 }} />
                     </InputAdornment>
                   ),
                   endAdornment: (
@@ -306,9 +295,9 @@ export default function ForcePasswordChange() {
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                       >
                         {showConfirmPassword ? (
-                          <VisibilityOutlinedIcon color="action" sx={{ fontSize: 20 }} />
+                          <VisibilityOutlinedIcon sx={{ color: '#64748B', fontSize: 18 }} />
                         ) : (
-                          <VisibilityOffOutlinedIcon color="action" sx={{ fontSize: 20 }} />
+                          <VisibilityOffOutlinedIcon sx={{ color: '#64748B', fontSize: 18 }} />
                         )}
                       </IconButton>
                     </InputAdornment>
@@ -316,21 +305,31 @@ export default function ForcePasswordChange() {
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
-                    bgcolor: 'white',
+                    bgcolor: '#F8FAFC',
                     borderRadius: 2,
-                    transition: 'all 0.2s ease',
-                    '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' },
-                    '&:hover fieldset': { borderColor: 'rgba(0,0,0,0.2)' },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#F26522',
-                      borderWidth: '1.5px'
-                    },
-                    '&.Mui-focused': {
-                      boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.15)'
-                    }
+                    fontFamily: 'DM Sans, sans-serif',
+                    '& fieldset': { borderColor: '#E2E8F0' },
+                    '&:hover fieldset': { borderColor: '#CBD5E1' },
+                    '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '1.5px' },
                   }
                 }}
               />
+            </Box>
+
+            {/* Password Validation Hints */}
+            <Box sx={{ p: 1.5, bgcolor: '#F8FAFC', borderRadius: 2, border: '1px solid #E2E8F0' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                <CheckCircleOutlinedIcon sx={{ fontSize: 16, color: isLengthValid ? '#16A34A' : '#94A3B8' }} />
+                <Typography variant="caption" sx={{ color: isLengthValid ? '#16A34A' : '#64748B', fontWeight: isLengthValid ? 600 : 400, fontFamily: 'DM Sans, sans-serif' }}>
+                  At least 4 characters long
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <CheckCircleOutlinedIcon sx={{ fontSize: 16, color: isMatchValid ? '#16A34A' : '#94A3B8' }} />
+                <Typography variant="caption" sx={{ color: isMatchValid ? '#16A34A' : '#64748B', fontWeight: isMatchValid ? 600 : 400, fontFamily: 'DM Sans, sans-serif' }}>
+                  New passwords match
+                </Typography>
+              </Box>
             </Box>
 
             {/* Submit Button */}
@@ -339,39 +338,41 @@ export default function ForcePasswordChange() {
               variant="contained"
               fullWidth
               size="large"
-              disabled={loading}
+              disabled={loading || !isLengthValid || !isMatchValid}
               sx={{
-                py: 1.5,
+                py: 1.3,
                 fontWeight: 700,
+                fontFamily: 'DM Sans, sans-serif',
                 mt: 1,
                 borderRadius: 2,
                 textTransform: 'none',
-                fontSize: '1rem',
-                bgcolor: '#F26522',
+                fontSize: '0.95rem',
+                background: 'linear-gradient(90deg, #e8581a 0%, #F26522 50%, #ff8c42 100%)',
+                color: '#FFFFFF !important',
+                boxShadow: '0 4px 14px rgba(242, 101, 34, 0.35)',
                 '&:hover': {
-                  bgcolor: '#d9581b',
-                  boxShadow: '0 6px 16px rgba(242, 101, 34, 0.3)'
+                  boxShadow: '0 6px 20px rgba(242, 101, 34, 0.45)',
                 },
-                boxShadow: '0 4px 12px rgba(242, 101, 34, 0.2)'
               }}
             >
-              {loading ? <CircularProgress size={24} sx={{ color: '#fff' }} /> : 'Change Password'}
+              {loading ? <CircularProgress size={22} color="inherit" /> : 'Update Password & Enter'}
             </Button>
 
-            {/* Logout link option */}
-            <Box sx={{ textAlign: 'center', mt: 0.5 }}>
+            {/* Sign out link option */}
+            <Box sx={{ textAlign: 'center', pt: 0.5 }}>
               <Button
                 variant="text"
                 size="small"
                 onClick={logout}
                 disabled={loading}
                 sx={{
-                  color: 'text.secondary',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
+                  color: '#64748B',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  fontFamily: 'DM Sans, sans-serif',
                   textTransform: 'none',
                   '&:hover': {
-                    color: 'text.primary',
+                    color: '#0F172A',
                     bgcolor: 'transparent',
                     textDecoration: 'underline'
                   }
@@ -380,7 +381,7 @@ export default function ForcePasswordChange() {
                 Sign out and return to login
               </Button>
             </Box>
-          </Box>
+          </Stack>
         </form>
       </Card>
     </Box>

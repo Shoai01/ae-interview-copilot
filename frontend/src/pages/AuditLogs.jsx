@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Box, Typography, Card, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow, Chip, Button, Select, MenuItem, CircularProgress, 
   IconButton, Tooltip, TablePagination, Menu, Checkbox, ListItemText, 
-  Collapse, Avatar, TextField, InputAdornment 
+  Collapse, Avatar, TextField, InputAdornment, FormControl, InputLabel 
 } from '@mui/material';
 import { adminService } from '@/services/api';
 import Layout from '@/components/Layout';
@@ -16,17 +16,22 @@ import SearchIcon from '@mui/icons-material/Search';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import ClearIcon from '@mui/icons-material/Clear';
+import ViewColumnOutlinedIcon from '@mui/icons-material/ViewColumnOutlined';
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
+import SecurityOutlinedIcon from '@mui/icons-material/SecurityOutlined';
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import toast from 'react-hot-toast';
 
 const AVATAR_PALETTE = [
-  '#0284c7', // sky
-  '#7c3aed', // violet
+  '#F26522', // AutomationEdge signature orange
+  '#7C3AED', // violet
   '#059669', // emerald
-  '#d97706', // amber
-  '#e11d48', // rose
-  '#4f46e5', // indigo
-  '#0d9488', // teal
-  '#ea580c', // orange
+  '#D97706', // amber
+  '#E11D48', // rose
+  '#0D9488', // teal
+  '#131C2E', // midnight slate
+  '#B45309', // bronze
 ];
 
 function getAvatarBgColor(str = '') {
@@ -74,10 +79,10 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
     <Box 
       sx={{ 
         m: 1.5, 
-        p: { xs: 1.5, sm: 2 }, 
-        bgcolor: '#ffffff', 
-        borderRadius: 2, 
-        border: '1px solid rgba(0, 0, 0, 0.08)',
+        p: { xs: 2, sm: 2.5 }, 
+        bgcolor: '#FFFFFF', 
+        borderRadius: 2.5, 
+        border: '1px solid #E2E8F0',
         boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
       }}
     >
@@ -90,31 +95,31 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
           alignItems: 'center', 
           gap: 1.5, 
           pb: 1.5,
-          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
-          mb: 1.5
+          borderBottom: '1px solid #E2E8F0',
+          mb: 2
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
           <Box 
             sx={{ 
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              width: 32, 
-              height: 32, 
-              borderRadius: '8px', 
+              width: 36, 
+              height: 36, 
+              borderRadius: 2, 
               bgcolor: 'rgba(242, 101, 34, 0.1)', 
               color: 'primary.main' 
             }}
           >
-            <PeopleAltOutlinedIcon sx={{ fontSize: 18 }} />
+            <PeopleAltOutlinedIcon sx={{ fontSize: 20 }} />
           </Box>
           <Box>
-            <Typography variant="subtitle2" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: 'text.primary', fontSize: '0.9rem', lineHeight: 1.2 }}>
+            <Typography variant="subtitle2" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: '#0F172A', fontSize: '0.95rem', lineHeight: 1.2 }}>
               Assigned Trainees
             </Typography>
-            <Typography variant="caption" sx={{ fontFamily: 'DM Sans, sans-serif', color: 'text.secondary', fontSize: '0.75rem' }}>
-              Bulk enrollment recipient list
+            <Typography variant="caption" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#64748B', fontSize: '0.75rem' }}>
+              Batch enrollment recipient list
             </Typography>
           </Box>
           
@@ -128,7 +133,7 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
               fontFamily: 'DM Sans, sans-serif',
               bgcolor: 'rgba(242, 101, 34, 0.1)', 
               color: 'primary.main', 
-              borderRadius: '6px' 
+              borderRadius: 1 
             }} 
           />
           {successCount !== undefined && successCount !== '-' && (
@@ -138,11 +143,12 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
               sx={{ 
                 height: 22, 
                 fontSize: '11px', 
-                fontWeight: 600, 
+                fontWeight: 700, 
                 fontFamily: 'DM Sans, sans-serif',
-                bgcolor: 'rgba(74, 222, 128, 0.15)', 
-                color: '#15803d', 
-                borderRadius: '6px' 
+                bgcolor: 'rgba(34, 197, 94, 0.1)', 
+                color: '#16A34A', 
+                border: '1px solid rgba(34, 197, 94, 0.2)',
+                borderRadius: 1 
               }} 
             />
           )}
@@ -153,18 +159,19 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
               sx={{ 
                 height: 22, 
                 fontSize: '11px', 
-                fontWeight: 600, 
+                fontWeight: 700, 
                 fontFamily: 'DM Sans, sans-serif',
-                bgcolor: 'rgba(239, 68, 68, 0.12)', 
-                color: 'error.main', 
-                borderRadius: '6px' 
+                bgcolor: 'rgba(239, 68, 68, 0.1)', 
+                color: '#DC2626', 
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: 1 
               }} 
             />
           )}
         </Box>
 
         {/* Action Controls */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           {trainees.length > 5 && (
             <TextField
               size="small"
@@ -174,7 +181,7 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <SearchIcon sx={{ fontSize: 16, color: '#94A3B8' }} />
                   </InputAdornment>
                 ),
                 endAdornment: search ? (
@@ -186,22 +193,16 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                 ) : null,
               }}
               sx={{
-                width: { xs: 150, sm: 190 },
+                width: { xs: 160, sm: 200 },
                 '& .MuiOutlinedInput-root': {
-                  height: 32,
+                  height: 34,
                   fontSize: 12,
                   fontFamily: 'DM Sans, sans-serif',
-                  bgcolor: '#f8fafc',
+                  bgcolor: '#F8FAFC',
                   borderRadius: 1.5,
-                  '& fieldset': {
-                    borderColor: 'rgba(0, 0, 0, 0.12)'
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'primary.main'
-                  },
-                  '&.Mui-focused fieldset': {
-                    borderColor: 'primary.main'
-                  }
+                  '& fieldset': { borderColor: '#E2E8F0' },
+                  '&:hover fieldset': { borderColor: 'primary.main' },
+                  '&.Mui-focused fieldset': { borderColor: 'primary.main' }
                 }
               }}
             />
@@ -214,14 +215,15 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
               onClick={handleCopyAll}
               startIcon={copied ? <CheckIcon sx={{ fontSize: '15px !important' }} /> : <ContentCopyIcon sx={{ fontSize: '15px !important' }} />}
               sx={{
-                height: 32,
+                height: 34,
                 fontSize: 12,
                 fontFamily: 'DM Sans, sans-serif',
                 textTransform: 'none',
                 fontWeight: 600,
-                color: copied ? '#15803d' : 'text.secondary',
-                borderColor: copied ? '#86efac' : 'rgba(0, 0, 0, 0.15)',
-                bgcolor: copied ? 'rgba(74, 222, 128, 0.1)' : '#ffffff',
+                color: copied ? '#16A34A' : '#0F172A',
+                borderColor: copied ? '#86EFAC' : '#E2E8F0',
+                bgcolor: copied ? 'rgba(34, 197, 94, 0.08)' : '#FFFFFF',
+                borderRadius: 1.5,
                 '&:hover': {
                   borderColor: 'primary.main',
                   bgcolor: 'rgba(242, 101, 34, 0.04)',
@@ -238,10 +240,10 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
       {/* Trainees Grid Area */}
       {filtered.length === 0 ? (
         <Box sx={{ py: 3, textAlign: 'center' }}>
-          <Typography variant="body2" sx={{ fontFamily: 'DM Sans', color: 'text.secondary', fontSize: 13 }}>
+          <Typography variant="body2" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#64748B', fontSize: 13 }}>
             No trainees match "{search}"
           </Typography>
-          <Button size="small" onClick={() => setSearch('')} sx={{ mt: 1, textTransform: 'none', fontSize: 12, fontFamily: 'DM Sans' }}>
+          <Button size="small" onClick={() => setSearch('')} sx={{ mt: 1, textTransform: 'none', fontSize: 12, fontFamily: 'DM Sans, sans-serif' }}>
             Clear filter
           </Button>
         </Box>
@@ -256,11 +258,11 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
               xs: '1fr', 
               sm: 'repeat(auto-fill, minmax(220px, 1fr))' 
             }, 
-            gap: 1,
+            gap: 1.25,
             '&::-webkit-scrollbar': { width: '5px' },
             '&::-webkit-scrollbar-track': { bgcolor: 'transparent' },
-            '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.15)', borderRadius: '4px' },
-            '&::-webkit-scrollbar-thumb:hover': { bgcolor: 'rgba(0,0,0,0.25)' }
+            '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(0,0,0,0.12)', borderRadius: '4px' },
+            '&::-webkit-scrollbar-thumb:hover': { bgcolor: 'rgba(0,0,0,0.2)' }
           }}
         >
           {filtered.map((traineeName, idx) => (
@@ -270,9 +272,9 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 1.2,
-                  p: '6px 10px',
-                  bgcolor: '#f8fafc',
-                  border: '1px solid rgba(0, 0, 0, 0.06)',
+                  p: '6px 12px',
+                  bgcolor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
                   borderRadius: 1.5
                 }}
               >
@@ -284,7 +286,7 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                     fontWeight: 700,
                     fontFamily: 'DM Sans, sans-serif',
                     bgcolor: getAvatarBgColor(traineeName),
-                    color: '#ffffff',
+                    color: '#FFFFFF',
                     flexShrink: 0
                   }}
                 >
@@ -296,7 +298,7 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                     fontFamily: 'DM Sans, sans-serif',
                     fontSize: 13,
                     fontWeight: 500,
-                    color: 'text.primary',
+                    color: '#0F172A',
                     flex: 1
                   }}
                 >
@@ -308,8 +310,9 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                     fontFamily: 'DM Sans, sans-serif',
                     fontSize: 10,
                     fontWeight: 700,
-                    color: 'text.disabled',
-                    bgcolor: 'rgba(0, 0, 0, 0.04)',
+                    color: '#94A3B8',
+                    bgcolor: '#FFFFFF',
+                    border: '1px solid #E2E8F0',
                     px: 0.6,
                     py: 0.2,
                     borderRadius: 0.8,
@@ -326,8 +329,8 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
 
       {/* Filter Info Footer */}
       {search && (
-        <Box sx={{ mt: 1.2, pt: 1, borderTop: '1px solid rgba(0, 0, 0, 0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="caption" sx={{ fontFamily: 'DM Sans', color: 'text.secondary', fontSize: 11 }}>
+        <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="caption" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#64748B', fontSize: 11 }}>
             Showing {filtered.length} of {trainees.length} trainees
           </Typography>
         </Box>
@@ -344,8 +347,9 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
   let fCount = '-';
   let decision = '-';
   let statusLabel = 'Success';
-  let statusColor = 'success.main';
-  let statusBg = 'rgba(46, 125, 50, 0.1)';
+  let statusColor = '#16A34A';
+  let statusBg = 'rgba(34, 197, 94, 0.1)';
+  let statusBorder = 'rgba(34, 197, 94, 0.2)';
   let assignedTrainees = [];
 
   if (log.details) {
@@ -359,8 +363,9 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
 
       if (log.action_type === 'QUESTION_STATUS_TOGGLED' && d.new_status !== undefined) {
         statusLabel = d.new_status ? 'Active' : 'Inactive';
-        statusColor = d.new_status ? 'success.main' : 'default';
-        statusBg = d.new_status ? 'rgba(46, 125, 50, 0.1)' : 'rgba(0, 0, 0, 0.08)';
+        statusColor = d.new_status ? '#16A34A' : '#64748B';
+        statusBg = d.new_status ? 'rgba(34, 197, 94, 0.1)' : 'rgba(100, 116, 139, 0.1)';
+        statusBorder = d.new_status ? 'rgba(34, 197, 94, 0.2)' : 'rgba(100, 116, 139, 0.2)';
       }
       
       if (d.success_count !== undefined) sCount = d.success_count;
@@ -373,12 +378,14 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
       if (fCount !== '-' && fCount > 0) {
         if (sCount > 0) {
           statusLabel = 'Partial';
-          statusColor = 'warning.main';
-          statusBg = 'rgba(237, 108, 2, 0.1)';
+          statusColor = '#D97706';
+          statusBg = 'rgba(245, 158, 11, 0.1)';
+          statusBorder = 'rgba(245, 158, 11, 0.2)';
         } else {
           statusLabel = 'Failed';
-          statusColor = 'error.main';
-          statusBg = 'rgba(211, 47, 47, 0.1)';
+          statusColor = '#DC2626';
+          statusBg = 'rgba(239, 68, 68, 0.1)';
+          statusBorder = 'rgba(239, 68, 68, 0.2)';
         }
       }
     } catch(e){}
@@ -388,9 +395,28 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
     const mMatch = log.target.match(/Module:\s*(\d+)/);
     if (mMatch) modId = parseInt(mMatch[1]);
   }
-  const modName = modId ? (modules.find(m => m.id === modId)?.name || 'Unknown Module') : '-';
+  const modName = modId ? (modules.find(m => m.id === modId)?.name || 'Module ' + modId) : '-';
 
   const isExpandable = log.action_type === 'BULK_SESSION_ASSIGNED' && assignedTrainees.length > 0;
+
+  // Action badge palette
+  const getActionBadgeProps = (type = '') => {
+    if (type.includes('USER')) {
+      return { bgcolor: 'rgba(5, 150, 105, 0.08)', color: '#059669', border: '1px solid rgba(5, 150, 105, 0.25)' };
+    }
+    if (type.includes('SESSION')) {
+      return { bgcolor: 'rgba(124, 58, 237, 0.08)', color: '#7C3AED', border: '1px solid rgba(124, 58, 237, 0.25)' };
+    }
+    if (type.includes('QUESTION')) {
+      return { bgcolor: 'rgba(242, 101, 34, 0.08)', color: '#F26522', border: '1px solid rgba(242, 101, 34, 0.25)' };
+    }
+    if (type.includes('DOCUMENT')) {
+      return { bgcolor: 'rgba(217, 119, 6, 0.08)', color: '#D97706', border: '1px solid rgba(217, 119, 6, 0.25)' };
+    }
+    return { bgcolor: 'rgba(100, 116, 139, 0.08)', color: '#475569', border: '1px solid rgba(100, 116, 139, 0.2)' };
+  };
+
+  const actionStyle = getActionBadgeProps(log.action_type);
 
   return (
     <React.Fragment>
@@ -398,11 +424,11 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
         hover 
         sx={{ 
           bgcolor: open ? 'rgba(242, 101, 34, 0.02)' : 'inherit',
-          '& > *': { borderBottom: isExpandable && open ? 'none' : '1px solid rgba(224, 224, 224, 1)' },
-          transition: 'background-color 0.2s ease'
+          '& > *': { borderBottom: isExpandable && open ? 'none' : '1px solid #F1F5F9' },
+          '&:hover': { bgcolor: '#F8FAFC' }
         }}
       >
-        <TableCell padding="checkbox" sx={{ width: 40 }}>
+        <TableCell padding="checkbox" sx={{ width: 40, py: 2 }}>
           {isExpandable && (
             <Tooltip title={open ? "Hide trainees" : "View trainees"}>
               <IconButton 
@@ -410,62 +436,80 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
                 size="small" 
                 onClick={() => setOpen(!open)}
                 sx={{
-                  color: open ? 'primary.main' : 'text.secondary',
-                  bgcolor: open ? 'rgba(242, 101, 34, 0.08)' : 'transparent',
-                  '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.15)' }
+                  color: open ? 'primary.main' : '#64748B',
+                  bgcolor: open ? 'rgba(242, 101, 34, 0.1)' : 'rgba(0, 0, 0, 0.04)',
+                  '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.18)' }
                 }}
               >
-                {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                {open ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
               </IconButton>
             </Tooltip>
           )}
         </TableCell>
         {visibleCols.includes('date') && (
-          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14 }}>
-            {new Date(log.created_at).toLocaleString('en-US', {
-              month: 'short', day: 'numeric', year: 'numeric',
-              hour: '2-digit', minute: '2-digit', hour12: false
+          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.85rem', color: '#64748B', py: 2 }}>
+            {new Date(log.created_at).toLocaleString('en-IN', {
+              day: '2-digit', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit'
             })}
           </TableCell>
         )}
         {visibleCols.includes('actor') && (
-          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 500 }}>
-            {log.actor_name || 'System'}
+          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: '#0F172A', py: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+              <Avatar sx={{ width: 28, height: 28, fontSize: 11, fontWeight: 700, bgcolor: getAvatarBgColor(log.actor_name), color: '#FFFFFF' }}>
+                {getInitials(log.actor_name)}
+              </Avatar>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', fontFamily: 'DM Sans, sans-serif' }}>
+                {log.actor_name || 'System Engine'}
+              </Typography>
+            </Box>
           </TableCell>
         )}
         {visibleCols.includes('action') && (
-          <TableCell>
-            <Chip size="small" label={log.action_type.replace(/_/g, ' ')} sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11, fontWeight: 600, bgcolor: 'rgba(242,101,34,0.1)', color: 'primary.main', borderRadius: 1 }} />
+          <TableCell sx={{ py: 2 }}>
+            <Chip 
+              size="small" 
+              label={log.action_type.replace(/_/g, ' ')} 
+              sx={{ 
+                fontFamily: 'DM Sans, sans-serif', 
+                fontSize: '0.75rem', 
+                fontWeight: 700, 
+                bgcolor: actionStyle.bgcolor, 
+                color: actionStyle.color, 
+                border: actionStyle.border,
+                borderRadius: 1 
+              }} 
+            />
           </TableCell>
         )}
         {visibleCols.includes('module') && (
-          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14 }}>
+          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', color: '#0F172A', py: 2 }}>
             {modName}
           </TableCell>
         )}
         {visibleCols.includes('target') && (
-          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14 }}>
+          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', color: '#475569', py: 2 }}>
             {isExpandable ? (
               <Tooltip title={open ? "Click to collapse" : "Click to view assigned trainees"}>
                 <Chip
-                  icon={<PeopleAltOutlinedIcon sx={{ fontSize: '15px !important', color: open ? '#ffffff !important' : 'primary.main !important' }} />}
+                  icon={<PeopleAltOutlinedIcon sx={{ fontSize: '15px !important', color: open ? '#FFFFFF !important' : 'primary.main !important' }} />}
                   label={`${assignedTrainees.length} ${assignedTrainees.length === 1 ? 'Trainee' : 'Trainees'}`}
                   size="small"
                   onClick={() => setOpen(!open)}
                   sx={{
                     fontFamily: 'DM Sans, sans-serif',
-                    fontSize: 12,
-                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
                     cursor: 'pointer',
                     bgcolor: open ? 'primary.main' : 'rgba(242, 101, 34, 0.08)',
-                    color: open ? '#ffffff' : 'primary.main',
+                    color: open ? '#FFFFFF' : 'primary.main',
                     border: '1px solid',
                     borderColor: open ? 'primary.main' : 'rgba(242, 101, 34, 0.25)',
                     borderRadius: 1.5,
                     transition: 'all 0.15s ease',
                     '&:hover': {
                       bgcolor: open ? 'primary.dark' : 'rgba(242, 101, 34, 0.16)',
-                      transform: 'translateY(-1px)'
                     }
                   }}
                 />
@@ -476,22 +520,34 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
           </TableCell>
         )}
         {visibleCols.includes('decision') && (
-          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: decision !== '-' ? 700 : 400, color: decision === 'PASS' ? 'success.main' : (decision === 'FAIL' ? 'error.main' : 'inherit') }}>
+          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.85rem', fontWeight: decision !== '-' ? 700 : 400, color: decision === 'PASS' ? '#16A34A' : (decision === 'FAIL' ? '#DC2626' : '#64748B'), py: 2 }}>
             {decision}
           </TableCell>
         )}
         {visibleCols.includes('status') && (
-          <TableCell>
-            <Chip size="small" label={statusLabel} sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: 11, fontWeight: 700, bgcolor: statusBg, color: statusColor, borderRadius: 1 }} />
+          <TableCell sx={{ py: 2 }}>
+            <Chip 
+              size="small" 
+              label={statusLabel} 
+              sx={{ 
+                fontFamily: 'DM Sans, sans-serif', 
+                fontSize: '0.75rem', 
+                fontWeight: 700, 
+                bgcolor: statusBg, 
+                color: statusColor, 
+                border: `1px solid ${statusBorder}`,
+                borderRadius: 1 
+              }} 
+            />
           </TableCell>
         )}
         {visibleCols.includes('success') && (
-          <TableCell align="center" sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 600 }}>
+          <TableCell align="center" sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: '#16A34A', py: 2 }}>
             {sCount}
           </TableCell>
         )}
         {visibleCols.includes('failed') && (
-          <TableCell align="center" sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: 14, fontWeight: 600, color: fCount !== '-' && fCount > 0 ? 'error.main' : 'inherit' }}>
+          <TableCell align="center" sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: fCount !== '-' && fCount > 0 ? '#DC2626' : '#94A3B8', py: 2 }}>
             {fCount}
           </TableCell>
         )}
@@ -582,7 +638,6 @@ export default function AuditLogs() {
   }, [actionFilter, categoryFilter]);
 
   const handleChangePage = async (event, newPage) => {
-    // If we're moving forward and don't have enough logs yet, but we have a cursor
     if (newPage > page && (newPage + 1) * rowsPerPage > logs.length && nextCursor) {
       await fetchLogs(nextCursor, true);
     }
@@ -594,32 +649,16 @@ export default function AuditLogs() {
     setPage(0);
   };
 
-  const selectSx = {
-    fontFamily: 'DM Sans, sans-serif',
-    bgcolor: 'white',
-    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-      borderColor: 'primary.main',
-      borderWidth: 1,
-      boxShadow: '0 0 0 3px rgba(242, 101, 34, 0.1)'
-    }
-  };
-
   const formatTarget = (log) => {
     if (!log.target) return '-';
     let formatted = log.target;
     
-    // Completely strip out Module from Target since it has its own column now
+    // Strip out Module from Target since it has its own column
     formatted = formatted.replace(/Module:\s*\d+\s*/, '');
-
-    // Strip out Question IDs e.g., "Question: 31 (Set: AutoSet)" -> "Question (Set: AutoSet)"
     formatted = formatted.replace(/Question:\s*\d+\s*/, 'Question ');
-
-    // Strip out Session IDs e.g., "Session: 5" -> "Session"
     formatted = formatted.replace(/Session:\s*\d+\s*/, 'Session ');
-
     formatted = formatted.trim();
 
-    // If it's a bulk assign, display Multiple Trainees
     if (log.action_type === 'BULK_SESSION_ASSIGNED') {
       return 'Multiple Trainees';
     }
@@ -627,83 +666,123 @@ export default function AuditLogs() {
     return formatted || '-';
   };
 
-  const formatDetails = (action_type, details) => {
-    if (!details) return '-';
-    try {
-      const d = typeof details === 'string' ? JSON.parse(details) : details;
-      
-      const renderItem = (label, value) => (
-        <Box sx={{ display: 'inline-flex', alignItems: 'baseline', gap: 0.5, mr: 1.5, mb: 0.5 }}>
-          <Typography component="span" sx={{ fontSize: 12, fontWeight: 600, color: 'text.primary', fontFamily: 'DM Sans, sans-serif' }}>
-            {label}:
-          </Typography>
-          <Typography component="span" sx={{ fontSize: 13, color: 'text.secondary', fontFamily: 'DM Sans, sans-serif' }}>
-            {value}
-          </Typography>
-        </Box>
-      );
-
-      let content = null;
-      switch (action_type) {
-        case 'TRAINER_DECISION_SUBMITTED':
-          return '-';
-        case 'USER_CREATED':
-          content = renderItem('Role', d.role || 'N/A'); break;
-        case 'USER_UPDATED':
-          content = renderItem('Updated Fields', d.updated_fields ? d.updated_fields.join(', ') : 'N/A'); break;
-        case 'USER_DELETED':
-          content = renderItem('Role', d.role); break;
-        case 'SESSION_ASSIGNED':
-          return '-'; // Target is Trainee, Module is in col, Session ID removed. Nothing left!
-        case 'BULK_SESSION_ASSIGNED':
-          return '-';
-        case 'BULK_QUESTION_UPLOAD':
-          content = <>{renderItem('Count', d.count)}{d.set_name ? renderItem('Set', d.set_name) : null}</>; break;
-        case 'QUESTION_CREATED':
-          content = d.set_name ? renderItem('Set', d.set_name) : '-'; break;
-        case 'QUESTION_UPDATED':
-          content = d.action ? <>{renderItem('Action', d.action)}{renderItem('Preview', d.text_preview)}</> : renderItem('Fields', d.updated_fields ? d.updated_fields.join(', ') : '-'); break;
-        case 'QUESTION_STATUS_TOGGLED':
-          return '-';
-        case 'DOCUMENT_UPLOADED':
-          content = renderItem('Chunks', d.chunks); break;
-        case 'DOCUMENT_DELETED':
-          return '-';
-        default:
-          content = <Typography sx={{ fontFamily: 'monospace', fontSize: 11, color: 'text.secondary' }}>{JSON.stringify(d)}</Typography>;
-      }
-      return <Box sx={{ display: 'flex', flexWrap: 'wrap' }}>{content}</Box>;
-    } catch (e) {
-      return typeof details === 'string' ? details : JSON.stringify(details);
-    }
-  };
+  // KPI Calculations
+  const totalEvents = logs.length;
+  const sessionEvents = useMemo(() => logs.filter(l => l.action_type && l.action_type.includes('SESSION')).length, [logs]);
+  const userEvents = useMemo(() => logs.filter(l => l.action_type && l.action_type.includes('USER')).length, [logs]);
+  const questionEvents = useMemo(() => logs.filter(l => l.action_type && (l.action_type.includes('QUESTION') || l.action_type.includes('DOCUMENT'))).length, [logs]);
 
   return (
-    <Layout>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, width: '100%' }}>
+    <Layout breadcrumbs={[{ label: 'Dashboard', path: '/hr/dashboard' }, { label: 'Audit Logs' }]}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2.5, md: 3 }, width: '100%' }}>
         {/* Header Section */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              <Typography variant="h3" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: 'text.primary', mb: 1, letterSpacing: '-0.5px' }}>
-                Activity Logs
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', letterSpacing: '-0.02em' }}>
+                Activity & Audit Trail
               </Typography>
-              <IconButton onClick={() => fetchLogs()} size="medium" disabled={loading} sx={{ color: 'primary.main', bgcolor: 'rgba(242,101,34,0.1)', '&:hover': { bgcolor: 'rgba(242,101,34,0.2)' } }}>
-                <SyncIcon sx={{ animation: loading && !nextCursor ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
-              </IconButton>
+              <Tooltip title="Refresh audit logs" arrow>
+                <IconButton 
+                  onClick={() => fetchLogs()} 
+                  size="small" 
+                  disabled={loading} 
+                  sx={{ 
+                    color: 'primary.main', 
+                    bgcolor: 'rgba(242, 101, 34, 0.08)',
+                    border: '1px solid rgba(242, 101, 34, 0.2)',
+                    '&:hover': { bgcolor: 'rgba(242, 101, 34, 0.16)' } 
+                  }}
+                >
+                  <SyncIcon sx={{ fontSize: 18, animation: loading && !nextCursor ? 'spin 1s linear infinite' : 'none', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
+                </IconButton>
+              </Tooltip>
             </Box>
-            <Typography variant="body1" color="text.secondary" sx={{ fontFamily: 'DM Sans, sans-serif' }}>
-              Track all system actions performed by users and trainers.
+            <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', mt: 0.5 }}>
+              Immutable system audit events tracking viva assignments, evaluator decisions, syllabus changes, and account activity.
             </Typography>
           </Box>
         </Box>
 
+        {/* KPI Strip */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2.5 }}>
+          <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
+            <Box>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                Events In Buffer
+              </Typography>
+              <Typography variant="h4" sx={{ color: '#0F172A', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+                {nextCursor ? `${totalEvents}+` : totalEvents}
+              </Typography>
+            </Box>
+            <Box sx={{ width: 46, height: 46, borderRadius: 2, bgcolor: 'rgba(242, 101, 34, 0.1)', color: '#F26522', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <HistoryOutlinedIcon sx={{ fontSize: 24 }} />
+            </Box>
+          </Card>
+
+          <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
+            <Box>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                Session Events
+              </Typography>
+              <Typography variant="h4" sx={{ color: '#7C3AED', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+                {sessionEvents}
+              </Typography>
+            </Box>
+            <Box sx={{ width: 46, height: 46, borderRadius: 2, bgcolor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AssignmentOutlinedIcon sx={{ fontSize: 24 }} />
+            </Box>
+          </Card>
+
+          <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
+            <Box>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                Security & Accounts
+              </Typography>
+              <Typography variant="h4" sx={{ color: '#059669', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+                {userEvents}
+              </Typography>
+            </Box>
+            <Box sx={{ width: 46, height: 46, borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.1)', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <SecurityOutlinedIcon sx={{ fontSize: 24 }} />
+            </Box>
+          </Card>
+
+          <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
+            <Box>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                Compliance Trail
+              </Typography>
+              <Typography variant="h6" sx={{ color: '#16A34A', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+                Active & Verified
+              </Typography>
+            </Box>
+            <Box sx={{ width: 46, height: 46, borderRadius: 2, bgcolor: 'rgba(34, 197, 94, 0.1)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircleOutlinedIcon sx={{ fontSize: 24 }} />
+            </Box>
+          </Card>
+        </Box>
+
         {/* Toolbar & Table Card */}
-        <Card elevation={0} sx={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid rgba(0, 0, 0, 0.08)', borderRadius: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <FilterListIcon sx={{ color: 'text.secondary' }} />
-              <Select size="small" displayEmpty value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} sx={{ width: 180, ...selectSx }}>
+        <Card elevation={0} sx={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid #E2E8F0', borderRadius: 2.5, bgcolor: '#FFFFFF', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', p: 2, gap: 2, borderBottom: '1px solid #E2E8F0' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <FilterListIcon sx={{ color: '#94A3B8' }} />
+              
+              <Select 
+                size="small" 
+                displayEmpty 
+                value={categoryFilter} 
+                onChange={(e) => setCategoryFilter(e.target.value)} 
+                sx={{ 
+                  width: { xs: '100%', sm: 190 }, 
+                  bgcolor: '#F8FAFC', 
+                  borderRadius: 2,
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontSize: '0.875rem',
+                  '& fieldset': { borderColor: '#E2E8F0' }
+                }}
+              >
                 <MenuItem value="">All Categories</MenuItem>
                 <MenuItem value="USER_MANAGEMENT">User Management</MenuItem>
                 <MenuItem value="SESSION_TRAINING">Session & Training</MenuItem>
@@ -711,7 +790,20 @@ export default function AuditLogs() {
                 <MenuItem value="KNOWLEDGE_BASE">Knowledge Base</MenuItem>
               </Select>
 
-              <Select size="small" displayEmpty value={actionFilter} onChange={(e) => setActionFilter(e.target.value)} sx={{ width: 220, ...selectSx }}>
+              <Select 
+                size="small" 
+                displayEmpty 
+                value={actionFilter} 
+                onChange={(e) => setActionFilter(e.target.value)} 
+                sx={{ 
+                  width: { xs: '100%', sm: 220 }, 
+                  bgcolor: '#F8FAFC', 
+                  borderRadius: 2,
+                  fontFamily: 'DM Sans, sans-serif',
+                  fontSize: '0.875rem',
+                  '& fieldset': { borderColor: '#E2E8F0' }
+                }}
+              >
                 <MenuItem value="">All Actions</MenuItem>
                 <MenuItem value="USER_CREATED">User Created</MenuItem>
                 <MenuItem value="USER_UPDATED">User Updated</MenuItem>
@@ -724,27 +816,40 @@ export default function AuditLogs() {
                 <MenuItem value="QUESTION_STATUS_TOGGLED">Question Status Toggled</MenuItem>
                 <MenuItem value="TRAINER_DECISION_SUBMITTED">Decision Submitted</MenuItem>
               </Select>
-              
+            </Box>
+
+            <Box>
               <Button 
                 variant="outlined" 
                 size="small" 
+                startIcon={<ViewColumnOutlinedIcon sx={{ fontSize: 16 }} />}
                 onClick={(e) => setColumnMenuAnchor(e.currentTarget)}
-                sx={{ textTransform: 'none', fontFamily: 'DM Sans, sans-serif', color: 'text.secondary', borderColor: 'rgba(0, 0, 0, 0.23)' }}
+                sx={{ 
+                  textTransform: 'none', 
+                  fontFamily: 'DM Sans, sans-serif', 
+                  color: '#0F172A', 
+                  borderColor: '#E2E8F0', 
+                  borderRadius: 2,
+                  fontWeight: 600,
+                  py: 0.8,
+                  px: 2,
+                  '&:hover': { borderColor: 'primary.main', bgcolor: 'rgba(242, 101, 34, 0.04)' }
+                }}
               >
-                Columns
+                Toggle Columns
               </Button>
               <Menu
                 anchorEl={columnMenuAnchor}
                 open={Boolean(columnMenuAnchor)}
                 onClose={() => setColumnMenuAnchor(null)}
-                slotProps={{ paper: { sx: { minWidth: 200 } } }}
+                slotProps={{ paper: { sx: { minWidth: 220, borderRadius: 2.5, boxShadow: '0 12px 32px rgba(0,0,0,0.12)', border: '1px solid #E2E8F0' } } }}
               >
                 {COLUMNS.map(col => (
                   <MenuItem key={col.id} onClick={() => {
                     setVisibleCols(prev => prev.includes(col.id) ? prev.filter(c => c !== col.id) : [...prev, col.id]);
                   }}>
-                    <Checkbox checked={visibleCols.includes(col.id)} size="small" />
-                    <ListItemText primary={col.label} primaryTypographyProps={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13 }} />
+                    <Checkbox checked={visibleCols.includes(col.id)} size="small" sx={{ color: 'primary.main', '&.Mui-checked': { color: 'primary.main' } }} />
+                    <ListItemText primary={col.label} primaryTypographyProps={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 500 }} />
                   </MenuItem>
                 ))}
               </Menu>
@@ -753,31 +858,41 @@ export default function AuditLogs() {
 
           <TableContainer>
             {loading && !nextCursor ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
                 <CircularProgress color="primary" />
               </Box>
             ) : (
-              <Table>
+              <Table aria-label="audit logs table">
                 <TableHead>
-                  <TableRow sx={{ bgcolor: '#f8f9fa' }}>
+                  <TableRow sx={{ '& th': { bgcolor: '#F8FAFC', color: '#64748B', fontWeight: 700, fontSize: '0.75rem', letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: 'DM Sans, sans-serif', py: 1.75, borderBottom: '1px solid #E2E8F0' } }}>
                     <TableCell padding="checkbox" sx={{ width: 40 }} />
                     {COLUMNS.map(col => visibleCols.includes(col.id) && (
-                      <TableCell key={col.id} align={col.align} sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', fontSize: 11, letterSpacing: '0.05em' }}>
+                      <TableCell key={col.id} align={col.align}>
                         {col.label}
                       </TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {logs.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((log) => (
-                    <LogRow 
-                      key={log.id} 
-                      log={log} 
-                      visibleCols={visibleCols} 
-                      modules={modules} 
-                      formatTarget={formatTarget} 
-                    />
-                  ))}
+                  {logs.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={visibleCols.length + 1} align="center" sx={{ py: 8, borderBottom: 'none' }}>
+                        <Typography sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+                          No audit events recorded for the selected filter.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    logs.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((log) => (
+                      <LogRow 
+                        key={log.id} 
+                        log={log} 
+                        visibleCols={visibleCols} 
+                        modules={modules} 
+                        formatTarget={formatTarget} 
+                      />
+                    ))
+                  )}
                 </TableBody>
               </Table>
             )}
@@ -792,11 +907,13 @@ export default function AuditLogs() {
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
             sx={{
-              borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+              borderTop: '1px solid #E2E8F0',
               fontFamily: 'DM Sans, sans-serif',
+              bgcolor: '#FFFFFF',
               '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
                 fontFamily: 'DM Sans, sans-serif',
-                fontSize: '0.875rem'
+                fontSize: '0.85rem',
+                color: '#64748B',
               }
             }}
           />
