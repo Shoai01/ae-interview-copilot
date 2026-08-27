@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, IconButton } from '@mui/material';
+import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, IconButton, Breadcrumbs, Link } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import MicIcon from '@mui/icons-material/Mic';
@@ -9,15 +9,109 @@ import MenuIcon from '@mui/icons-material/Menu';
 import PeopleIcon from '@mui/icons-material/People';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import HistoryIcon from '@mui/icons-material/History';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { useAuth } from '@/store/AuthContext';
 
 const drawerWidth = 268;
 
-export default function Layout({ children }) {
+const ROUTE_LABEL_TO_PATH = {
+  'Dashboard': '/hr/dashboard',
+  'Sessions': '/hr/sessions',
+  'Question Bank': '/hr/questions',
+  'Knowledge Base': '/hr/knowledge',
+  'Users & Access': '/hr/users',
+  'Activity Log': '/hr/logs',
+};
+
+const getDefaultBreadcrumbs = (pathname) => {
+  if (pathname === '/hr/dashboard' || pathname === '/hr' || pathname === '/') {
+    return [{ label: 'Dashboard' }];
+  }
+
+  const crumbs = [{ label: 'Dashboard', path: '/hr/dashboard' }];
+
+  if (pathname === '/hr/sessions') {
+    crumbs.push({ label: 'Sessions' });
+    return crumbs;
+  }
+
+  if (pathname.startsWith('/hr/review/')) {
+    crumbs.push({ label: 'Sessions', path: '/hr/sessions' });
+    crumbs.push({ label: 'Session Review' });
+    return crumbs;
+  }
+
+  if (pathname === '/hr/questions') {
+    crumbs.push({ label: 'Question Bank' });
+    return crumbs;
+  }
+
+  if (pathname === '/hr/knowledge') {
+    crumbs.push({ label: 'Knowledge Base' });
+    return crumbs;
+  }
+
+  if (pathname === '/hr/users') {
+    crumbs.push({ label: 'Users & Access' });
+    return crumbs;
+  }
+
+  if (pathname === '/hr/logs') {
+    crumbs.push({ label: 'Activity Log' });
+    return crumbs;
+  }
+
+  if (pathname === '/change-password') {
+    return [{ label: 'Account' }, { label: 'Change Password' }];
+  }
+
+  // Fallback: parse URL segments
+  const segments = pathname.split('/').filter(Boolean);
+  const relevantSegments = segments[0] === 'hr' ? segments.slice(1) : segments;
+  let currentPath = segments[0] === 'hr' ? '/hr' : '';
+
+  relevantSegments.forEach((segment, idx) => {
+    currentPath += `/${segment}`;
+    const isLast = idx === relevantSegments.length - 1;
+    const readable = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/[-_]/g, ' ');
+    crumbs.push({
+      label: readable,
+      path: isLast ? undefined : currentPath,
+    });
+  });
+
+  return crumbs.length > 1 ? crumbs : [{ label: 'Dashboard' }];
+};
+
+const resolveBreadcrumbs = (customBreadcrumbs, pathname) => {
+  if (!customBreadcrumbs || !Array.isArray(customBreadcrumbs) || customBreadcrumbs.length === 0) {
+    return getDefaultBreadcrumbs(pathname);
+  }
+
+  const lastIndex = customBreadcrumbs.length - 1;
+  return customBreadcrumbs.map((crumb, idx) => {
+    const isLast = idx === lastIndex;
+    if (typeof crumb === 'string') {
+      return {
+        label: crumb,
+        path: isLast ? undefined : ROUTE_LABEL_TO_PATH[crumb],
+      };
+    }
+    return {
+      label: crumb.label,
+      path: isLast ? undefined : crumb.path,
+      onClick: crumb.onClick,
+    };
+  });
+};
+
+export default function Layout({ children, breadcrumbs }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuth();
+
+  const activeBreadcrumbs = resolveBreadcrumbs(breadcrumbs, location.pathname);
 
   const handleLogout = async () => {
     await logout();
@@ -193,13 +287,98 @@ export default function Layout({ children }) {
           zIndex: 30
         }}>
           
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <IconButton color="inherit" aria-label="open drawer" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 2, display: { lg: 'none' } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, mr: 2 }}>
+            <IconButton color="inherit" aria-label="open drawer" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 1.5, display: { lg: 'none' } }}>
               <MenuIcon />
             </IconButton>
-            <Typography variant="h6" sx={{ display: 'block', fontWeight: 600 }}>
-              {navItems.find(item => location.pathname.startsWith(item.path))?.text || 'Dashboard'}
-            </Typography>
+
+            <Breadcrumbs
+              separator={
+                <NavigateNextIcon 
+                  sx={{ 
+                    fontSize: 18, 
+                    color: 'rgba(15, 23, 42, 0.35)',
+                    mx: 0.25
+                  }} 
+                />
+              }
+              aria-label="breadcrumb"
+              sx={{
+                '& .MuiBreadcrumbs-ol': {
+                  alignItems: 'center',
+                  flexWrap: 'nowrap',
+                  overflowX: 'auto',
+                  scrollbarWidth: 'none',
+                  '&::-webkit-scrollbar': { display: 'none' },
+                },
+                '& .MuiBreadcrumbs-li': {
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                }
+              }}
+            >
+              {activeBreadcrumbs.map((crumb, idx) => {
+                const isLast = idx === activeBreadcrumbs.length - 1;
+
+                if (isLast) {
+                  return (
+                    <Typography
+                      key={crumb.label || idx}
+                      variant="h6"
+                      component="span"
+                      sx={{
+                        fontWeight: 700,
+                        fontFamily: 'DM Sans, sans-serif',
+                        fontSize: { xs: '1rem', sm: '1.2rem' },
+                        color: '#0F172A',
+                        letterSpacing: '-0.01em',
+                        whiteSpace: 'nowrap',
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {crumb.label}
+                    </Typography>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={crumb.label || idx}
+                    underline="none"
+                    component="button"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (crumb.onClick) {
+                        crumb.onClick();
+                      } else if (crumb.path) {
+                        navigate(crumb.path);
+                      }
+                    }}
+                    sx={{
+                      cursor: 'pointer',
+                      border: 'none',
+                      bgcolor: 'transparent',
+                      p: 0,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      color: 'text.secondary',
+                      fontFamily: 'DM Sans, sans-serif',
+                      fontSize: { xs: '0.875rem', sm: '0.95rem' },
+                      fontWeight: 500,
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                      lineHeight: 1.2,
+                      '&:hover': {
+                        color: 'primary.main',
+                      },
+                    }}
+                  >
+                    {crumb.label}
+                  </Link>
+                );
+              })}
+            </Breadcrumbs>
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>

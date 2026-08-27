@@ -333,7 +333,17 @@ export default function AdminQuestionBank() {
   const paginatedQuestions = filteredQuestions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
-    <Layout>
+    <Layout
+      breadcrumbs={
+        activeSet !== 'All Sets'
+          ? [
+              { label: 'Dashboard', path: '/hr/dashboard' },
+              { label: 'Question Bank', onClick: () => setActiveSet('All Sets') },
+              { label: activeSet },
+            ]
+          : undefined
+      }
+    >
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, md: 3 }, width: '100%' }}>
         
         {/* Header & Actions */}

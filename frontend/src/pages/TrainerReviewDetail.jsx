@@ -42,7 +42,7 @@ export default function TrainerReviewDetail() {
 
   if (loading) {
     return (
-      <Layout>
+      <Layout breadcrumbs={[{ label: 'Dashboard', path: '/hr/dashboard' }, { label: 'Sessions', path: '/hr/sessions' }, { label: 'Session Review' }]}>
         <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <CircularProgress />
         </Box>
@@ -52,7 +52,7 @@ export default function TrainerReviewDetail() {
 
   if (error || !reportData) {
     return (
-      <Layout>
+      <Layout breadcrumbs={[{ label: 'Dashboard', path: '/hr/dashboard' }, { label: 'Sessions', path: '/hr/sessions' }, { label: 'Session Review' }]}>
         <Box sx={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Typography color="error">{error || "Report not found"}</Typography>
         </Box>
@@ -84,7 +84,7 @@ export default function TrainerReviewDetail() {
   ];
 
   return (
-    <Layout>
+    <Layout breadcrumbs={[{ label: 'Dashboard', path: '/hr/dashboard' }, { label: 'Sessions', path: '/hr/sessions' }, { label: candidateName ? `Review: ${candidateName}` : 'Session Review' }]}>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, width: '100%', pb: 28 }}>
 
         {/* Back Navigation */}
