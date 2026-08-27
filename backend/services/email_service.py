@@ -55,7 +55,7 @@ def _base_layout(content: str) -> str:
             <table class="email-container" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
               <!-- Header -->
               <tr>
-                <td class="header-padding" style="background: linear-gradient(135deg, #F26522 0%, #e04e0a 100%);padding:32px 40px;text-align:center;">
+                <td class="header-padding" style="background-color: #F26522; background-image: linear-gradient(135deg, #F26522 0%, #e04e0a 100%);padding:32px 40px;text-align:center;">
                   <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.5px;">Automation Edge</h1>
                   <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px;font-weight:500;">Viva Copilot Training Platform</p>
                 </td>
@@ -188,7 +188,7 @@ def send_welcome_email(to_email: str, username: str, password: str, full_name: s
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
       <tr>
         <td align="center">
-          <a href="{PLATFORM_URL}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#F26522 0%,#e04e0a 100%);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">
+          <a href="{PLATFORM_URL}" target="_blank" style="display:inline-block;background-color:#F26522;background-image:linear-gradient(135deg,#F26522 0%,#e04e0a 100%);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">
             Log In to Viva Copilot →
           </a>
         </td>
@@ -283,7 +283,7 @@ def send_session_assignment_email(to_email: str, module_name: str, duration_minu
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
       <tr>
         <td align="center">
-          <a href="{PLATFORM_URL}" target="_blank" style="display:inline-block;background:linear-gradient(135deg,#F26522 0%,#e04e0a 100%);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">
+          <a href="{PLATFORM_URL}" target="_blank" style="display:inline-block;background-color:#F26522;background-image:linear-gradient(135deg,#F26522 0%,#e04e0a 100%);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">
             Go to Dashboard & Start Exam →
           </a>
         </td>

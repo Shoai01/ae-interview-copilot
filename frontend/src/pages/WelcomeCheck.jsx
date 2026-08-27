@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Card, CardContent, Stack, Button, Chip, CircularProgress } from '@mui/material';
+import { Box, Typography, Card, CardContent, Stack, Button, Chip, CircularProgress, Avatar } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
@@ -16,18 +16,21 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import SyncIcon from '@mui/icons-material/Sync';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import LogoutIcon from '@mui/icons-material/Logout';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import { vivaService } from '@/services/api';
 import { globalState } from '@/store';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/store/AuthContext';
 
 const StatusIcon = ({ status }) => {
-  if (status === 'passed') return <CheckCircleIcon sx={{ color: 'success.main', fontSize: '20px' }} />;
-  if (status === 'failed') return <CancelIcon sx={{ color: 'error.main', fontSize: '20px' }} />;
+  if (status === 'passed') return <CheckCircleIcon sx={{ color: '#16A34A', fontSize: 18 }} />;
+  if (status === 'failed') return <CancelIcon sx={{ color: '#DC2626', fontSize: 18 }} />;
   return (
-    <Stack direction="row" alignItems="center" spacing={1} sx={{ color: 'warning.main' }}>
-      <Typography variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '10px' }}>Checking</Typography>
-      <SyncIcon sx={{ fontSize: '16px', animation: 'spin 2s linear infinite', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
+    <Stack direction="row" alignItems="center" spacing={0.75} sx={{ color: '#D97706' }}>
+      <Typography variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '10px' }}>
+        Verifying
+      </Typography>
+      <SyncIcon sx={{ fontSize: 14, animation: 'spin 2s linear infinite', '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
     </Stack>
   );
 };
@@ -169,233 +172,518 @@ export default function WelcomeCheck() {
 
 
   return (
-    <Box sx={{ height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-      {/* Header */}
-      <Box component="header" sx={{ width: '100%', px: 4, py: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, position: 'sticky', top: 0, zIndex: 50, bgcolor: 'background.default' }}>
-        <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', color: 'text.primary', fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>
-          Viva Copilot
-        </Typography>
-        <Button 
-          variant="outlined" 
-          size="small" 
-          onClick={handleLogout}
-          startIcon={<LogoutIcon fontSize="small" />}
-          sx={{ 
-            color: 'text.secondary', 
-            borderColor: 'rgba(0,0,0,0.12)', 
-            textTransform: 'none', 
-            fontWeight: 500,
-            '&:hover': { borderColor: 'rgba(0,0,0,0.24)', bgcolor: 'rgba(0,0,0,0.02)' }
-          }}
-        >
-          Sign Out
-        </Button>
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#F8FAFC' }}>
+      
+      {/* Top Header with AutomationEdge Branding */}
+      <Box
+        component="header"
+        sx={{
+          width: '100%',
+          px: { xs: 2.5, md: 4 },
+          py: 1.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 64,
+          position: 'sticky',
+          top: 0,
+          zIndex: 50,
+          bgcolor: '#FFFFFF',
+          borderBottom: '1px solid #E2E8F0',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box
+            component="img"
+            src="/ae-icon.png"
+            alt="AutomationEdge"
+            sx={{ height: 26, width: 'auto', objectFit: 'contain' }}
+          />
+          <Box>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                color: '#0F172A',
+                fontWeight: 700,
+                fontFamily: 'Syne, sans-serif',
+                fontSize: '1.05rem',
+                lineHeight: 1.1,
+              }}
+            >
+              Viva Copilot
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                color: '#94A3B8',
+                fontSize: '0.7rem',
+                display: 'block',
+                fontFamily: 'DM Sans, sans-serif',
+                fontWeight: 500,
+              }}
+            >
+              Candidate Assessment
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+            <Avatar
+              sx={{
+                width: 32,
+                height: 32,
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                bgcolor: 'rgba(242, 101, 34, 0.1)',
+                color: 'primary.main',
+                border: '1px solid rgba(242, 101, 34, 0.25)',
+              }}
+            >
+              {user?.username ? user.username.charAt(0).toUpperCase() : 'C'}
+            </Avatar>
+            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  color: '#0F172A',
+                  lineHeight: 1.2,
+                  fontFamily: 'DM Sans, sans-serif',
+                }}
+              >
+                {traineeName !== 'Loading...' ? traineeName : user?.username || 'Candidate'}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: '#94A3B8',
+                  fontSize: '0.7rem',
+                  display: 'block',
+                  lineHeight: 1.1,
+                  fontFamily: 'DM Sans, sans-serif',
+                }}
+              >
+                Trainee
+              </Typography>
+            </Box>
+          </Box>
+
+          <Button
+            size="small"
+            onClick={handleLogout}
+            startIcon={<LogoutIcon sx={{ fontSize: 16 }} />}
+            sx={{
+              color: '#64748B',
+              borderColor: '#E2E8F0',
+              border: '1px solid #E2E8F0',
+              textTransform: 'none',
+              fontFamily: 'DM Sans, sans-serif',
+              fontWeight: 600,
+              fontSize: '0.8rem',
+              borderRadius: 1.5,
+              px: 1.5,
+              py: 0.5,
+              '&:hover': {
+                borderColor: '#EF4444',
+                color: '#EF4444',
+                bgcolor: 'rgba(239, 68, 68, 0.04)',
+              },
+            }}
+          >
+            Sign Out
+          </Button>
+        </Box>
       </Box>
 
       {/* Main Content */}
-      <Box component="main" sx={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', p: { xs: 2, md: 4 }, width: '100%', maxWidth: 1440, mx: 'auto' }}>
-        
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: { xs: 2.5, md: 4 },
+          width: '100%',
+          maxWidth: 960,
+          mx: 'auto',
+        }}
+      >
         {isFetchingSession ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 'auto', gap: 2 }}>
             <CircularProgress sx={{ color: 'primary.main' }} />
-            <Typography variant="body2" color="text.secondary">Checking for active sessions...</Typography>
+            <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+              Verifying active assessment schedule...
+            </Typography>
           </Box>
         ) : !currentSession ? (
-          <Box sx={{ width: '100%', maxWidth: 500, display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center', my: 'auto', textAlign: 'center' }}>
-            <Box sx={{ width: 80, height: 80, borderRadius: '50%', bgcolor: 'rgba(242,101,34,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main', mb: 1 }}>
-              <FactCheckOutlinedIcon sx={{ fontSize: 40 }} />
+          <Box
+            sx={{
+              width: '100%',
+              maxWidth: 480,
+              bgcolor: '#FFFFFF',
+              borderRadius: 2.5,
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+              p: 4,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2.5,
+              alignItems: 'center',
+              textAlign: 'center',
+            }}
+          >
+            <Box
+              sx={{
+                width: 64,
+                height: 64,
+                borderRadius: 2,
+                bgcolor: 'rgba(242, 101, 34, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'primary.main',
+                border: '1px solid rgba(242, 101, 34, 0.2)',
+              }}
+            >
+              <FactCheckOutlinedIcon sx={{ fontSize: 32 }} />
             </Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>No Session Assigned</Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.6 }}>
-              You currently do not have any active or pending interview sessions. Please wait for your trainer or administrator to assign a module to your account.
-            </Typography>
-            <Button 
-              variant="outlined" 
+            <Box>
+              <Typography
+                variant="h5"
+                sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', mb: 1 }}
+              >
+                No Session Assigned
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ color: '#64748B', lineHeight: 1.6, fontFamily: 'DM Sans, sans-serif' }}
+              >
+                You do not have an active or pending viva assessment scheduled. Please contact your trainer or administrator to assign your module.
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
               onClick={fetchSession}
-              startIcon={<SyncIcon />}
-              sx={{ mt: 2, borderRadius: 2, textTransform: 'none', px: 4 }}
+              startIcon={<SyncIcon sx={{ fontSize: 18 }} />}
+              sx={{
+                mt: 1,
+                borderRadius: 2,
+                textTransform: 'none',
+                px: 3,
+                py: 0.8,
+                fontFamily: 'DM Sans, sans-serif',
+                fontWeight: 600,
+                fontSize: '0.875rem',
+                borderColor: '#E2E8F0',
+                color: '#0F172A',
+                '&:hover': { borderColor: 'primary.main', color: 'primary.main', bgcolor: 'rgba(242, 101, 34, 0.04)' },
+              }}
             >
               Check Again
             </Button>
           </Box>
         ) : (
-          <Box sx={{ width: '100%', maxWidth: 860, display: 'flex', flexDirection: 'column', gap: 5, alignItems: 'center', my: 'auto' }}>
-          
-          {/* Welcome Header */}
-          <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-            <Chip 
-              label={currentSession ? `${currentSession.module_name.toUpperCase()} MODULE` : 'LOADING...'}
-              size="small"
-              sx={{ 
-                bgcolor: 'rgba(242, 101, 34, 0.1)', 
-                color: 'primary.main', 
-                fontWeight: 600, 
-                fontSize: '11px',
-                letterSpacing: '0.05em', 
-                mb: 1.5,
-                borderRadius: '16px',
-                px: 1
-              }} 
-            />
-            <Typography variant="h2" sx={{ fontWeight: 700, fontSize: { xs: '32px', md: '48px' }, mb: 1, color: 'text.primary' }}>
-              Welcome, {traineeName}
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ fontSize: '18px' }}>
-              Let's get you ready for your AI-powered evaluation.
-            </Typography>
-          </Box>
-
-          {/* Cards Container */}
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, width: '100%' }}>
+          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
             
-            {/* Instructions Card */}
-            <Card sx={{ flex: 1, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0px 4px 20px rgba(0,0,0,0.02)', p: 1 }}>
-              <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
-                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ pb: 2, mb: 3, borderBottom: '1px solid', borderColor: 'divider' }}>
-                  <InfoOutlinedIcon sx={{ color: '#f26522' }} />
-                  <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>Viva Details</Typography>
-                </Stack>
-                
-                <Stack spacing={4}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    <TimerOutlinedIcon sx={{ color: 'primary.main', fontSize: '22px' }} />
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>Duration</Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>Approximately {currentSession?.duration_minutes || '15'} minutes. Ensure you have uninterrupted time.</Typography>
-                    </Box>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    <FormatListNumberedOutlinedIcon sx={{ color: 'primary.main', fontSize: '22px' }} />
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>Questions</Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>{currentSession?.total_questions ? `${currentSession.total_questions} questions` : 'A series of questions'} focusing on {currentSession?.module_name ? `the ${currentSession.module_name} module` : 'your assigned module'}.</Typography>
-                    </Box>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-                    <SmartToyOutlinedIcon sx={{ color: 'primary.main', fontSize: '22px' }} />
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', mb: 0.5 }}>AI Evaluation</Typography>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', lineHeight: 1.6 }}>Responses are analyzed in real-time for technical accuracy and clarity.</Typography>
-                    </Box>
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-
-            {/* System Check Card */}
-            <Card sx={{ flex: 1, borderRadius: 3, border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0px 4px 20px rgba(0,0,0,0.02)', p: 1 }}>
-              <CardContent sx={{ p: 3, '&:last-child': { pb: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-                  <Stack direction="row" alignItems="center" spacing={1.5}>
-                    <FactCheckOutlinedIcon sx={{ color: '#f26522' }} />
-                    <Typography variant="h6" sx={{ fontWeight: 600, fontFamily: 'Syne, sans-serif' }}>System Check</Typography>
-                  </Stack>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>{readyCount}/5 Ready</Typography>
-                </Box>
-
-                {/* Live Video Preview Box */}
-                <Box sx={{ width: '100%', height: 160, bgcolor: '#000', borderRadius: 4, overflow: 'hidden', position: 'relative', boxShadow: 'inset 0px 4px 20px rgba(0,0,0,0.5)' }}>
-                  <Box
-                    component="video"
-                    ref={videoRef} 
-                    autoPlay 
-                    playsInline 
-                    muted 
-                    sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  {!stream && (
-                    <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>Allow camera access...</Typography>
-                    </Box>
-                  )}
-                </Box>
-                
-                <Stack spacing={0.5}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
-                    <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <VideocamOutlinedIcon sx={{ color: 'text.secondary', fontSize: '18px' }} />
-                      <Typography variant="body2" sx={{ color: 'text.primary' }}>Camera</Typography>
-                    </Stack>
-                    <StatusIcon status={checks.camera} />
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
-                    <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <MicNoneOutlinedIcon sx={{ color: 'text.secondary', fontSize: '18px' }} />
-                      <Typography variant="body2" sx={{ color: 'text.primary' }}>Microphone</Typography>
-                    </Stack>
-                    <StatusIcon status={checks.mic} />
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
-                    <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <VolumeUpOutlinedIcon sx={{ color: 'text.secondary', fontSize: '18px' }} />
-                      <Typography variant="body2" sx={{ color: 'text.primary' }}>Speaker</Typography>
-                    </Stack>
-                    <StatusIcon status={checks.speaker} />
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
-                    <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <WifiOutlinedIcon sx={{ color: 'text.secondary', fontSize: '18px' }} />
-                      <Typography variant="body2" sx={{ color: 'text.primary' }}>Internet</Typography>
-                    </Stack>
-                    <StatusIcon status={checks.network} />
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 2 }}>
-                    <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <PublicOutlinedIcon sx={{ color: 'text.secondary', fontSize: '18px' }} />
-                      <Typography variant="body2" sx={{ color: 'text.primary' }}>Browser</Typography>
-                    </Stack>
-                    <StatusIcon status={checks.browser} />
-                  </Box>
-                </Stack>
-              </CardContent>
-            </Card>
-
-          </Box>
-
-          {/* CTA */}
-          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 2, gap: 1.5 }}>
-            <Button 
-              variant="contained" 
-              disabled={!isReady || isStartingSession}
-              sx={{ 
-                bgcolor: 'primary.main', 
-                color: '#fff',
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: '16px',
-                px: 5, 
-                py: 1.5, 
-                borderRadius: 3,
-                boxShadow: '0px 8px 24px rgba(242, 101, 34, 0.3)',
-                transition: 'all 0.3s ease',
-                '&:hover': { bgcolor: 'primary.dark', boxShadow: '0px 12px 28px rgba(242, 101, 34, 0.4)', transform: 'translateY(-2px)' },
-                '&.Mui-disabled': { bgcolor: 'rgba(0,0,0,0.06)', color: 'rgba(0,0,0,0.26)', boxShadow: 'none' }
-              }}
-              endIcon={!isStartingSession && <ArrowForwardIcon />}
-              onClick={handleStart}
-            >
-              {isStartingSession ? (
-                <>
-                  <CircularProgress size={20} sx={{ color: 'inherit', mr: 1.5 }} />
-                  AI is preparing your interview questions...
-                </>
-              ) : (
-                "I Accept & Start Viva"
-              )}
-            </Button>
-            {!isReady && (
-              <Typography variant="body2" sx={{ color: 'error.main', fontSize: '13px', fontWeight: 500 }}>
-                Please allow camera and microphone access to proceed.
+            {/* Welcome Header */}
+            <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+              <Chip
+                label={currentSession ? `${currentSession.module_name.toUpperCase()} ASSESSMENT` : 'VIVA ASSESSMENT'}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(242, 101, 34, 0.08)',
+                  color: 'primary.main',
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                  letterSpacing: '0.04em',
+                  borderRadius: 1.5,
+                  border: '1px solid rgba(242, 101, 34, 0.2)',
+                  px: 1,
+                  py: 0.4,
+                  fontFamily: 'DM Sans, sans-serif',
+                  mb: 1,
+                }}
+              />
+              <Typography
+                variant="h3"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: { xs: '1.75rem', md: '2.25rem' },
+                  color: '#0F172A',
+                  fontFamily: 'Syne, sans-serif',
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.2,
+                }}
+              >
+                Welcome, {traineeName}
               </Typography>
-            )}
-          </Box>
+              <Typography
+                variant="body1"
+                sx={{
+                  color: '#64748B',
+                  fontSize: '0.95rem',
+                  fontFamily: 'DM Sans, sans-serif',
+                  maxWidth: 580,
+                }}
+              >
+                Complete your system readiness check and review the exam protocol before launching your AI viva session.
+              </Typography>
+            </Box>
+
+            {/* Cards Container */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, width: '100%' }}>
+              
+              {/* Instructions Card */}
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: 2.5,
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                  bgcolor: '#FFFFFF',
+                }}
+              >
+                <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
+                  <Stack direction="row" alignItems="center" spacing={1.5} sx={{ pb: 2, mb: 3, borderBottom: '1px solid #F1F5F9' }}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(242, 101, 34, 0.08)', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <InfoOutlinedIcon sx={{ fontSize: 18 }} />
+                    </Box>
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.05rem', color: '#0F172A' }}>
+                      Assessment Protocol
+                    </Typography>
+                  </Stack>
+                  
+                  <Stack spacing={3}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
+                      <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
+                        <TimerOutlinedIcon sx={{ fontSize: 16 }} />
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25, fontFamily: 'DM Sans, sans-serif' }}>
+                          Session Duration
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'DM Sans, sans-serif' }}>
+                          Approximately {currentSession?.duration_minutes || '15'} minutes. Ensure you remain seated in a quiet, well-lit environment.
+                        </Typography>
+                      </Box>
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
+                      <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#0EA5E9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
+                        <FormatListNumberedOutlinedIcon sx={{ fontSize: 16 }} />
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25, fontFamily: 'DM Sans, sans-serif' }}>
+                          Adaptive Questions
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'DM Sans, sans-serif' }}>
+                          {currentSession?.total_questions ? `${currentSession.total_questions} questions` : 'Targeted questions'} covering core competencies in {currentSession?.module_name || 'your assigned module'}.
+                        </Typography>
+                      </Box>
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
+                      <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
+                        <SmartToyOutlinedIcon sx={{ fontSize: 16 }} />
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25, fontFamily: 'DM Sans, sans-serif' }}>
+                          AI Voice Evaluation
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'DM Sans, sans-serif' }}>
+                          Spoken responses are transcribed and graded for technical depth, terminology, and concept clarity.
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
+                      <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
+                        <ShieldOutlinedIcon sx={{ fontSize: 16 }} />
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25, fontFamily: 'DM Sans, sans-serif' }}>
+                          Integrity & Proctoring
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'DM Sans, sans-serif' }}>
+                          Maintain camera presence and avoid tab switching. Live proctoring logs environmental integrity.
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+
+              {/* System Check Card */}
+              <Card
+                elevation={0}
+                sx={{
+                  borderRadius: 2.5,
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                  bgcolor: '#FFFFFF',
+                }}
+              >
+                <CardContent sx={{ p: 3, '&:last-child': { pb: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 2, borderBottom: '1px solid #F1F5F9' }}>
+                    <Stack direction="row" alignItems="center" spacing={1.5}>
+                      <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(242, 101, 34, 0.08)', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <FactCheckOutlinedIcon sx={{ fontSize: 18 }} />
+                      </Box>
+                      <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.05rem', color: '#0F172A' }}>
+                        Hardware Readiness
+                      </Typography>
+                    </Stack>
+                    <Chip
+                      size="small"
+                      label={`${readyCount}/5 Verified`}
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: '0.72rem',
+                        fontFamily: 'DM Sans, sans-serif',
+                        bgcolor: isReady ? 'rgba(34, 197, 94, 0.08)' : 'rgba(242, 101, 34, 0.08)',
+                        color: isReady ? '#16A34A' : '#F26522',
+                        border: `1px solid ${isReady ? 'rgba(34, 197, 94, 0.25)' : 'rgba(242, 101, 34, 0.25)'}`,
+                        borderRadius: 1.5,
+                      }}
+                    />
+                  </Box>
+
+                  {/* Live Video Preview Box */}
+                  <Box
+                    sx={{
+                      width: '100%',
+                      height: 150,
+                      bgcolor: '#0F172A',
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                      position: 'relative',
+                      border: '1px solid #E2E8F0',
+                    }}
+                  >
+                    <Box
+                      component="video"
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    {stream ? (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          left: 8,
+                          bgcolor: 'rgba(15, 23, 42, 0.75)',
+                          backdropFilter: 'blur(4px)',
+                          px: 1,
+                          py: 0.3,
+                          borderRadius: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.75,
+                        }}
+                      >
+                        <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22C55E', boxShadow: '0 0 6px #22C55E' }} />
+                        <Typography variant="caption" sx={{ color: '#FFFFFF', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.04em' }}>
+                          FEED ACTIVE
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Typography variant="caption" sx={{ color: '#94A3B8', fontFamily: 'DM Sans, sans-serif' }}>
+                          Requesting camera & microphone access...
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                  
+                  {/* Checklist rows */}
+                  <Stack spacing={1}>
+                    {[
+                      { label: 'Camera Sensor', icon: <VideocamOutlinedIcon sx={{ fontSize: 16 }} />, status: checks.camera },
+                      { label: 'Microphone Input', icon: <MicNoneOutlinedIcon sx={{ fontSize: 16 }} />, status: checks.mic },
+                      { label: 'Audio Speaker', icon: <VolumeUpOutlinedIcon sx={{ fontSize: 16 }} />, status: checks.speaker },
+                      { label: 'Network Connection', icon: <WifiOutlinedIcon sx={{ fontSize: 16 }} />, status: checks.network },
+                      { label: 'Browser Compatibility', icon: <PublicOutlinedIcon sx={{ fontSize: 16 }} />, status: checks.browser },
+                    ].map((item) => (
+                      <Box
+                        key={item.label}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          px: 1.5,
+                          py: 0.85,
+                          borderRadius: 1.5,
+                          bgcolor: '#F8FAFC',
+                          border: '1px solid #F1F5F9',
+                        }}
+                      >
+                        <Stack direction="row" alignItems="center" spacing={1.25}>
+                          <Box sx={{ color: '#64748B', display: 'flex', alignItems: 'center' }}>{item.icon}</Box>
+                          <Typography variant="body2" sx={{ color: '#0F172A', fontSize: '0.825rem', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
+                            {item.label}
+                          </Typography>
+                        </Stack>
+                        <StatusIcon status={item.status} />
+                      </Box>
+                    ))}
+                  </Stack>
+                </CardContent>
+              </Card>
+
+            </Box>
+
+            {/* CTA */}
+            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1, gap: 1.5 }}>
+              <Button
+                variant="contained"
+                disabled={!isReady || isStartingSession}
+                onClick={handleStart}
+                endIcon={!isStartingSession && <ArrowForwardIcon sx={{ fontSize: 18 }} />}
+                sx={{
+                  background: 'linear-gradient(90deg, #e8581a 0%, #F26522 50%, #ff8c42 100%)',
+                  color: '#FFFFFF !important',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.95rem',
+                  fontFamily: 'DM Sans, sans-serif',
+                  px: 5,
+                  py: 1.35,
+                  borderRadius: 2,
+                  boxShadow: '0 4px 20px rgba(242, 101, 34, 0.35)',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    boxShadow: '0 6px 25px rgba(242, 101, 34, 0.45)',
+                    transform: 'translateY(-1px)',
+                  },
+                  '&.Mui-disabled': {
+                    background: '#E2E8F0',
+                    color: '#94A3B8 !important',
+                    boxShadow: 'none',
+                  },
+                }}
+              >
+                {isStartingSession ? (
+                  <>
+                    <CircularProgress size={18} sx={{ color: 'inherit', mr: 1.5 }} />
+                    Preparing Interview Environment...
+                  </>
+                ) : (
+                  'Accept Guidelines & Begin Viva'
+                )}
+              </Button>
+              {!isReady && (
+                <Typography variant="caption" sx={{ color: '#EF4444', fontSize: '0.8rem', fontWeight: 500, fontFamily: 'DM Sans, sans-serif' }}>
+                  Please allow camera and microphone permissions in your browser to proceed.
+                </Typography>
+              )}
+            </Box>
 
           </Box>
         )}

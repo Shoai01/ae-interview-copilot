@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Box, Typography, Card, CardContent, Divider, CircularProgress, Button } from '@mui/material';
+import { Box, Typography, Card, CardContent, Divider, CircularProgress, Button, Chip } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import LogoutIcon from '@mui/icons-material/Logout';
+import TimerOutlinedIcon from '@mui/icons-material/TimerOutlined';
+import FormatListNumberedOutlinedIcon from '@mui/icons-material/FormatListNumberedOutlined';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { vivaService } from '@/services/api';
 import { useAuth } from '@/store/AuthContext';
@@ -8,7 +11,7 @@ import { useAuth } from '@/store/AuthContext';
 export default function VivaComplete() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const sessionId = location.state?.sessionId;
   
   const [summary, setSummary] = useState(null);
@@ -51,111 +54,317 @@ export default function VivaComplete() {
 
   if (loading) {
     return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
-        <CircularProgress />
+      <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#F8FAFC', gap: 2 }}>
+        <CircularProgress sx={{ color: 'primary.main' }} />
+        <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+          Finalizing interview record...
+        </Typography>
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
-        <Typography color="error">{error}</Typography>
+      <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#F8FAFC', gap: 2, p: 3 }}>
+        <Typography sx={{ color: '#DC2626', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>{error}</Typography>
+        <Button variant="outlined" onClick={handleLogout} sx={{ borderRadius: 2, textTransform: 'none', color: '#0F172A', borderColor: '#E2E8F0' }}>
+          Return to Login
+        </Button>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ height: '100vh', overflowY: 'auto', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', bgcolor: 'background.default', p: 2 }}>
-      
-      <Card sx={{ 
-        my: 'auto',
-        width: '100%', 
-        maxWidth: 640, 
-        borderRadius: 4, 
-        border: '1px solid rgba(0,0,0,0.08)', 
-        boxShadow: '0 12px 40px rgba(0,0,0,0.08)',
-        animation: 'slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
-        '@keyframes slideUpFade': {
-          '0%': { opacity: 0, transform: 'translateY(40px)' },
-          '100%': { opacity: 1, transform: 'translateY(0)' }
-        }
-      }}>
-        <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', p: { xs: 3, md: 6 }, '&:last-child': { pb: { xs: 3, md: 6 } } }}>
-          
-          {/* Icon Area */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
-            <Box sx={{ 
-              width: 120, height: 120, borderRadius: '50%', 
-              bgcolor: 'rgba(242, 101, 34, 0.1)', 
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              position: 'relative',
-              animation: 'pulseGlow 2s infinite',
-              '@keyframes pulseGlow': {
-                '0%': { boxShadow: '0 0 0 0 rgba(242, 101, 34, 0.4)' },
-                '70%': { boxShadow: '0 0 0 20px rgba(242, 101, 34, 0)' },
-                '100%': { boxShadow: '0 0 0 0 rgba(242, 101, 34, 0)' }
-              }
-            }}>
-              <CheckCircleIcon sx={{ fontSize: 56, color: 'primary.main' }} />
-            </Box>
-          </Box>
-          
-          {/* Headlines */}
-          <Typography variant="h2" sx={{ color: 'text.primary', mb: 2, fontWeight: 700, letterSpacing: '-0.02em', fontFamily: 'Syne, sans-serif' }}>
-            Your viva has been<br />submitted.
-          </Typography>
-          <Typography variant="h6" sx={{ color: 'text.secondary', fontWeight: 400 }}>
-            Your trainer will review the results shortly.
-          </Typography>
-
-          {/* Divider */}
-          <Divider sx={{ width: '85%', mx: 'auto', my: 5 }} />
-
-          {/* Stats Row */}
-          <Box sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', gap: { xs: 2, md: 6 }, width: '100%', mb: 6 }}>
-            <Box sx={{ 
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              bgcolor: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)',
-              borderRadius: 3, p: { xs: 2, sm: 3 }, minWidth: { xs: 120, sm: 160 }
-            }}>
-              <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 600, mb: 1, letterSpacing: '0.05em' }}>
-                Duration
-              </Typography>
-              <Typography variant="h3" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                {summary ? formatDuration(summary.duration_seconds) : 'N/A'}
-              </Typography>
-            </Box>
-            
-            <Box sx={{ 
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
-              bgcolor: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)',
-              borderRadius: 3, p: { xs: 2, sm: 3 }, minWidth: { xs: 120, sm: 160 }
-            }}>
-              <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 600, mb: 1, letterSpacing: '0.05em' }}>
-                Questions
-              </Typography>
-              <Typography variant="h3" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                {summary ? `${summary.questions_answered}/${summary.total_questions}` : 'N/A'}
-              </Typography>
-            </Box>
-          </Box>
-          
-          <Button 
-            variant="outlined" 
-            color="inherit" 
-            onClick={handleLogout}
-            sx={{ 
-              borderRadius: 2, px: 4, py: 1.5, fontWeight: 600, color: 'text.secondary',
-              borderColor: 'rgba(0,0,0,0.12)',
-              '&:hover': { bgcolor: 'rgba(0,0,0,0.04)', borderColor: 'rgba(0,0,0,0.24)' }
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: '#F8FAFC',
+        backgroundImage: 'radial-gradient(circle at 50% 15%, rgba(242, 101, 34, 0.08) 0%, transparent 60%)',
+      }}
+    >
+      {/* Top Header with AutomationEdge Branding */}
+      <Box
+        component="header"
+        sx={{
+          width: '100%',
+          px: { xs: 2.5, md: 4 },
+          py: 1.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: 64,
+          bgcolor: '#FFFFFF',
+          borderBottom: '1px solid #E2E8F0',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box
+            component="img"
+            src="/ae-icon.png"
+            alt="AutomationEdge"
+            sx={{ height: 26, width: 'auto', objectFit: 'contain' }}
+          />
+          <Typography
+            variant="subtitle1"
+            sx={{
+              color: '#0F172A',
+              fontWeight: 700,
+              fontFamily: 'Syne, sans-serif',
+              fontSize: '1.05rem',
+              lineHeight: 1.1,
             }}
           >
-            Sign Out & Return Home
-          </Button>
-        </CardContent>
-      </Card>
-      
+            Viva Copilot
+          </Typography>
+        </Box>
+
+        <Button
+          size="small"
+          onClick={handleLogout}
+          startIcon={<LogoutIcon sx={{ fontSize: 16 }} />}
+          sx={{
+            color: '#64748B',
+            borderColor: '#E2E8F0',
+            border: '1px solid #E2E8F0',
+            textTransform: 'none',
+            fontFamily: 'DM Sans, sans-serif',
+            fontWeight: 600,
+            fontSize: '0.8rem',
+            borderRadius: 1.5,
+            px: 1.5,
+            py: 0.5,
+            '&:hover': {
+              borderColor: '#EF4444',
+              color: '#EF4444',
+              bgcolor: 'rgba(239, 68, 68, 0.04)',
+            },
+          }}
+        >
+          Sign Out
+        </Button>
+      </Box>
+
+      {/* Main Submission Card */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: { xs: 2.5, md: 4 },
+        }}
+      >
+        <Card
+          elevation={0}
+          sx={{
+            width: '100%',
+            maxWidth: 580,
+            borderRadius: 3,
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 12px 36px -4px rgba(0, 0, 0, 0.08)',
+            bgcolor: '#FFFFFF',
+            animation: 'slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+            '@keyframes slideUpFade': {
+              '0%': { opacity: 0, transform: 'translateY(24px)' },
+              '100%': { opacity: 1, transform: 'translateY(0)' },
+            },
+          }}
+        >
+          <CardContent
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              p: { xs: 3.5, md: 5 },
+              '&:last-child': { pb: { xs: 3.5, md: 5 } },
+            }}
+          >
+            {/* Animated Success Badge */}
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                bgcolor: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid rgba(34, 197, 94, 0.25)',
+                color: '#16A34A',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 3,
+                boxShadow: '0 0 20px rgba(34, 197, 94, 0.2)',
+              }}
+            >
+              <CheckCircleIcon sx={{ fontSize: 44, color: '#16A34A' }} />
+            </Box>
+
+            {/* Headlines */}
+            <Chip
+              label="EXAMINATION CONCLUDED"
+              size="small"
+              sx={{
+                bgcolor: 'rgba(34, 197, 94, 0.08)',
+                color: '#16A34A',
+                border: '1px solid rgba(34, 197, 94, 0.25)',
+                fontWeight: 700,
+                fontSize: '0.7rem',
+                letterSpacing: '0.05em',
+                borderRadius: 1.5,
+                px: 1,
+                mb: 1.5,
+                fontFamily: 'DM Sans, sans-serif',
+              }}
+            />
+
+            <Typography
+              variant="h4"
+              sx={{
+                color: '#0F172A',
+                mb: 1.5,
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+                fontFamily: 'Syne, sans-serif',
+                fontSize: { xs: '1.5rem', md: '1.85rem' },
+              }}
+            >
+              Viva Assessment Submitted
+            </Typography>
+
+            <Typography
+              variant="body2"
+              sx={{
+                color: '#64748B',
+                lineHeight: 1.6,
+                fontFamily: 'DM Sans, sans-serif',
+                maxWidth: 460,
+                fontSize: '0.9rem',
+                mb: 4,
+              }}
+            >
+              Your spoken responses and video session telemetry have been recorded. Your trainer and evaluator will review your performance report shortly.
+            </Typography>
+
+            {/* Session Stats Grid */}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 2.5,
+                width: '100%',
+                maxWidth: 380,
+                mb: 4,
+              }}
+            >
+              <Box
+                sx={{
+                  bgcolor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 2,
+                  p: 2,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                }}
+              >
+                <TimerOutlinedIcon sx={{ fontSize: 20, color: 'primary.main', mb: 0.75 }} />
+                <Typography
+                  sx={{
+                    fontFamily: 'Syne, sans-serif',
+                    fontSize: '1.25rem',
+                    fontWeight: 700,
+                    color: '#0F172A',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {summary ? formatDuration(summary.duration_seconds) : '—'}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: '#64748B',
+                    fontSize: '0.68rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    mt: 0.5,
+                    fontFamily: 'DM Sans, sans-serif',
+                  }}
+                >
+                  Duration
+                </Typography>
+              </Box>
+
+              <Box
+                sx={{
+                  bgcolor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: 2,
+                  p: 2,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                }}
+              >
+                <FormatListNumberedOutlinedIcon sx={{ fontSize: 20, color: '#0EA5E9', mb: 0.75 }} />
+                <Typography
+                  sx={{
+                    fontFamily: 'Syne, sans-serif',
+                    fontSize: '1.25rem',
+                    fontWeight: 700,
+                    color: '#0F172A',
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {summary ? `${summary.questions_answered}/${summary.total_questions}` : '—'}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: '#64748B',
+                    fontSize: '0.68rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    mt: 0.5,
+                    fontFamily: 'DM Sans, sans-serif',
+                  }}
+                >
+                  Questions
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Finish Action */}
+            <Button
+              variant="contained"
+              onClick={handleLogout}
+              sx={{
+                background: 'linear-gradient(90deg, #e8581a 0%, #F26522 50%, #ff8c42 100%)',
+                color: '#FFFFFF !important',
+                borderRadius: 2,
+                px: 4.5,
+                py: 1.3,
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                fontFamily: 'DM Sans, sans-serif',
+                textTransform: 'none',
+                boxShadow: '0 4px 20px rgba(242, 101, 34, 0.35)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  boxShadow: '0 6px 25px rgba(242, 101, 34, 0.45)',
+                  transform: 'translateY(-1px)',
+                },
+              }}
+            >
+              Sign Out & Return Home
+            </Button>
+          </CardContent>
+        </Card>
+      </Box>
     </Box>
   );
 }
