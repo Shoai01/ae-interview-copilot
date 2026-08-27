@@ -373,7 +373,7 @@ def get_audit_logs(
     cursor: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role([UserRole.ADMIN]))
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))
 ):
     from services.audit_service import get_audit_logs
     return get_audit_logs(
