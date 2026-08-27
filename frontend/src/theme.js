@@ -131,6 +131,13 @@ const theme = createTheme({
         },
       }
     },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 0,
+        },
+      }
+    },
     MuiCard: {
       styleOverrides: {
         root: {

@@ -50,3 +50,17 @@ app.include_router(viva.router)
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Viva Copilot API!"}
+
+@app.get("/health", tags=["System"])
+def health_check():
+    """
+    Real-time health check API to verify system and database status.
+    Can be used by the frontend to drive the 'Engine Active' indicator.
+    """
+    try:
+        # Simple DB connectivity check
+        with engine.connect() as connection:
+            pass
+        return {"status": "ok", "engine": "active", "database": "connected"}
+    except Exception as e:
+        return {"status": "error", "engine": "down", "database": "disconnected", "details": str(e)}

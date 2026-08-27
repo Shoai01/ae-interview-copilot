@@ -1,5 +1,20 @@
 import React from 'react';
-import { Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography, IconButton, Breadcrumbs, Link } from '@mui/material';
+import {
+  Box,
+  Drawer,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+  IconButton,
+  Breadcrumbs,
+  Link,
+  Avatar,
+  Chip,
+  Tooltip
+} from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import MicIcon from '@mui/icons-material/Mic';
@@ -11,8 +26,9 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import HistoryIcon from '@mui/icons-material/History';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { useAuth } from '@/store/AuthContext';
+import api from '@/services/api';
 
-const drawerWidth = 268;
+const drawerWidth = 260;
 
 const ROUTE_LABEL_TO_PATH = {
   'Dashboard': '/hr/dashboard',
@@ -107,11 +123,42 @@ const resolveBreadcrumbs = (customBreadcrumbs, pathname) => {
 
 export default function Layout({ children, breadcrumbs }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [engineStatus, setEngineStatus] = React.useState('checking'); // 'active' | 'down' | 'checking'
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
   const activeBreadcrumbs = resolveBreadcrumbs(breadcrumbs, location.pathname);
+
+  // Poll GET /health every 30s to dynamically track backend & DB engine status
+  React.useEffect(() => {
+    let isMounted = true;
+
+    const checkEngineHealth = async () => {
+      try {
+        const response = await api.get('/health', { timeout: 5000 });
+        if (isMounted) {
+          if (response.data?.engine === 'active' || response.data?.status === 'ok') {
+            setEngineStatus('active');
+          } else {
+            setEngineStatus('down');
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setEngineStatus('down');
+        }
+      }
+    };
+
+    checkEngineHealth();
+    const intervalId = setInterval(checkEngineHealth, 30000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -127,71 +174,118 @@ export default function Layout({ children, breadcrumbs }) {
     { text: 'Activity Log', icon: <HistoryIcon />, path: '/hr/logs' },
   ];
 
+  const userInitial = user?.username ? user.username.charAt(0).toUpperCase() : 'U';
+  const roleLabel = user?.role === 'ADMIN' ? 'Admin' : 'Trainer';
+
   const drawerContent = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(10px)', borderRight: '1px solid rgba(0, 0, 0, 0.05)' }}>
-      {/* Sidebar Header */}
-      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box sx={{ width: 32, height: 32, borderRadius: 1, bgcolor: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 18 }}>
-          V
-        </Box>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', lineHeight: 1.2 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        bgcolor: '#131C2E',
+        color: '#FFFFFF',
+        position: 'relative',
+        overflow: 'hidden',
+        backgroundImage: 'radial-gradient(circle at 20% 15%, rgba(242, 101, 34, 0.12) 0%, transparent 60%)',
+      }}
+    >
+      {/* Sidebar Header with Official AutomationEdge Branding */}
+      <Box
+        sx={{
+          p: 2.5,
+          px: 2.75,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1.5,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          zIndex: 1,
+        }}
+      >
+        <Box
+          component="img"
+          src="/ae-icon.png"
+          alt="AutomationEdge"
+          sx={{ height: 28, width: 'auto', objectFit: 'contain' }}
+        />
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 700,
+              fontFamily: 'Syne, sans-serif',
+              lineHeight: 1.2,
+              color: '#FFFFFF',
+              fontSize: '1.05rem',
+              letterSpacing: '-0.01em',
+            }}
+          >
             Viva Copilot
           </Typography>
-
+          <Typography
+            variant="caption"
+            sx={{
+              color: '#94A3B8',
+              fontSize: '0.72rem',
+              display: 'block',
+              fontWeight: 500,
+            }}
+          >
+            Assessment Portal
+          </Typography>
         </Box>
       </Box>
 
-
-      {/* Main Navigation */}
-      <List sx={{ px: 2, flex: 1, overflowY: 'auto' }}>
+      {/* Main Navigation List */}
+      <List sx={{ px: 1.75, py: 2.5, flex: 1, overflowY: 'auto', zIndex: 1 }}>
         {navItems.map((item) => {
           const isSelected = location.pathname.startsWith(item.path);
           return (
-            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton 
+            <ListItem key={item.text} disablePadding sx={{ mb: 0.75 }}>
+              <ListItemButton
                 selected={isSelected}
-                onClick={() => navigate(item.path)}
-                sx={{ 
+                onClick={() => {
+                  navigate(item.path);
+                  setMobileOpen(false);
+                }}
+                sx={{
                   borderRadius: 2,
-                  py: 1.2,
-                  px: 2,
-                  mb: 0.5,
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  py: 1.15,
+                  px: 1.75,
+                  transition: 'all 0.18s ease',
+                  color: isSelected ? '#FFFFFF' : '#94A3B8',
+                  bgcolor: isSelected ? 'rgba(242, 101, 34, 0.14)' : 'transparent',
+                  border: isSelected ? '1px solid rgba(242, 101, 34, 0.28)' : '1px solid transparent',
                   '&:hover': {
-                    bgcolor: 'rgba(0,0,0,0.03)',
-                    transform: 'translateX(2px)'
-                  },
-                  '&.Mui-selected': {
-                    bgcolor: 'rgba(242, 101, 34, 0.08)',
-                    color: '#F26522',
-                    boxShadow: 'inset 4px 0 0 0 #F26522',
-                    '&:hover': { 
-                      bgcolor: 'rgba(242, 101, 34, 0.12)',
-                      transform: 'translateX(2px)'
+                    bgcolor: isSelected ? 'rgba(242, 101, 34, 0.18)' : 'rgba(255, 255, 255, 0.05)',
+                    color: '#FFFFFF',
+                    '& .MuiListItemIcon-root': {
+                      color: isSelected ? '#F26522' : '#FFFFFF',
                     },
-                    '& .MuiListItemIcon-root': { 
-                      color: '#F26522',
-                      transform: 'scale(1.1)',
-                      transition: 'transform 0.2s'
-                    }
-                  }
+                  },
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary', transition: 'all 0.2s' }}>
+                <ListItemIcon
+                  sx={{
+                    minWidth: 36,
+                    color: isSelected ? '#F26522' : '#94A3B8',
+                    transition: 'color 0.18s ease',
+                    '& svg': { fontSize: 20 },
+                  }}
+                >
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText 
-                  primary={item.text} 
-                  slotProps={{ 
-                    primary: { 
-                      variant: 'body2', 
+                <ListItemText
+                  primary={item.text}
+                  slotProps={{
+                    primary: {
+                      variant: 'body2',
                       fontFamily: 'DM Sans, sans-serif',
-                      fontWeight: isSelected ? 700 : 500,
-                      color: isSelected ? '#F26522' : 'text.secondary',
-                      transition: 'color 0.2s'
-                    }
-                  }} 
+                      fontWeight: isSelected ? 600 : 500,
+                      color: isSelected ? '#FFFFFF' : '#94A3B8',
+                      fontSize: '0.875rem',
+                    },
+                  }}
                 />
               </ListItemButton>
             </ListItem>
@@ -199,51 +293,83 @@ export default function Layout({ children, breadcrumbs }) {
         })}
       </List>
 
-      {/* Footer Navigation */}
-      <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-        <List disablePadding>
-
-          <ListItem disablePadding>
-            <ListItemButton 
-              sx={{ 
-                borderRadius: 2, 
-                py: 1.2,
-                px: 2,
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  bgcolor: 'rgba(239, 68, 68, 0.08)',
-                  color: '#ef4444',
-                  transform: 'translateX(2px)',
-                  '& .MuiListItemIcon-root': { color: '#ef4444' },
-                  '& .MuiListItemText-primary': { color: '#ef4444' }
-                }
-              }} 
-              onClick={handleLogout}
+      {/* Sidebar Footer with Logged-In User Profile Card */}
+      <Box
+        sx={{
+          p: 2,
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          bgcolor: 'rgba(0, 0, 0, 0.25)',
+          zIndex: 1,
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+            <Avatar
+              sx={{
+                width: 34,
+                height: 34,
+                fontSize: '0.875rem',
+                fontWeight: 700,
+                bgcolor: 'rgba(242, 101, 34, 0.18)',
+                color: 'primary.main',
+                border: '1px solid rgba(242, 101, 34, 0.3)',
+              }}
             >
-              <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary', transition: 'color 0.2s' }}>
-                <LogoutIcon />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Sign Out" 
-                slotProps={{ 
-                  primary: { 
-                    variant: 'body2', 
-                    color: 'text.secondary', 
-                    fontWeight: 600,
-                    fontFamily: 'DM Sans, sans-serif',
-                    transition: 'color 0.2s'
-                  } 
-                }} 
-              />
-            </ListItemButton>
-          </ListItem>
-        </List>
+              {userInitial}
+            </Avatar>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="body2"
+                noWrap
+                sx={{
+                  fontWeight: 600,
+                  fontSize: '0.825rem',
+                  color: '#F8FAFC',
+                  lineHeight: 1.2,
+                }}
+              >
+                {user?.username || 'Authenticated User'}
+              </Typography>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: '#94A3B8',
+                  fontSize: '0.7rem',
+                  display: 'block',
+                  lineHeight: 1.2,
+                  mt: 0.25,
+                }}
+              >
+                {roleLabel}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Tooltip title="Sign Out" placement="top">
+            <IconButton
+              size="small"
+              onClick={handleLogout}
+              sx={{
+                color: '#94A3B8',
+                borderRadius: 1.5,
+                p: 0.75,
+                '&:hover': {
+                  color: '#EF4444',
+                  bgcolor: 'rgba(239, 68, 68, 0.12)',
+                },
+              }}
+            >
+              <LogoutIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
+
     </Box>
   );
 
   return (
-    <Box sx={{ display: 'flex', width: '100%', height: '100vh', overflow: 'hidden', bgcolor: 'transparent' }}>
+    <Box sx={{ display: 'flex', width: '100%', height: '100vh', overflow: 'hidden', bgcolor: '#F8FAFC' }}>
       
       {/* Mobile Drawer */}
       <Drawer
@@ -253,7 +379,13 @@ export default function Layout({ children, breadcrumbs }) {
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: 'block', lg: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+          '& .MuiDrawer-paper': {
+            boxSizing: 'border-box',
+            width: drawerWidth,
+            borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+            bgcolor: '#131C2E',
+            borderRadius: 0,
+          },
         }}
       >
         {drawerContent}
@@ -266,7 +398,13 @@ export default function Layout({ children, breadcrumbs }) {
           display: { xs: 'none', lg: 'block' },
           width: drawerWidth,
           flexShrink: 0,
-          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', borderRight: '1px solid', borderColor: 'divider' },
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+            borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+            bgcolor: '#131C2E',
+            borderRadius: 0,
+          },
         }}
         open
       >
@@ -274,32 +412,42 @@ export default function Layout({ children, breadcrumbs }) {
       </Drawer>
       
       {/* Main Content Area */}
-      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Box component="main" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', bgcolor: '#F8FAFC' }}>
         
         {/* Top App Bar */}
-        <Box component="header" sx={{ 
-          height: 72, 
-          px: { xs: 2, lg: 4 }, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          bgcolor: 'transparent', 
-          zIndex: 30
-        }}>
-          
+        <Box
+          component="header"
+          sx={{
+            height: 64,
+            px: { xs: 2, lg: 3.5 },
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            bgcolor: '#FFFFFF',
+            borderBottom: '1px solid #E2E8F0',
+            zIndex: 10,
+          }}
+        >
+          {/* Left: Mobile Toggle & Breadcrumbs */}
           <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, mr: 2 }}>
-            <IconButton color="inherit" aria-label="open drawer" edge="start" onClick={() => setMobileOpen(!mobileOpen)} sx={{ mr: 1.5, display: { lg: 'none' } }}>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              sx={{ mr: 1.5, display: { lg: 'none' }, color: '#475569' }}
+            >
               <MenuIcon />
             </IconButton>
 
             <Breadcrumbs
               separator={
-                <NavigateNextIcon 
-                  sx={{ 
-                    fontSize: 18, 
-                    color: 'rgba(15, 23, 42, 0.35)',
-                    mx: 0.25
-                  }} 
+                <NavigateNextIcon
+                  sx={{
+                    fontSize: 16,
+                    color: '#94A3B8',
+                    mx: 0.25,
+                  }}
                 />
               }
               aria-label="breadcrumb"
@@ -314,7 +462,7 @@ export default function Layout({ children, breadcrumbs }) {
                 '& .MuiBreadcrumbs-li': {
                   display: 'inline-flex',
                   alignItems: 'center',
-                }
+                },
               }}
             >
               {activeBreadcrumbs.map((crumb, idx) => {
@@ -324,12 +472,12 @@ export default function Layout({ children, breadcrumbs }) {
                   return (
                     <Typography
                       key={crumb.label || idx}
-                      variant="h6"
+                      variant="subtitle2"
                       component="span"
                       sx={{
                         fontWeight: 700,
                         fontFamily: 'DM Sans, sans-serif',
-                        fontSize: { xs: '1rem', sm: '1.2rem' },
+                        fontSize: { xs: '0.95rem', sm: '1.05rem' },
                         color: '#0F172A',
                         letterSpacing: '-0.01em',
                         whiteSpace: 'nowrap',
@@ -362,11 +510,11 @@ export default function Layout({ children, breadcrumbs }) {
                       p: 0,
                       display: 'inline-flex',
                       alignItems: 'center',
-                      color: 'text.secondary',
+                      color: '#64748B',
                       fontFamily: 'DM Sans, sans-serif',
-                      fontSize: { xs: '0.875rem', sm: '0.95rem' },
+                      fontSize: { xs: '0.85rem', sm: '0.925rem' },
                       fontWeight: 500,
-                      transition: 'all 0.2s ease',
+                      transition: 'color 0.18s ease',
                       whiteSpace: 'nowrap',
                       lineHeight: 1.2,
                       '&:hover': {
@@ -381,28 +529,89 @@ export default function Layout({ children, breadcrumbs }) {
             </Breadcrumbs>
           </Box>
 
+          {/* Right Header Status & Role Indicator */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Tooltip
+              title={
+                engineStatus === 'active'
+                  ? 'Evaluation Engine & Database Operational'
+                  : engineStatus === 'down'
+                  ? 'Evaluation Engine Offline — Database Disconnected'
+                  : 'Verifying system connectivity...'
+              }
+              arrow
+            >
+              <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1, cursor: 'default' }}>
+                <Box
+                  sx={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    bgcolor:
+                      engineStatus === 'active'
+                        ? '#22C55E'
+                        : engineStatus === 'down'
+                        ? '#EF4444'
+                        : '#F59E0B',
+                    boxShadow:
+                      engineStatus === 'active'
+                        ? '0 0 6px rgba(34, 197, 94, 0.45)'
+                        : engineStatus === 'down'
+                        ? '0 0 6px rgba(239, 68, 68, 0.45)'
+                        : 'none',
+                    transition: 'all 0.3s ease',
+                  }}
+                />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color:
+                      engineStatus === 'active'
+                        ? '#64748B'
+                        : engineStatus === 'down'
+                        ? '#EF4444'
+                        : '#94A3B8',
+                    fontWeight: 500,
+                    fontSize: '0.78rem',
+                    fontFamily: 'DM Sans, sans-serif',
+                    transition: 'color 0.3s ease',
+                  }}
+                >
+                  {engineStatus === 'active'
+                    ? 'Engine Active'
+                    : engineStatus === 'down'
+                    ? 'Engine Offline'
+                    : 'Connecting...'}
+                </Typography>
+              </Box>
+            </Tooltip>
+
+            <Chip
+              label={roleLabel}
+              size="small"
+              sx={{
+                height: 22,
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                letterSpacing: '0.03em',
+                bgcolor: 'rgba(242, 101, 34, 0.08)',
+                color: 'primary.main',
+                border: '1px solid rgba(242, 101, 34, 0.2)',
+                borderRadius: 1,
+              }}
+            />
           </Box>
         </Box>
 
-        {/* Page Content Canvas - Glass Container */}
-        <Box sx={{
-          flexGrow: 1, 
-          m: { xs: 1, sm: 1, md: 1.5 }, 
-          mt: 0,
-          bgcolor: 'rgba(255, 255, 255, 0.65)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderRadius: 'var(--radius)',
-          border: '1px solid rgba(255, 255, 255, 0.6)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.04)',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <Box className="glass-container" sx={{ flexGrow: 1, overflowY: 'auto', p: { xs: 2, md: 3, lg: 4 } }}>
-            {children}
-          </Box>
+        {/* Page Content Canvas */}
+        <Box
+          sx={{
+            flexGrow: 1,
+            overflowY: 'auto',
+            p: { xs: 2.5, sm: 3.5, lg: 4 },
+          }}
+        >
+          {children}
         </Box>
 
       </Box>
