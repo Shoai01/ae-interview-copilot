@@ -11,10 +11,14 @@ export function useSpeechRecognition() {
   const mediaRecorderRef = useRef(null);
   const socketRef = useRef(null);
   const isConnectingRef = useRef(false);
+  const audioChunksRef = useRef([]);
+  const recordedBlobRef = useRef(null);
   // Use refs to avoid stale closures — these always hold the latest value
   const liveTextRef = useRef('');
   const finalTextRef = useRef('');
   const stopResolveRef = useRef(null);
+  const recorderStopResolveRef = useRef(null);
+  const isCapturingRef = useRef(false);
 
   // Keep refs in sync with state
   useEffect(() => { liveTextRef.current = liveText; }, [liveText]);
@@ -32,6 +36,137 @@ export function useSpeechRecognition() {
     };
   }, []);
 
+  // ====================================
+  // AUDIO CAPTURE (MediaRecorder only)
+  // Runs independently of Deepgram.
+  // ====================================
+
+  const webmHeaderRef = useRef(null);
+
+  const startAudioCapture = useCallback(() => {
+    if (!globalState.mediaStream) {
+      console.error("[Audio] No mediaStream available in globalState");
+      return;
+    }
+
+    // If it's already paused, simply resume it
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
+      console.log("[Audio] Resuming audio capture");
+      mediaRecorderRef.current.resume();
+      isCapturingRef.current = true;
+      return;
+    }
+    
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      return; // Already recording
+    }
+
+    const audioTracks = globalState.mediaStream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      console.error("[Audio] mediaStream has no audio tracks");
+      return;
+    }
+
+    console.log("[Audio] Starting fresh audio capture");
+    const audioOnlyStream = new MediaStream(audioTracks);
+
+    // Only clear on a fresh start
+    webmHeaderRef.current = null;
+    isCapturingRef.current = true;
+
+    let mimeType = 'audio/webm;codecs=opus';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
+
+    const recorderOptions = mimeType ? { mimeType } : {};
+    const mediaRecorder = new MediaRecorder(audioOnlyStream, recorderOptions);
+    mediaRecorderRef.current = mediaRecorder;
+
+    let isFirstChunk = true;
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        // Only push chunks if this is still the active recorder
+        if (mediaRecorderRef.current !== mediaRecorder) return;
+        
+        if (isFirstChunk) {
+          webmHeaderRef.current = event.data;
+          isFirstChunk = false;
+        }
+
+        audioChunksRef.current.push(event.data);
+        
+        if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+          socketRef.current.send(event.data);
+        }
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      // Ignore stale onstop events from previous recorders
+      if (mediaRecorderRef.current !== mediaRecorder) return;
+      
+      isCapturingRef.current = false;
+      console.log("[Audio] MediaRecorder stopped, total chunks:", audioChunksRef.current.length);
+      if (audioChunksRef.current.length > 0) {
+        const mt = mediaRecorder.mimeType || 'audio/webm';
+        recordedBlobRef.current = new Blob(audioChunksRef.current, { type: mt });
+      }
+      if (recorderStopResolveRef.current) {
+        recorderStopResolveRef.current();
+        recorderStopResolveRef.current = null;
+      }
+    };
+
+    mediaRecorder.onerror = (e) => {
+      console.error("[Audio] MediaRecorder error:", e);
+    };
+
+    mediaRecorder.start(250);
+  }, []);
+
+  /**
+   * Stops the MediaRecorder and returns a Promise that resolves once
+   * the `onstop` event has fired and the blob has been assembled.
+   */
+  const stopAudioCapture = useCallback(() => {
+    return new Promise((resolve) => {
+      if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+        isCapturingRef.current = false;
+        resolve();
+        return;
+      }
+      console.log("[Audio] Stopping MediaRecorder...");
+      recorderStopResolveRef.current = resolve;
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (err) {
+        console.log("[Audio] Stop error:", err);
+        isCapturingRef.current = false;
+        recorderStopResolveRef.current = null;
+        resolve();
+      }
+      // Safety timeout — if onstop doesn't fire within 1.5s, force resolve
+      setTimeout(() => {
+        if (recorderStopResolveRef.current) {
+          console.warn("[Audio] MediaRecorder onstop timed out, force resolving");
+          isCapturingRef.current = false;
+          // Build the blob from whatever chunks we have
+          if (!recordedBlobRef.current && audioChunksRef.current.length > 0) {
+            const mt = mediaRecorderRef.current?.mimeType || 'audio/webm';
+            recordedBlobRef.current = new Blob(audioChunksRef.current, { type: mt });
+          }
+          recorderStopResolveRef.current();
+          recorderStopResolveRef.current = null;
+        }
+      }, 1500);
+    });
+  }, []);
+
+  // ====================================
+  // DEEPGRAM LIVE TRANSCRIPTION
+  // Connects Deepgram on top of the already-running MediaRecorder.
+  // ====================================
+
   const startRecording = useCallback(() => {
     // Prevent double execution
     if (isConnectingRef.current || isRecording) return;
@@ -42,28 +177,12 @@ export function useSpeechRecognition() {
       return;
     }
 
-    // Verify we have audio tracks available
-    if (!globalState.mediaStream) {
-      console.error("[Deepgram] No mediaStream available in globalState");
-      toast.error("No microphone stream found. Please go back and allow microphone access.");
-      return;
-    }
-
-    const audioTracks = globalState.mediaStream.getAudioTracks();
-    if (audioTracks.length === 0) {
-      console.error("[Deepgram] mediaStream has no audio tracks");
-      toast.error("No audio track found in the microphone stream.");
-      return;
-    }
-
-    console.log("[Deepgram] Audio tracks found:", audioTracks.length, audioTracks.map(t => t.label));
-
-    // Create an AUDIO-ONLY stream — this is critical!
-    // MediaRecorder would encode video frames too, which Deepgram can't parse easily over websocket.
-    const audioOnlyStream = new MediaStream(audioTracks);
+    // Ensure audio capture is running first
+    startAudioCapture();
 
     isConnectingRef.current = true;
     setIsConnectingState(true);
+    // Clear transcription text (NOT audio chunks — those belong to audio capture)
     setFinalText('');
     setLiveText('');
     liveTextRef.current = '';
@@ -83,42 +202,10 @@ export function useSpeechRecognition() {
       setIsConnectingState(false);
       setIsRecording(true);
       
-      try {
-        // Pick a supported audio mimeType
-        let mimeType = 'audio/webm;codecs=opus';
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = 'audio/webm';
-        }
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = ''; // let browser pick default
-        }
-        
-        console.log("[Deepgram] Using MediaRecorder mimeType:", mimeType || '(browser default)');
-        
-        const recorderOptions = mimeType ? { mimeType } : {};
-        const mediaRecorder = new MediaRecorder(audioOnlyStream, recorderOptions);
-        mediaRecorderRef.current = mediaRecorder;
-        
-        let chunkCount = 0;
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0 && socket.readyState === WebSocket.OPEN) {
-            chunkCount++;
-            if (chunkCount <= 5 || chunkCount % 20 === 0) {
-              console.log(`[Deepgram] Sending audio chunk #${chunkCount}, size: ${event.data.size} bytes`);
-            }
-            socket.send(event.data);
-          }
-        };
-
-        mediaRecorder.onerror = (e) => {
-          console.error("[Deepgram] MediaRecorder error:", e);
-        };
-        
-        // Use 250ms timeslice to ensure stable chunk delivery without browser buffering overhead
-        mediaRecorder.start(250);
-        console.log("[Deepgram] MediaRecorder started, sending chunks every 250ms");
-      } catch (e) {
-        console.error("[Deepgram] MediaRecorder start error:", e);
+      // Send the cached WebM header to initialize the new Deepgram stream
+      if (webmHeaderRef.current) {
+        console.log("[Deepgram] Sending cached WebM header");
+        socket.send(webmHeaderRef.current);
       }
     };
 
@@ -169,6 +256,12 @@ export function useSpeechRecognition() {
       isConnectingRef.current = false;
       setIsConnectingState(false);
       setIsRecording(false);
+      
+      // Pause audio capture when transcription fails
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.pause();
+      }
+
       if (stopResolveRef.current) {
         stopResolveRef.current();
         stopResolveRef.current = null;
@@ -181,8 +274,9 @@ export function useSpeechRecognition() {
       setIsConnectingState(false);
       setIsRecording(false);
       
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try { mediaRecorderRef.current.stop(); } catch (err) { console.log(err); }
+      // Pause audio capture when transcription stops
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.pause();
       }
 
       // Flush any remaining live text into final text using refs
@@ -202,20 +296,18 @@ export function useSpeechRecognition() {
         stopResolveRef.current = null;
       }
     };
-  }, [isRecording]);
+  }, [isRecording, startAudioCapture]);
 
   /**
-   * Stops recording and returns a Promise that resolves once the WebSocket
-   * has fully closed. This lets callers `await stopRecording()` before
-   * reading the final transcript.
+   * Stops the Deepgram transcription and pauses the MediaRecorder.
+   * Returns a Promise that resolves once the WebSocket has fully closed.
    */
   const stopRecording = useCallback(() => {
     return new Promise((resolve) => {
-      console.log("[Deepgram] Stopping recording...");
-      
-      // Stop the MediaRecorder first so no more audio is sent
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        try { mediaRecorderRef.current.stop(); } catch (err) { console.log(err); }
+      console.log("[Deepgram] Stopping transcription and pausing recorder...");
+
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.pause();
       }
 
       // Send CloseStream to Deepgram and wait for the socket to close
@@ -249,6 +341,23 @@ export function useSpeechRecognition() {
     setLiveText('');
     liveTextRef.current = '';
     finalTextRef.current = '';
+    audioChunksRef.current = [];
+    recordedBlobRef.current = null;
+  }, []);
+
+  const getAudioBlob = useCallback(() => {
+    // First check if onstop already created the blob
+    if (recordedBlobRef.current && recordedBlobRef.current.size > 0) {
+      return recordedBlobRef.current;
+    }
+    // Fallback: build from chunks directly
+    if (audioChunksRef.current && audioChunksRef.current.length > 0) {
+      const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+      const b = new Blob(audioChunksRef.current, { type: mimeType });
+      recordedBlobRef.current = b;
+      return b;
+    }
+    return null;
   }, []);
 
   return {
@@ -261,6 +370,9 @@ export function useSpeechRecognition() {
     toggleRecording,
     stopRecording,
     startRecording,
-    resetTranscript
+    resetTranscript,
+    getAudioBlob,
+    startAudioCapture,
+    stopAudioCapture,
   };
 }

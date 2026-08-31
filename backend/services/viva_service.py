@@ -306,6 +306,26 @@ def submit_answer(db: Session, session_id: int, answer_data: viva_schemas.Answer
         return True
     return False
 
+def upload_answer_audio(db: Session, session_id: int, viva_question_id: int, audio_url: str) -> bool:
+    """
+    Save the uploaded audio URL for a question in a session.
+    
+    Args:
+        db (Session): Database session.
+        session_id (int): Session ID.
+        viva_question_id (int): The VivaQuestion ID.
+        audio_url (str): The relative URL to the audio file.
+        
+    Returns:
+        bool: True if saved successfully, False if question not found.
+    """
+    viva_question = viva_repository.get_viva_question(db, viva_question_id, session_id)
+    if viva_question:
+        viva_question.audio_url = audio_url
+        db.commit()
+        return True
+    return False
+
 def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSummaryResponse:
     """
     Calculate and retrieve summary metrics for a session.
@@ -400,7 +420,8 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
     summary = get_session_summary(db, session_id)
     
     questions = []
-    for q in session.questions:
+    sorted_questions = sorted(session.questions, key=lambda x: x.question_order)
+    for q in sorted_questions:
         eval_data = None
         if q.evaluation:
             eval_data = {
@@ -415,6 +436,7 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
             "question_order": q.question_order,
             "text": q.question_bank.text,
             "transcript": q.transcript,
+            "audio_url": q.audio_url,
             "duration": int((q.answered_at - q.asked_at).total_seconds()) if q.answered_at and q.asked_at else 0,
             "evaluation": eval_data,
             "fraud_flags": [{"type": f.flag_type.value, "count": f.count} for f in q.fraud_flags] if q.fraud_flags else []
@@ -590,8 +612,7 @@ def assign_session_bulk(db: Session, bulk_data: viva_schemas.BulkSessionCreate, 
                     trainee_full_name=trainee.trainee_full_name,
                     module_id=bulk_data.module_id,
                     duration_minutes=bulk_data.duration_minutes,
-                    question_count=bulk_data.question_count,
-                    set_name=bulk_data.set_name
+                    question_count=bulk_data.question_count
                 )
                 
                 # Delegate to existing logic

@@ -84,7 +84,7 @@ class SessionFullReportResponse(BaseModel):
     trainee: TraineeResponse
     summary: SessionSummaryResponse
     report: Optional[VivaReportResponse]
-    questions: list[dict] # Will contain question text, transcript, and evaluation
+    questions: list[dict] # Will contain question text, transcript, audio_url, and evaluation
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -112,7 +112,6 @@ class BulkSessionCreate(BaseModel):
     module_id: int
     duration_minutes: int = 15
     question_count: Optional[int] = None
-    set_name: Optional[str] = None
     trainees: list[BulkSessionTrainee]
 
 class BulkSessionResultItem(BaseModel):

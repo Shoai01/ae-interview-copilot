@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Dynamically determine the backend URL based on the current hostname
-const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
+export const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}:8000`;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -173,6 +173,33 @@ export const vivaService = {
       transcript: transcript
     });
     return response.data;
+  },
+  uploadAnswerAudio: async (sessionId, questionId, audioBlob, token = null) => {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'answer.webm');
+    
+    const headers = {
+      'ngrok-skip-browser-warning': 'true'
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    // Note: Do NOT set Content-Type — fetch automatically sets multipart/form-data with boundary
+    const response = await fetch(`${API_BASE_URL}/viva/${sessionId}/answer/${questionId}/audio`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[AudioUpload] Server returned error ${response.status}:`, errText);
+      throw new Error(`Audio upload failed (${response.status}): ${errText}`);
+    }
+    
+    return await response.json();
   },
   getSessionSummary: async (sessionId) => {
     const response = await api.get(`/viva/${sessionId}/summary`);

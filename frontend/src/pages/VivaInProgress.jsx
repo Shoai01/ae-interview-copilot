@@ -14,11 +14,13 @@ import { globalState } from '@/store';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis';
 import { useFraudDetection } from '@/hooks/useFraudDetection';
+import { useAuth } from '@/store/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function VivaInProgress() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { accessToken } = useAuth();
   const videoRef = useRef(null);
   const sessionId = location.state?.sessionId;
   const moduleName = location.state?.moduleName || 'Module';
@@ -59,7 +61,11 @@ export default function VivaInProgress() {
     setFinalText, 
     toggleRecording, 
     stopRecording, 
-    resetTranscript 
+    startRecording,
+    resetTranscript,
+    getAudioBlob,
+    startAudioCapture,
+    stopAudioCapture,
   } = useSpeechRecognition();
   
   const { speakQuestion, cancelSpeech } = useSpeechSynthesis();
@@ -112,18 +118,31 @@ export default function VivaInProgress() {
     cancelSpeech();
 
     try {
-      // If still recording, stop and wait for it to fully close
+      // If still transcribing, stop Deepgram
       if (isRecording) {
         await stopRecording();
       }
 
-      // Small delay to let React flush the final state from stopRecording
-      await new Promise(r => setTimeout(r, 100));
+      // Stop audio capture and wait for the final Blob to be generated
+      await stopAudioCapture();
 
       // Build the transcript from the React state as the source of truth
       const transcriptToSubmit = (displayValue || '').trim() || "(No answer provided)";
       
+      // 1. Submit transcript JSON to answer endpoint
       await vivaService.submitAnswer(sessionId, currentQuestion.viva_question_id, transcriptToSubmit);
+      
+      // 2. Immediately submit the recorded audio Blob to the /audio endpoint
+      const recordedBlob = getAudioBlob();
+      console.log(`[Viva] Submitting audio for question ${currentQuestion.viva_question_id}:`, recordedBlob?.size, 'bytes');
+      if (recordedBlob && recordedBlob.size > 0) {
+        try {
+          const res = await vivaService.uploadAnswerAudio(sessionId, currentQuestion.viva_question_id, recordedBlob, accessToken);
+          console.log("[Viva] Audio uploaded successfully:", res);
+        } catch (audioErr) {
+          console.error("Failed to upload audio recording:", audioErr);
+        }
+      }
       
       if (currentQuestion.is_last_question) {
         if (globalState.mediaStream) {

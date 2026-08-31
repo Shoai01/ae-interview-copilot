@@ -119,6 +119,7 @@ class VivaQuestion(Base):
     question_bank_id = Column(Integer, ForeignKey("question_bank.id"), nullable=False)
     question_order = Column(Integer, nullable=False) # sequence within the session
     transcript = Column(Text, nullable=True) # STT transcript
+    audio_url = Column(String, nullable=True) # URL path to the uploaded audio file
     asked_at = Column(DateTime, default=datetime.utcnow)
     answered_at = Column(DateTime, nullable=True) # needed to compute response time
 

@@ -113,6 +113,47 @@ def submit_answer(session_id: int, answer_data: viva_schemas.AnswerSubmit, db: S
         raise HTTPException(status_code=404, detail="Question not found in session")
     return viva_schemas.StatusResponse(status="success")
 
+from fastapi import UploadFile, File
+import os
+import uuid
+
+@router.post("/{session_id}/answer/{viva_question_id}/audio", response_model=viva_schemas.StatusResponse, status_code=status.HTTP_201_CREATED)
+async def upload_audio(
+    session_id: int, 
+    viva_question_id: int, 
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(require_role([UserRole.TRAINEE]))
+):
+    # Basic validation
+    if not file.content_type.startswith("audio/") and not file.content_type in ["video/webm", "application/octet-stream"]:
+        # some browsers send audio as video/webm or application/octet-stream
+        pass 
+        
+    ext = file.filename.split('.')[-1] if '.' in file.filename else 'webm'
+    filename = f"{uuid.uuid4()}.{ext}"
+    os.makedirs(os.path.join("uploads", "audio"), exist_ok=True)
+    file_path = os.path.join("uploads", "audio", filename)
+    
+    # Save file
+    content = await file.read()
+    print(f"[DEBUG] Received audio file for session {session_id}, question {viva_question_id}, size: {len(content)} bytes")
+    with open(file_path, "wb") as f:
+        f.write(content)
+        
+    audio_url = f"/uploads/audio/{filename}"
+    
+    success = viva_service.upload_answer_audio(db, session_id, viva_question_id, audio_url)
+    print(f"[DEBUG] DB update success: {success} for audio_url: {audio_url}")
+    if not success:
+        print(f"[DEBUG] Deleting {file_path} because DB update failed.")
+        # cleanup if failed
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(status_code=404, detail="Question not found in session")
+        
+    return viva_schemas.StatusResponse(status="uploaded")
+
 @router.get("/{session_id}/summary", response_model=viva_schemas.SessionSummaryResponse)
 def get_session_summary_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     summary = viva_service.get_session_summary(db, session_id)

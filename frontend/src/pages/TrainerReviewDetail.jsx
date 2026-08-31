@@ -12,7 +12,9 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import BadgeIcon from '@mui/icons-material/Badge';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import { vivaService } from '@/services/api';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import CustomAudioPlayer from '@/components/CustomAudioPlayer';
+import { vivaService, API_BASE_URL } from '@/services/api';
 
 export default function TrainerReviewDetail() {
   const navigate = useNavigate();
@@ -69,6 +71,14 @@ export default function TrainerReviewDetail() {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}m ${s}s`;
+  };
+
+  const getAudioSrc = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    const base = (API_BASE_URL || '').replace(/\/+$/, '');
+    const path = url.startsWith('/') ? url : `/${url}`;
+    return `${base}${path}`;
   };
 
   const getRecChipProps = (rec) => {
@@ -308,6 +318,17 @@ export default function TrainerReviewDetail() {
                       </Box>
                     )}
                   </Box>
+
+                  {/* Candidate Audio Recording */}
+                  {q.audio_url && (
+                    <Box sx={{ mx: { xs: 2, md: 2.5 }, mt: 1.5 }}>
+                      <CustomAudioPlayer 
+                        src={getAudioSrc(q.audio_url)} 
+                        title={`Candidate Voice Recording (Q${index + 1})`} 
+                        fallbackDuration={q.duration}
+                      />
+                    </Box>
+                  )}
 
                   {/* Scores Bar */}
                   <Box sx={{ px: { xs: 2, md: 2.5 }, py: 2, bgcolor: '#FFFFFF', borderTop: '1px solid #F1F5F9' }}>
