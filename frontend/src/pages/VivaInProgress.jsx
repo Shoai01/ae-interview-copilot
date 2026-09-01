@@ -62,8 +62,10 @@ export default function VivaInProgress() {
     toggleRecording, 
     stopRecording, 
     startRecording,
+    cancelConnecting,
     resetTranscript,
     getAudioBlob,
+    getTranscriptText,
     startAudioCapture,
     stopAudioCapture,
   } = useSpeechRecognition();
@@ -123,11 +125,16 @@ export default function VivaInProgress() {
         await stopRecording();
       }
 
+      // If Deepgram connection is still in-flight, cancel it
+      if (isConnecting) {
+        cancelConnecting();
+      }
+
       // Stop audio capture and wait for the final Blob to be generated
       await stopAudioCapture();
 
-      // Build the transcript from the React state as the source of truth
-      const transcriptToSubmit = (displayValue || '').trim() || "(No answer provided)";
+      // Read transcript from refs to avoid stale closure values
+      const transcriptToSubmit = getTranscriptText();
       
       // 1. Submit transcript JSON to answer endpoint
       await vivaService.submitAnswer(sessionId, currentQuestion.viva_question_id, transcriptToSubmit);
@@ -141,6 +148,7 @@ export default function VivaInProgress() {
           console.log("[Viva] Audio uploaded successfully:", res);
         } catch (audioErr) {
           console.error("Failed to upload audio recording:", audioErr);
+          toast.error("Voice recording could not be saved. The trainer may not see audio for this question.");
         }
       }
       

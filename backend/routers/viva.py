@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
@@ -117,6 +118,10 @@ from fastapi import UploadFile, File
 import os
 import uuid
 
+logger = logging.getLogger(__name__)
+
+MAX_AUDIO_SIZE = 50 * 1024 * 1024  # 50MB
+
 @router.post("/{session_id}/answer/{viva_question_id}/audio", response_model=viva_schemas.StatusResponse, status_code=status.HTTP_201_CREATED)
 async def upload_audio(
     session_id: int, 
@@ -125,28 +130,40 @@ async def upload_audio(
     db: Session = Depends(get_db), 
     current_user: User = Depends(require_role([UserRole.TRAINEE]))
 ):
-    # Basic validation
-    if not file.content_type.startswith("audio/") and not file.content_type in ["video/webm", "application/octet-stream"]:
-        # some browsers send audio as video/webm or application/octet-stream
-        pass 
+    # Fix 5: Verify session ownership — only the assigned trainee can upload
+    session = db.query(domain.VivaSession).filter(
+        domain.VivaSession.id == session_id,
+        domain.VivaSession.trainee_id == current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=403, detail="You are not authorized to upload audio for this session")
+
+    # Fix 3: Validate content type with null safety
+    content_type = file.content_type or ""
+    allowed_types = ["audio/", "video/webm", "application/octet-stream"]
+    if not any(content_type.startswith(t) if t.endswith("/") else content_type == t for t in allowed_types):
+        raise HTTPException(status_code=400, detail=f"Invalid audio file type: {content_type}")
         
-    ext = file.filename.split('.')[-1] if '.' in file.filename else 'webm'
+    ext = file.filename.split('.')[-1] if file.filename and '.' in file.filename else 'webm'
     filename = f"{uuid.uuid4()}.{ext}"
     os.makedirs(os.path.join("uploads", "audio"), exist_ok=True)
     file_path = os.path.join("uploads", "audio", filename)
     
-    # Save file
-    content = await file.read()
-    print(f"[DEBUG] Received audio file for session {session_id}, question {viva_question_id}, size: {len(content)} bytes")
+    # Fix 6: Read with size limit to prevent memory exhaustion
+    content = await file.read(MAX_AUDIO_SIZE + 1)
+    if len(content) > MAX_AUDIO_SIZE:
+        raise HTTPException(status_code=413, detail="Audio file too large (max 50MB)")
+
+    logger.info(f"Received audio file for session {session_id}, question {viva_question_id}, size: {len(content)} bytes")
     with open(file_path, "wb") as f:
         f.write(content)
         
     audio_url = f"/uploads/audio/{filename}"
     
     success = viva_service.upload_answer_audio(db, session_id, viva_question_id, audio_url)
-    print(f"[DEBUG] DB update success: {success} for audio_url: {audio_url}")
+    logger.info(f"DB update success: {success} for audio_url: {audio_url}")
     if not success:
-        print(f"[DEBUG] Deleting {file_path} because DB update failed.")
+        logger.warning(f"Deleting {file_path} because DB update failed (question not found in session)")
         # cleanup if failed
         if os.path.exists(file_path):
             os.remove(file_path)

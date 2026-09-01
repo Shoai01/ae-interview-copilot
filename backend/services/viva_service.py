@@ -180,6 +180,8 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
             chosen_set = db_session.set_name
         else:
             chosen_set = random.choice(distinct_sets)
+            db_session.set_name = chosen_set
+            viva_repository.save_session(db, db_session)
         
         # Get all questions from the chosen set
         available_questions = get_active_questions_by_set(db, db_session.module_id, chosen_set)

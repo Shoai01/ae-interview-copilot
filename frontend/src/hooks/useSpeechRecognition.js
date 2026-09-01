@@ -70,8 +70,10 @@ export function useSpeechRecognition() {
     console.log("[Audio] Starting fresh audio capture");
     const audioOnlyStream = new MediaStream(audioTracks);
 
-    // Only clear on a fresh start
+    // Clear everything on a fresh start
     webmHeaderRef.current = null;
+    audioChunksRef.current = [];
+    recordedBlobRef.current = null;
     isCapturingRef.current = true;
 
     let mimeType = 'audio/webm;codecs=opus';
@@ -182,11 +184,14 @@ export function useSpeechRecognition() {
 
     isConnectingRef.current = true;
     setIsConnectingState(true);
-    // Clear transcription text (NOT audio chunks — those belong to audio capture)
-    setFinalText('');
-    setLiveText('');
-    liveTextRef.current = '';
-    finalTextRef.current = '';
+    // Only clear transcription text on the FIRST mic activation per question.
+    // On resume (chunks already exist), preserve the previously transcribed text.
+    if (audioChunksRef.current.length === 0) {
+      setFinalText('');
+      setLiveText('');
+      liveTextRef.current = '';
+      finalTextRef.current = '';
+    }
     
     console.log("[Deepgram] Connecting to WebSocket...");
     
@@ -345,6 +350,27 @@ export function useSpeechRecognition() {
     recordedBlobRef.current = null;
   }, []);
 
+  /**
+   * Cancels an in-progress Deepgram WebSocket handshake and pauses the recorder.
+   * Safe to call even if nothing is connecting.
+   */
+  const cancelConnecting = useCallback(() => {
+    if (isConnectingRef.current || (socketRef.current && socketRef.current.readyState === WebSocket.CONNECTING)) {
+      console.log("[Deepgram] Cancelling in-progress connection...");
+      if (socketRef.current) {
+        try { socketRef.current.close(); } catch { /* ignore */ }
+        socketRef.current = null;
+      }
+      isConnectingRef.current = false;
+      setIsConnectingState(false);
+      setIsRecording(false);
+
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.pause();
+      }
+    }
+  }, []);
+
   const getAudioBlob = useCallback(() => {
     // First check if onstop already created the blob
     if (recordedBlobRef.current && recordedBlobRef.current.size > 0) {
@@ -360,6 +386,17 @@ export function useSpeechRecognition() {
     return null;
   }, []);
 
+  /**
+   * Returns the latest transcript text from refs (not stale render state).
+   * Use this in async handlers to avoid reading stale closure values.
+   */
+  const getTranscriptText = useCallback(() => {
+    const final = finalTextRef.current || '';
+    const live = liveTextRef.current || '';
+    const combined = final + (live ? (final ? ' ' : '') + live : '');
+    return combined.trim() || "(No answer provided)";
+  }, []);
+
   return {
     isRecording,
     isConnecting: isConnectingState,
@@ -370,8 +407,10 @@ export function useSpeechRecognition() {
     toggleRecording,
     stopRecording,
     startRecording,
+    cancelConnecting,
     resetTranscript,
     getAudioBlob,
+    getTranscriptText,
     startAudioCapture,
     stopAudioCapture,
   };

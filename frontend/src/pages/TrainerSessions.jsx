@@ -146,7 +146,7 @@ export default function TrainerSessions() {
           assignForm.moduleId,
           assignForm.durationMinutes,
           assignForm.questionCount,
-          assignForm.setName,
+          null, // Bulk batches use dynamic set assignment on exam start
           trainees
         );
         toast.success(`Successfully assigned ${result.success_count} sessions. Email notifications are being sent.`);
@@ -766,19 +766,37 @@ export default function TrainerSessions() {
               </Select>
             </FormControl>
 
-            <FormControl fullWidth disabled={!assignForm.moduleId}>
-              <InputLabel>Question Set (Optional)</InputLabel>
-              <Select
-                label="Question Set (Optional)"
-                value={assignForm.setName || ''}
-                onChange={(e) => setAssignForm({ ...assignForm, setName: e.target.value })}
-              >
-                <MenuItem value=""><em>Random Set (Default)</em></MenuItem>
-                {moduleSets.map(set => (
-                  <MenuItem key={set.name} value={set.name}>{set.name} ({set.count} Qs)</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {assignMode === 'single' ? (
+              <FormControl fullWidth disabled={!assignForm.moduleId}>
+                <InputLabel>Question Set (Optional)</InputLabel>
+                <Select
+                  label="Question Set (Optional)"
+                  value={assignForm.setName || ''}
+                  onChange={(e) => setAssignForm({ ...assignForm, setName: e.target.value })}
+                >
+                  <MenuItem value=""><em>Random Set (Default)</em></MenuItem>
+                  {moduleSets.map(set => (
+                    <MenuItem key={set.name} value={set.name}>{set.name} ({set.count} Qs)</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <Box sx={{ p: 2, bgcolor: 'rgba(242, 101, 34, 0.04)', border: '1px solid rgba(242, 101, 34, 0.2)', borderRadius: 2 }}>
+                <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                  <Box sx={{ width: 22, height: 22, borderRadius: '50%', bgcolor: 'primary.main', color: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0, mt: 0.2 }}>
+                    i
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', fontFamily: 'DM Sans, sans-serif', mb: 0.25 }}>
+                      Dynamic Question Set Allocation
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5, display: 'block' }}>
+                      For bulk batches, question sets are automatically distributed at random when each candidate starts their exam to ensure question variety across the cohort.
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
+            )}
             
             <TextField 
               label="Duration (minutes)" 
