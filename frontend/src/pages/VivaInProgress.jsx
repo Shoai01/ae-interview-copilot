@@ -14,6 +14,7 @@ import { globalState } from '@/store';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis';
 import { useFraudDetection } from '@/hooks/useFraudDetection';
+import { useNoiseDetection } from '@/hooks/useNoiseDetection';
 import { useAuth } from '@/store/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -43,6 +44,7 @@ export default function VivaInProgress() {
   // Fraud detection runs in background
   const isEndingRef = useRef(false);
   const { detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
+  const { noiseLevel } = useNoiseDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
 
   // Timer tick — counts up every second
   useEffect(() => {

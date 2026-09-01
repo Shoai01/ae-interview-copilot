@@ -26,6 +26,7 @@ class FraudFlagType(str, enum.Enum):
     NO_FACE = "NO_FACE"
     TAB_SWITCH = "TAB_SWITCH"
     FULLSCREEN_EXIT = "FULLSCREEN_EXIT"
+    BACKGROUND_NOISE = "BACKGROUND_NOISE"
 
 class AIRecommendationType(str, enum.Enum):
     PASS = "PASS"
