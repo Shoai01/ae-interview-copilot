@@ -21,40 +21,63 @@ import SpeedRoundedIcon from '@mui/icons-material/SpeedRounded';
 
 const PLAYBACK_RATES = [1.0, 1.25, 1.5, 1.75, 2.0];
 
-export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answer", fallbackDuration = 0 }) {
+export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answer" }) {
   const audioRef = useRef(null);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(fallbackDuration || 0);
+  const [duration, setDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const [speedAnchorEl, setSpeedAnchorEl] = useState(null);
 
-  // Sync duration on metadata load with Chromium WebM duration fix
+  // Exact audio duration calculation via Web Audio API (decodes actual audio frames)
+  useEffect(() => {
+    if (!src) return;
+    let isCancelled = false;
+
+    fetch(src)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.arrayBuffer();
+      })
+      .then((arrayBuffer) => {
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtxClass) return;
+        const ctx = new AudioCtxClass();
+        return ctx.decodeAudioData(
+          arrayBuffer,
+          (decodedBuffer) => {
+            if (!isCancelled && decodedBuffer) {
+              const exactDuration = decodedBuffer.duration;
+              if (isFinite(exactDuration) && exactDuration > 0) {
+                setDuration(exactDuration);
+              }
+            }
+            ctx.close().catch(() => {});
+          },
+          () => {
+            ctx.close().catch(() => {});
+          }
+        );
+      })
+      .catch(() => {
+        // Fallback handled by HTML5 audio metadata events
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [src]);
+
+  // Sync duration on metadata load
   const handleLoadedMetadata = () => {
     if (!audioRef.current) return;
     const d = audioRef.current.duration;
     if (isFinite(d) && !isNaN(d) && d > 0) {
       setDuration(d);
-    } else if (fallbackDuration && fallbackDuration > 0) {
-      setDuration(fallbackDuration);
-    } else if (d === Infinity) {
-      // Chromium WebM duration workaround
-      const audio = audioRef.current;
-      audio.currentTime = 1e101;
-      const onTime = () => {
-        audio.removeEventListener('timeupdate', onTime);
-        if (isFinite(audio.duration) && audio.duration > 0) {
-          setDuration(audio.duration);
-        } else if (isFinite(audio.currentTime) && audio.currentTime > 0) {
-          setDuration(audio.currentTime);
-        }
-        audio.currentTime = 0;
-      };
-      audio.addEventListener('timeupdate', onTime);
     }
   };
 
@@ -147,6 +170,24 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
     const secs = totalSecs % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
+
+  // Ensure only one audio plays at a time across the screen
+  useEffect(() => {
+    const handleGlobalPlay = (e) => {
+      if (audioRef.current && e.target !== audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+
+    document.addEventListener('play', handleGlobalPlay, true);
+    return () => {
+      document.removeEventListener('play', handleGlobalPlay, true);
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+      }
+    };
+  }, []);
 
   // Keep playbackRate synced if src changes
   useEffect(() => {
@@ -367,7 +408,7 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
             size="small"
             value={isSeeking ? seekValue : currentTime}
             min={0}
-            max={(isFinite(duration) && duration > 0) ? duration : (fallbackDuration > 0 ? fallbackDuration : 100)}
+            max={(isFinite(duration) && duration > 0) ? duration : 100}
             onChange={handleSeekChange}
             onChangeCommitted={handleSeekCommitted}
             aria-label="Audio Timeline"
@@ -406,7 +447,7 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
               {formatTime(isSeeking ? seekValue : currentTime)}
             </Typography>
             <Typography variant="caption" sx={{ color: '#94A3B8', fontFamily: 'DM Sans, monospace', fontSize: '0.75rem', fontWeight: 500 }}>
-              {formatTime((isFinite(duration) && duration > 0) ? duration : (fallbackDuration || 0))}
+              {formatTime(duration)}
             </Typography>
           </Box>
         </Box>

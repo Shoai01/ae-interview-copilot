@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Box, Typography, Button, Avatar, Stack, CircularProgress, Grid, Card, Chip, TextField } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -15,6 +15,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import CustomAudioPlayer from '@/components/CustomAudioPlayer';
 import { vivaService, API_BASE_URL } from '@/services/api';
+import toast from 'react-hot-toast';
 
 export default function TrainerReviewDetail() {
   const navigate = useNavigate();
@@ -25,13 +26,39 @@ export default function TrainerReviewDetail() {
   const [error, setError] = useState(null);
   const [selectedDecision, setSelectedDecision] = useState(null);
   const [trainerNotes, setTrainerNotes] = useState('');
+  const [finalScore, setFinalScore] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const isSubmittedRef = useRef(false);
 
+  // 1. Restore report & check for unsaved local review drafts
   useEffect(() => {
     const fetchReport = async () => {
       try {
         const data = await vivaService.getSessionReport(sessionId);
         setReportData(data);
+        if (data.report) {
+          const maxMarksForSession = data.session?.max_marks || (data.questions?.length ? data.questions.length * 10 : 20);
+          let decisionVal = data.report.trainer_decision || null;
+          let notesVal = data.report.trainer_notes || '';
+          let scoreVal = data.report.final_score != null 
+            ? Math.min(maxMarksForSession, Number(data.report.final_score))
+            : (data.report.aggregate_score != null ? Number((data.report.aggregate_score / 10) * maxMarksForSession).toFixed(1) : '');
+
+          // Check if trainer had an unsaved draft in session
+          try {
+            const savedDraft = sessionStorage.getItem(`trainer_review_draft_${sessionId}`);
+            if (savedDraft) {
+              const draft = JSON.parse(savedDraft);
+              if (draft.selectedDecision !== undefined) decisionVal = draft.selectedDecision;
+              if (draft.trainerNotes !== undefined) notesVal = draft.trainerNotes;
+              if (draft.finalScore !== undefined) scoreVal = draft.finalScore;
+            }
+          } catch {}
+
+          setSelectedDecision(decisionVal);
+          setTrainerNotes(notesVal);
+          setFinalScore(scoreVal);
+        }
       } catch (err) {
         console.error("Failed to fetch session report:", err);
         setError("Could not load report details.");
@@ -41,6 +68,35 @@ export default function TrainerReviewDetail() {
     };
     fetchReport();
   }, [sessionId]);
+
+  // 2. Persist draft whenever trainer edits notes, decision, or score
+  useEffect(() => {
+    if (sessionId && (selectedDecision || trainerNotes || finalScore)) {
+      try {
+        sessionStorage.setItem(`trainer_review_draft_${sessionId}`, JSON.stringify({
+          selectedDecision,
+          trainerNotes,
+          finalScore
+        }));
+      } catch {}
+    }
+  }, [sessionId, selectedDecision, trainerNotes, finalScore]);
+
+  // 3. Tab Closure / Refresh Guard: Warn trainer if they have unsaved notes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!isSubmittedRef.current && (trainerNotes || selectedDecision)) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [trainerNotes, selectedDecision]);
 
   if (loading) {
     return (
@@ -65,6 +121,7 @@ export default function TrainerReviewDetail() {
   const { trainee, summary, report, questions } = reportData;
   const candidateName = trainee?.name || 'Unknown Candidate';
   const avatarLetter = candidateName.charAt(0);
+  const maxMarks = reportData?.session?.max_marks || (questions?.length ? questions.length * 10 : 20);
   
   const formatDuration = (seconds) => {
     if (!seconds && seconds !== 0) return '0m 0s';
@@ -170,10 +227,19 @@ export default function TrainerReviewDetail() {
 
               <Box sx={{ bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 2, px: 2, py: 1.25, minWidth: 110 }}>
                 <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
-                  Overall Score
+                  AI Score
                 </Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main', fontFamily: 'Syne, sans-serif', fontSize: '1.05rem', mt: 0.25 }}>
-                  {report?.aggregate_score != null ? `${Number(report.aggregate_score).toFixed(1)} / 10` : '—'}
+                  {report?.aggregate_score != null ? `${Number((report.aggregate_score / 10) * maxMarks).toFixed(1)} / ${maxMarks}` : '—'}
+                </Typography>
+              </Box>
+
+              <Box sx={{ bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 2, px: 2, py: 1.25, minWidth: 110 }}>
+                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                  Final Score
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', fontFamily: 'Syne, sans-serif', fontSize: '1.05rem', mt: 0.25 }}>
+                  {report?.final_score != null ? `${Math.min(maxMarks, Number(report.final_score)).toFixed(1)} / ${maxMarks}` : '—'}
                 </Typography>
               </Box>
             </Stack>
@@ -325,7 +391,6 @@ export default function TrainerReviewDetail() {
                       <CustomAudioPlayer 
                         src={getAudioSrc(q.audio_url)} 
                         title={`Candidate Voice Recording (Q${index + 1})`} 
-                        fallbackDuration={q.duration}
                       />
                     </Box>
                   )}
@@ -427,18 +492,81 @@ export default function TrainerReviewDetail() {
             }}
           />
 
+          {/* Final Score Input */}
+          <TextField
+            label={`Marks (max ${maxMarks})`}
+            type="number"
+            size="small"
+            value={finalScore}
+            error={parseFloat(finalScore) > maxMarks || parseFloat(finalScore) < 0}
+            helperText={parseFloat(finalScore) > maxMarks ? `Max is ${maxMarks}` : parseFloat(finalScore) < 0 ? 'Cannot be negative' : ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '') {
+                setFinalScore('');
+                return;
+              }
+              let num = parseFloat(val);
+              if (isNaN(num)) return;
+              if (num < 0) {
+                toast.error("Score cannot be negative", { id: 'score-limit' });
+                num = 0;
+              } else if (num > maxMarks) {
+                toast.error(`Score cannot exceed ${maxMarks} marks`, { id: 'score-limit' });
+                num = maxMarks;
+              }
+              setFinalScore(num);
+            }}
+            inputProps={{
+              step: "0.5",
+              min: "0",
+              max: maxMarks
+            }}
+            sx={{
+              width: 155,
+              flexShrink: 0,
+              '& .MuiInputLabel-root': {
+                fontSize: '0.8rem',
+                fontFamily: 'DM Sans, sans-serif',
+                fontWeight: 600,
+                color: '#64748B',
+              },
+              '& .MuiOutlinedInput-root': {
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                fontFamily: 'Syne, sans-serif',
+                bgcolor: '#FFFFFF',
+                borderRadius: 2,
+              },
+            }}
+          />
+
           {/* Submit Action */}
           <Button
             variant="contained"
             endIcon={<SendIcon sx={{ fontSize: 16 }} />}
-            disabled={!selectedDecision || submitting}
+            disabled={!selectedDecision || submitting || (finalScore !== '' && (parseFloat(finalScore) < 0 || parseFloat(finalScore) > maxMarks))}
             onClick={async () => {
+              if (finalScore !== '') {
+                const numScore = parseFloat(finalScore);
+                if (isNaN(numScore) || numScore < 0 || numScore > maxMarks) {
+                  toast.error(`Please enter a valid final score between 0 and ${maxMarks}`, { id: 'score-limit' });
+                  return;
+                }
+              }
               setSubmitting(true);
               try {
-                await vivaService.submitDecision(sessionId, selectedDecision, trainerNotes);
+                const scoreToSend = finalScore === '' ? null : Math.min(maxMarks, Math.max(0, parseFloat(finalScore)));
+                await vivaService.submitDecision(sessionId, selectedDecision, trainerNotes, scoreToSend);
+                isSubmittedRef.current = true;
+                try {
+                  sessionStorage.removeItem(`trainer_review_draft_${sessionId}`);
+                } catch {}
+                toast.success("Decision and final score saved successfully", { id: 'decision-status' });
                 navigate('/hr/sessions');
               } catch (err) {
                 console.error('Failed to submit decision:', err);
+                toast.error(err.response?.data?.detail || 'Failed to submit decision.', { id: 'decision-status' });
                 setSubmitting(false);
               }
             }}

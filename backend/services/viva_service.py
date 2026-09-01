@@ -404,9 +404,15 @@ def evaluate_session(db: Session, session_id: int):
         )
         viva_repository.save_evaluation(db, db_eval)
         
+    # Calculate final_score scaled to session's max_marks (aggregate_score is out of 10)
+    scaled_final_score = None
+    if eval_result.aggregate_score is not None:
+        scaled_final_score = round((eval_result.aggregate_score / 10.0) * session.max_marks, 1)
+
     db_report = domain.VivaReport(
         session_id=session.id,
         aggregate_score=eval_result.aggregate_score,
+        final_score=scaled_final_score,
         ai_recommendation=eval_result.ai_recommendation,
         strengths=eval_result.strengths,
         areas_of_improvement=eval_result.areas_of_improvement
@@ -418,6 +424,14 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
     session = viva_repository.get_session_by_id(db, session_id)
     if not session:
         return None
+
+    # Auto-evaluate completed sessions if report is missing
+    if session.status == domain.SessionStatus.COMPLETED and not session.report:
+        try:
+            evaluate_session(db, session_id)
+            db.refresh(session)
+        except Exception as eval_err:
+            print(f"Auto-evaluation on report fetch failed for session {session_id}:", eval_err)
         
     summary = get_session_summary(db, session_id)
     
@@ -448,6 +462,7 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
     if session.report:
         report_data = {
             "aggregate_score": session.report.aggregate_score,
+            "final_score": session.report.final_score,
             "ai_recommendation": session.report.ai_recommendation.value if session.report.ai_recommendation else None,
             "strengths": session.report.strengths,
             "areas_of_improvement": session.report.areas_of_improvement,
@@ -464,6 +479,7 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
         trainee_name=session.trainee.full_name or session.trainee.username if session.trainee else "Candidate",
         duration_minutes=session.duration_minutes,
         total_questions=summary.total_questions,
+        max_marks=session.max_marks,
         start_time=session.start_time
     )
 
@@ -572,10 +588,18 @@ def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewe
 
     with log_action(db, AuditActionType.TRAINER_DECISION_SUBMITTED, reviewer_id, reviewer_name) as log:
         report = session.report
+        
+        old_score = report.final_score
+        
         report.trainer_decision = domain.TrainerDecisionType(decision_data.decision)
         report.reviewed_by = reviewer_id
         report.reviewed_at = datetime.datetime.utcnow()
         
+        if decision_data.final_score is not None:
+            max_allowed = session.max_marks if (getattr(session, 'max_marks', None) and session.max_marks > 0) else (len(session.questions) * 10 if session.questions else 20.0)
+            clamped_score = max(0.0, min(float(decision_data.final_score), float(max_allowed)))
+            report.final_score = round(clamped_score, 1)
+            
         # Store notes in dedicated field
         if decision_data.notes:
             report.trainer_notes = decision_data.notes
@@ -586,7 +610,9 @@ def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewe
         log['target'] = f"Session: {session.id}"
         log['details'] = {
             "decision": decision_data.decision,
-            "trainee_id": session.trainee_id
+            "trainee_id": session.trainee_id,
+            "old_score": old_score,
+            "new_score": report.final_score
         }
         
     return report

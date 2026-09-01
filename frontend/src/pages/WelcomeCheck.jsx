@@ -40,13 +40,27 @@ export default function WelcomeCheck() {
   const videoRef = useRef(null);
   const { user, logout } = useAuth();
 
-  const [checks, setChecks] = useState({
-    camera: 'checking',
-    mic: 'checking',
-    speaker: 'checking', 
-    network: navigator.onLine ? 'passed' : 'failed',
-    browser: 'passed'
-  });
+  const getInitialChecks = () => {
+    try {
+      const saved = sessionStorage.getItem(`viva_checks_${user?.id}`);
+      if (saved) {
+        return {
+          ...JSON.parse(saved),
+          network: navigator.onLine ? 'passed' : 'failed',
+          browser: 'passed'
+        };
+      }
+    } catch {}
+    return {
+      camera: 'checking',
+      mic: 'checking',
+      speaker: 'checking', 
+      network: navigator.onLine ? 'passed' : 'failed',
+      browser: 'passed'
+    };
+  };
+
+  const [checks, setChecks] = useState(getInitialChecks);
 
   const [stream, setStream] = useState(null);
   const [traineeName, setTraineeName] = useState("Loading...");
@@ -111,12 +125,19 @@ export default function WelcomeCheck() {
           videoRef.current.srcObject = activeStream;
         }
 
-        setChecks(prev => ({ 
-          ...prev, 
+        const passedChecks = {
           camera: 'passed', 
           mic: 'passed', 
-          speaker: 'passed' 
-        }));
+          speaker: 'passed',
+          network: navigator.onLine ? 'passed' : 'failed',
+          browser: 'passed'
+        };
+        setChecks(passedChecks);
+        try {
+          if (user?.id) {
+            sessionStorage.setItem(`viva_checks_${user.id}`, JSON.stringify(passedChecks));
+          }
+        } catch {}
       } catch (err) {
         console.error("Media access error:", err);
         setChecks(prev => ({ 
@@ -152,7 +173,8 @@ export default function WelcomeCheck() {
           moduleName: session.module_name,
           traineeName: session.trainee_name,
           durationMinutes: session.duration_minutes,
-          totalQuestions: session.total_questions
+          totalQuestions: session.total_questions,
+          startTime: session.start_time
         } 
       });
     } catch (err) {
@@ -166,6 +188,9 @@ export default function WelcomeCheck() {
   const readyCount = Object.values(checks).filter(status => status === 'passed').length;
 
   const handleLogout = async () => {
+    try {
+      if (user?.id) sessionStorage.removeItem(`viva_checks_${user.id}`);
+    } catch {}
     await logout();
     navigate('/');
   };

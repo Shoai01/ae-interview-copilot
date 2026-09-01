@@ -18,41 +18,152 @@ import { useNoiseDetection } from '@/hooks/useNoiseDetection';
 import { useAuth } from '@/store/AuthContext';
 import toast from 'react-hot-toast';
 
+
 export default function VivaInProgress() {
   const navigate = useNavigate();
   const location = useLocation();
   const { accessToken } = useAuth();
   const videoRef = useRef(null);
-  const sessionId = location.state?.sessionId;
-  const moduleName = location.state?.moduleName || 'Module';
-  const traineeName = location.state?.traineeName || 'Candidate';
-  const durationMinutes = location.state?.durationMinutes || 15;
 
+  // 1. Session-State Preservation: Restore session from location.state or sessionStorage
+  const getInitialSession = () => {
+    if (location.state?.sessionId) {
+      const data = {
+        sessionId: location.state.sessionId,
+        moduleName: location.state.moduleName || 'Module',
+        traineeName: location.state.traineeName || 'Candidate',
+        durationMinutes: location.state.durationMinutes || 15,
+        startTime: location.state.startTime || null
+      };
+      try {
+        sessionStorage.setItem('active_viva_session', JSON.stringify(data));
+      } catch {}
+      return data;
+    }
+    try {
+      const saved = sessionStorage.getItem('active_viva_session');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {};
+  };
+
+  const [sessionInfo, setSessionInfo] = useState(getInitialSession);
+  const sessionId = sessionInfo.sessionId;
+  const moduleName = sessionInfo.moduleName || 'Module';
+  const traineeName = sessionInfo.traineeName || 'Candidate';
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Live countdown timer
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const totalSeconds = durationMinutes * 60;
-  const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
-  const timerMinutes = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
-  const timerSecs = String(remainingSeconds % 60).padStart(2, '0');
-  const timerExpired = remainingSeconds <= 0;
-  const timerWarning = remainingSeconds <= 120 && remainingSeconds > 0; // last 2 min
-
-  // Fraud detection runs in background
+  // Server-synced countdown timer
+  const [sessionStartTime, setSessionStartTime] = useState(sessionInfo.startTime || null);
+  const [sessionDuration, setSessionDuration] = useState(sessionInfo.durationMinutes || 15);
+  const [nowTime, setNowTime] = useState(Date.now());
+  const isAutoSubmittingRef = useRef(false);
   const isEndingRef = useRef(false);
+
+  // Fraud and noise detection hooks
   const { detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
   const { noiseLevel } = useNoiseDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
 
-  // Timer tick — counts up every second
+  // 2. Active Session Recovery: Fallback to server query if storage is missing on reload
+  useEffect(() => {
+    if (!sessionId) {
+      vivaService.getCurrentSession().then(s => {
+        if (s && s.id && s.status === 'IN_PROGRESS') {
+          const recovered = {
+            sessionId: s.id,
+            moduleName: s.module_name || 'Module',
+            traineeName: s.trainee_name || 'Candidate',
+            durationMinutes: s.duration_minutes || 15,
+            startTime: s.start_time
+          };
+          try {
+            sessionStorage.setItem('active_viva_session', JSON.stringify(recovered));
+          } catch {}
+          setSessionInfo(recovered);
+          setSessionStartTime(s.start_time);
+          setSessionDuration(s.duration_minutes || 15);
+        } else {
+          navigate('/');
+        }
+      }).catch(() => {
+        navigate('/');
+      });
+    } else if (!sessionStartTime || !sessionInfo.durationMinutes) {
+      vivaService.getCurrentSession().then(s => {
+        if (s) {
+          if (s.start_time) setSessionStartTime(s.start_time);
+          if (s.duration_minutes) setSessionDuration(s.duration_minutes);
+        }
+      }).catch(() => {});
+    }
+  }, [sessionId, sessionStartTime, sessionInfo.durationMinutes, navigate]);
+
+  // 3. Hardware Stream Re-acquisition: Restore camera/mic if destroyed by refresh
+  useEffect(() => {
+    let isCancelled = false;
+    const restoreMedia = async () => {
+      if (!globalState.mediaStream || !globalState.mediaStream.active) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+            audio: true
+          });
+          if (!isCancelled) {
+            globalState.mediaStream = stream;
+            if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+            }
+          }
+        } catch (err) {
+          console.warn("[VivaInProgress] Could not re-acquire media stream on reload:", err);
+        }
+      } else if (videoRef.current) {
+        videoRef.current.srcObject = globalState.mediaStream;
+      }
+    };
+
+    restoreMedia();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  // 4. Tab Closure / Refresh Guard: Warn user before leaving active exam
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (!isEndingRef.current) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
+  // Clock tick every second
   useEffect(() => {
     const interval = setInterval(() => {
-      setElapsedSeconds(prev => prev + 1);
+      setNowTime(Date.now());
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const totalSeconds = sessionDuration * 60;
+  const elapsedSeconds = sessionStartTime 
+    ? Math.max(0, Math.floor((nowTime - new Date(sessionStartTime).getTime()) / 1000))
+    : 0;
+  const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+  const timerMinutes = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
+  const timerSecs = String(remainingSeconds % 60).padStart(2, '0');
+  const timerExpired = remainingSeconds <= 0 && sessionStartTime !== null;
+  const timerWarning = remainingSeconds <= 120 && remainingSeconds > 0; // last 2 min
 
   const { 
     isRecording, 
@@ -75,10 +186,31 @@ export default function VivaInProgress() {
   const { speakQuestion, cancelSpeech } = useSpeechSynthesis();
 
   // Compute the display value for the text field.
-  // Show finalText, and append liveText (greyed-out interim) separately.
   const displayValue = finalText + (liveText ? (finalText ? ' ' : '') + liveText : '');
 
+  // 5. In-flight Transcript Draft Preservation: Restore draft when question loads
+  useEffect(() => {
+    if (sessionId && currentQuestion?.viva_question_id) {
+      try {
+        const savedDraft = sessionStorage.getItem(`viva_draft_${sessionId}_${currentQuestion.viva_question_id}`);
+        if (savedDraft && savedDraft.trim()) {
+          setFinalText(savedDraft);
+        }
+      } catch {}
+    }
+  }, [sessionId, currentQuestion?.viva_question_id, setFinalText]);
+
+  // 6. In-flight Transcript Draft Preservation: Save draft on every change
+  useEffect(() => {
+    if (sessionId && currentQuestion?.viva_question_id && displayValue) {
+      try {
+        sessionStorage.setItem(`viva_draft_${sessionId}_${currentQuestion.viva_question_id}`, displayValue);
+      } catch {}
+    }
+  }, [sessionId, currentQuestion?.viva_question_id, displayValue]);
+
   const fetchQuestion = useCallback(async () => {
+    if (!sessionId) return;
     try {
       setLoading(true);
       const question = await vivaService.getNextQuestion(sessionId);
@@ -86,17 +218,30 @@ export default function VivaInProgress() {
       resetTranscript();
     } catch (err) {
       console.error("Failed to fetch question:", err);
-      toast.error("Failed to load the next question. Please refresh.");
+      // If 404 (session completed or all questions answered), navigate to complete page
+      if (err.response?.status === 404) {
+        if (globalState.mediaStream) {
+          globalState.mediaStream.getTracks().forEach(track => track.stop());
+          globalState.mediaStream = null;
+        }
+        isEndingRef.current = true;
+        try {
+          sessionStorage.removeItem('active_viva_session');
+        } catch {}
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+        navigate('/complete', { state: { sessionId } });
+        return;
+      }
+      toast.error("Failed to load the next question. Please refresh.", { id: 'next-question-error' });
     } finally {
       setLoading(false);
     }
-  }, [sessionId, resetTranscript]);
+  }, [sessionId, resetTranscript, navigate]);
 
   useEffect(() => {
-    if (!sessionId) {
-      navigate('/');
-      return;
-    }
+    if (!sessionId) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchQuestion();
     
@@ -107,13 +252,78 @@ export default function VivaInProgress() {
     return () => {
       cancelSpeech();
     };
-  }, [sessionId, navigate, fetchQuestion, cancelSpeech]);
+  }, [sessionId, fetchQuestion, cancelSpeech]);
 
   useEffect(() => {
     if (currentQuestion && currentQuestion.text && !loading) {
       speakQuestion(currentQuestion.text);
     }
   }, [currentQuestion, loading, speakQuestion]);
+
+  const handleAutoSubmit = useCallback(async () => {
+    if (isAutoSubmittingRef.current || submitting) return;
+    isAutoSubmittingRef.current = true;
+    setSubmitting(true);
+    cancelSpeech();
+
+    toast("Session duration has expired. Submitting your assessment...", {
+      icon: '⏱️',
+      duration: 5000,
+      id: 'session-timeout-auto'
+    });
+
+    try {
+      if (isRecording) {
+        await stopRecording();
+      }
+      if (isConnecting) {
+        cancelConnecting();
+      }
+      await stopAudioCapture();
+
+      if (currentQuestion) {
+        const transcriptToSubmit = getTranscriptText() || "(Session duration expired)";
+        try {
+          await vivaService.submitAnswer(sessionId, currentQuestion.viva_question_id, transcriptToSubmit);
+          try {
+            sessionStorage.removeItem(`viva_draft_${sessionId}_${currentQuestion.viva_question_id}`);
+          } catch {}
+          const recordedBlob = getAudioBlob();
+          if (recordedBlob && recordedBlob.size > 0) {
+            await vivaService.uploadAnswerAudio(sessionId, currentQuestion.viva_question_id, recordedBlob, accessToken);
+          }
+        } catch (partialErr) {
+          console.warn("Auto-submit partial answer save failed:", partialErr);
+        }
+      }
+    } catch (e) {
+      console.warn("Auto-submit cleanup error:", e);
+    } finally {
+      if (globalState.mediaStream) {
+        globalState.mediaStream.getTracks().forEach(track => track.stop());
+        globalState.mediaStream = null;
+      }
+
+      isEndingRef.current = true;
+      try {
+        sessionStorage.removeItem('active_viva_session');
+      } catch {}
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+
+      vivaService.evaluateSession(sessionId).catch(e => console.error("Evaluation error on timeout:", e));
+
+      navigate('/complete', { state: { sessionId, timeExpired: true } });
+    }
+  }, [submitting, cancelSpeech, isRecording, isConnecting, stopRecording, cancelConnecting, stopAudioCapture, currentQuestion, getTranscriptText, sessionId, getAudioBlob, accessToken, navigate]);
+
+  // Enforce automated submission immediately when time expires
+  useEffect(() => {
+    if (timerExpired && !loading && currentQuestion && !isAutoSubmittingRef.current) {
+      handleAutoSubmit();
+    }
+  }, [timerExpired, loading, currentQuestion, handleAutoSubmit]);
 
   const handleNextAction = async () => {
     if (!currentQuestion || submitting) return;
@@ -140,6 +350,9 @@ export default function VivaInProgress() {
       
       // 1. Submit transcript JSON to answer endpoint
       await vivaService.submitAnswer(sessionId, currentQuestion.viva_question_id, transcriptToSubmit);
+      try {
+        sessionStorage.removeItem(`viva_draft_${sessionId}_${currentQuestion.viva_question_id}`);
+      } catch {}
       
       // 2. Immediately submit the recorded audio Blob to the /audio endpoint
       const recordedBlob = getAudioBlob();
@@ -162,6 +375,9 @@ export default function VivaInProgress() {
 
         // Exit fullscreen when the session finishes
         isEndingRef.current = true;
+        try {
+          sessionStorage.removeItem('active_viva_session');
+        } catch {}
         if (document.fullscreenElement) {
           document.exitFullscreen().catch(() => {});
         }

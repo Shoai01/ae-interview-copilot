@@ -228,8 +228,12 @@ export const vivaService = {
       // Fail silently — never interrupt the trainee's exam
     }
   },
-  submitDecision: async (sessionId, decision, notes) => {
-    const response = await api.put(`/viva/${sessionId}/decision`, { decision, notes: notes || null });
+  submitDecision: async (sessionId, decision, notes, finalScore) => {
+    const payload = { decision, notes: notes || null };
+    if (finalScore !== undefined && finalScore !== null) {
+      payload.final_score = parseFloat(finalScore);
+    }
+    const response = await api.put(`/viva/${sessionId}/decision`, payload);
     return response.data;
   }
 };

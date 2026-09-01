@@ -20,6 +20,7 @@ class SessionResponse(BaseModel):
     trainee_name: str
     duration_minutes: int
     total_questions: int
+    max_marks: int = 20
     start_time: Optional[datetime] = None
     new_user_password: Optional[str] = None
     
@@ -71,6 +72,7 @@ class EvaluationResponse(BaseModel):
 
 class VivaReportResponse(BaseModel):
     aggregate_score: Optional[float]
+    final_score: Optional[float] = None
     ai_recommendation: Optional[str]
     strengths: Optional[str]
     areas_of_improvement: Optional[str]
@@ -103,6 +105,7 @@ class SessionListItem(BaseModel):
 class TrainerDecisionRequest(BaseModel):
     decision: str  # PASS, FAIL, HOLD
     notes: Optional[str] = None
+    final_score: Optional[float] = None
 
 class BulkSessionTrainee(BaseModel):
     trainee_identifier: str

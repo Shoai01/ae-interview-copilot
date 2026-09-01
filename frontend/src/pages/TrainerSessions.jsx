@@ -67,7 +67,31 @@ export default function TrainerSessions() {
   useEffect(() => {
     fetchSessions();
     fetchAssignData();
+
+    // Restore any draft assignment configuration
+    try {
+      const saved = sessionStorage.getItem('trainer_assign_form_draft');
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft.assignForm) setAssignForm(draft.assignForm);
+        if (draft.assignMode) setAssignMode(draft.assignMode);
+        if (draft.bulkInputText) setBulkInputText(draft.bulkInputText);
+      }
+    } catch {}
   }, []);
+
+  // Persist assignment draft to storage
+  useEffect(() => {
+    if (openAssignModal || bulkInputText || assignForm.moduleId) {
+      try {
+        sessionStorage.setItem('trainer_assign_form_draft', JSON.stringify({
+          assignForm,
+          assignMode,
+          bulkInputText
+        }));
+      } catch {}
+    }
+  }, [openAssignModal, assignForm, assignMode, bulkInputText]);
 
   useEffect(() => {
     if (assignForm.moduleId) {
@@ -99,6 +123,9 @@ export default function TrainerSessions() {
           assignForm.questionCount,
           assignForm.setName
         );
+        try {
+          sessionStorage.removeItem('trainer_assign_form_draft');
+        } catch {}
         toast.success('Session assigned successfully! Email notification is being sent.');
         setOpenAssignModal(false);
         fetchSessions();
@@ -149,6 +176,9 @@ export default function TrainerSessions() {
           null, // Bulk batches use dynamic set assignment on exam start
           trainees
         );
+        try {
+          sessionStorage.removeItem('trainer_assign_form_draft');
+        } catch {}
         toast.success(`Successfully assigned ${result.success_count} sessions. Email notifications are being sent.`);
         setBulkResults(result.results);
         setOpenAssignModal(false);

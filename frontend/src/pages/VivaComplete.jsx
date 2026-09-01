@@ -12,7 +12,29 @@ export default function VivaComplete() {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user } = useAuth();
-  const sessionId = location.state?.sessionId;
+  
+  // Restore completed session info from location.state or sessionStorage
+  const getInitialCompletionData = () => {
+    if (location.state?.sessionId) {
+      const data = {
+        sessionId: location.state.sessionId,
+        timeExpired: Boolean(location.state.timeExpired)
+      };
+      try {
+        sessionStorage.setItem('last_completed_viva_session', JSON.stringify(data));
+      } catch {}
+      return data;
+    }
+    try {
+      const saved = sessionStorage.getItem('last_completed_viva_session');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {};
+  };
+
+  const [completionInfo, setCompletionInfo] = useState(getInitialCompletionData);
+  const sessionId = completionInfo.sessionId;
+  const timeExpired = completionInfo.timeExpired;
   
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,7 +42,23 @@ export default function VivaComplete() {
 
   useEffect(() => {
     if (!sessionId) {
-      navigate('/');
+      // Fallback: Check if user has an active/completed session from server
+      vivaService.getCurrentSession().then((session) => {
+        if (session && session.id) {
+          const recovered = {
+            sessionId: session.id,
+            timeExpired: false
+          };
+          try {
+            sessionStorage.setItem('last_completed_viva_session', JSON.stringify(recovered));
+          } catch {}
+          setCompletionInfo(recovered);
+        } else {
+          navigate('/');
+        }
+      }).catch(() => {
+        navigate('/');
+      });
       return;
     }
 
@@ -48,6 +86,9 @@ export default function VivaComplete() {
   };
 
   const handleLogout = async () => {
+    try {
+      sessionStorage.removeItem('last_completed_viva_session');
+    } catch {}
     await logout();
     navigate('/');
   };
@@ -204,12 +245,12 @@ export default function VivaComplete() {
 
             {/* Headlines */}
             <Chip
-              label="EXAMINATION CONCLUDED"
+              label={timeExpired ? "TIME LIMIT REACHED • CONCLUDED" : "EXAMINATION CONCLUDED"}
               size="small"
               sx={{
-                bgcolor: 'rgba(34, 197, 94, 0.08)',
-                color: '#16A34A',
-                border: '1px solid rgba(34, 197, 94, 0.25)',
+                bgcolor: timeExpired ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.08)',
+                color: timeExpired ? '#D97706' : '#16A34A',
+                border: `1px solid ${timeExpired ? 'rgba(245, 158, 11, 0.3)' : 'rgba(34, 197, 94, 0.25)'}`,
                 fontWeight: 700,
                 fontSize: '0.7rem',
                 letterSpacing: '0.05em',
@@ -245,7 +286,9 @@ export default function VivaComplete() {
                 mb: 4,
               }}
             >
-              Your spoken responses and video session telemetry have been recorded. Your trainer and evaluator will review your performance report shortly.
+              {timeExpired 
+                ? "Your session reached its allotted duration and was automatically finalized. Your spoken responses and telemetry have been recorded for evaluation."
+                : "Your spoken responses and video session telemetry have been recorded. Your trainer and evaluator will review your performance report shortly."}
             </Typography>
 
             {/* Session Stats Grid */}

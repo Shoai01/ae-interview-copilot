@@ -102,6 +102,7 @@ class VivaSession(Base):
     module_id = Column(Integer, ForeignKey("training_modules.id"), nullable=False)
     duration_minutes = Column(Integer, default=15) # default session length
     question_count = Column(Integer, nullable=True) # Optional explicitly set question count
+    max_marks = Column(Integer, default=20) # Total marks for the viva
     set_name = Column(String, nullable=True) # Optional explicitly assigned set name
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime, nullable=True)
@@ -158,6 +159,7 @@ class VivaReport(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     session_id = Column(Integer, ForeignKey("viva_sessions.id"), unique=True, nullable=False)
     aggregate_score = Column(Float, nullable=True)
+    final_score = Column(Float, nullable=True) # Actual marks awarded, potentially overridden
     ai_recommendation = Column(SQLEnum(AIRecommendationType), nullable=True)
     strengths = Column(Text, nullable=True)
     areas_of_improvement = Column(Text, nullable=True)
