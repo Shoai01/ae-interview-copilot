@@ -219,7 +219,8 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
         module_name=db_session.module.name if db_session.module else "Unknown",
         trainee_name=trainee.full_name or trainee.username,
         duration_minutes=db_session.duration_minutes,
-        total_questions=total_questions
+        total_questions=total_questions,
+        start_time=db_session.start_time
     )
 
 def get_current_session(db: Session, trainee_id: int) -> viva_schemas.SessionResponse:

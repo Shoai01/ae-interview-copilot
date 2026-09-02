@@ -1,5 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -170,6 +171,53 @@ async def upload_audio(
         raise HTTPException(status_code=404, detail="Question not found in session")
         
     return viva_schemas.StatusResponse(status="uploaded")
+
+@router.get("/{session_id}/answer/{viva_question_id}/audio")
+def stream_answer_audio(
+    session_id: int, 
+    viva_question_id: int, 
+    db: Session = Depends(get_db)
+):
+    """
+    Stream candidate audio recording with byte-range and CORS headers.
+    """
+    vq = viva_repository.get_viva_question(db, viva_question_id, session_id)
+    if not vq or not vq.audio_url:
+        raise HTTPException(status_code=404, detail="Audio recording not found")
+        
+    rel_path = vq.audio_url.lstrip('/')
+    if not os.path.exists(rel_path):
+        raise HTTPException(status_code=404, detail="Audio file missing on server disk")
+        
+    return FileResponse(
+        rel_path,
+        media_type="audio/webm",
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=86400",
+            "Access-Control-Allow-Origin": "*"
+        }
+    )
+
+@router.get("/audio/{filename}")
+def stream_audio_file(filename: str):
+    """
+    Direct audio file stream endpoint for recorded answers.
+    """
+    safe_filename = os.path.basename(filename)
+    file_path = os.path.join("uploads", "audio", safe_filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Audio file not found")
+        
+    return FileResponse(
+        file_path,
+        media_type="audio/webm",
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=86400",
+            "Access-Control-Allow-Origin": "*"
+        }
+    )
 
 @router.get("/{session_id}/summary", response_model=viva_schemas.SessionSummaryResponse)
 def get_session_summary_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

@@ -33,9 +33,11 @@ app.add_middleware(
         "http://localhost:3000",
         "https://ae-interview-copilot.pages.dev"
     ],
+    allow_origin_regex=r"https://.*\.pages\.dev|https://.*\.workers\.dev|https://.*\.cloudflare\.com|http://localhost:\d+|http://127\.0\.0\.1:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Range", "Accept-Ranges", "Content-Length", "Content-Type"]
 )
 
 os.makedirs("uploads", exist_ok=True)

@@ -62,6 +62,14 @@ export default function VivaInProgress() {
   const isAutoSubmittingRef = useRef(false);
   const isEndingRef = useRef(false);
 
+  // Clock tick every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Fraud and noise detection hooks
   const { detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
   const { noiseLevel } = useNoiseDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
@@ -147,22 +155,37 @@ export default function VivaInProgress() {
     };
   }, []);
 
-  // Clock tick every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNowTime(Date.now());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+  const mountTimeRef = useRef(Date.now());
 
-  const totalSeconds = sessionDuration * 60;
-  const elapsedSeconds = sessionStartTime 
-    ? Math.max(0, Math.floor((nowTime - new Date(sessionStartTime).getTime()) / 1000))
+  // Safe UTC timestamp parser to avoid local timezone offset miscalculations
+  const parseUtcTimestamp = (timeVal) => {
+    if (!timeVal) return null;
+    if (typeof timeVal === 'number') return timeVal;
+    let s = String(timeVal).trim();
+    if (!s) return null;
+    // If no timezone offset is present (no Z, no +, no - after time part), append Z for UTC
+    if (!s.endsWith('Z') && !s.includes('+') && !/[-+]\d{2}:\d{2}$/.test(s)) {
+      s = s + 'Z';
+    }
+    const t = new Date(s).getTime();
+    return isNaN(t) ? null : t;
+  };
+
+  // Server-synced countdown timer math
+  const parsedStartTime = parseUtcTimestamp(sessionStartTime);
+  const totalSeconds = (sessionDuration || 15) * 60;
+  
+  // Calculate elapsed seconds based on UTC server start time; clamp future skew to 0
+  const elapsedSeconds = parsedStartTime 
+    ? Math.max(0, Math.floor((nowTime - parsedStartTime) / 1000))
     : 0;
-  const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+  const remainingSeconds = Math.min(totalSeconds, Math.max(0, totalSeconds - elapsedSeconds));
   const timerMinutes = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
   const timerSecs = String(remainingSeconds % 60).padStart(2, '0');
-  const timerExpired = remainingSeconds <= 0 && sessionStartTime !== null;
+  
+  // Only trigger timeout if parsedStartTime is valid, remaining is strictly 0, and page has been loaded for > 5 seconds
+  const isMountedLongEnough = (nowTime - mountTimeRef.current) > 5000;
+  const timerExpired = parsedStartTime !== null && remainingSeconds <= 0 && isMountedLongEnough;
   const timerWarning = remainingSeconds <= 120 && remainingSeconds > 0; // last 2 min
 
   const { 

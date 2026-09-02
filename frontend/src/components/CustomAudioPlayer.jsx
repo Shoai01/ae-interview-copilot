@@ -116,11 +116,17 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch(err => {
-        console.error("Audio playback error:", err);
-      });
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true);
+          })
+          .catch((err) => {
+            console.error("Audio playback error:", err);
+            setIsPlaying(false);
+          });
+      }
     }
   };
 
@@ -141,7 +147,7 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
   const handleSkip = (seconds) => {
     if (audioRef.current) {
       const cur = audioRef.current.currentTime || 0;
-      const maxTime = (isFinite(duration) && duration > 0) ? duration : (fallbackDuration || 60);
+      const maxTime = (isFinite(duration) && duration > 0) ? duration : 60;
       const nextTime = Math.min(Math.max(0, cur + seconds), maxTime);
       audioRef.current.currentTime = nextTime;
       setCurrentTime(nextTime);
@@ -156,19 +162,19 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
   };
 
   const handleSpeedSelect = (rate) => {
+    setPlaybackRate(rate);
     if (audioRef.current) {
       audioRef.current.playbackRate = rate;
-      setPlaybackRate(rate);
     }
     setSpeedAnchorEl(null);
   };
 
-  const formatTime = (timeInSeconds) => {
-    if (!timeInSeconds || isNaN(timeInSeconds) || !isFinite(timeInSeconds)) return '0:00';
-    const totalSecs = Math.max(0, Math.floor(timeInSeconds));
+  const formatTime = (secs) => {
+    if (!isFinite(secs) || isNaN(secs) || secs < 0) return '0:00';
+    const totalSecs = Math.floor(secs);
     const mins = Math.floor(totalSecs / 60);
-    const secs = totalSecs % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    const remainingSecs = totalSecs % 60;
+    return `${mins}:${remainingSecs < 10 ? '0' : ''}${remainingSecs}`;
   };
 
   // Ensure only one audio plays at a time across the screen
@@ -218,6 +224,7 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
         ref={audioRef}
         src={src}
         preload="metadata"
+        crossOrigin="anonymous"
         onLoadedMetadata={handleLoadedMetadata}
         onDurationChange={handleDurationChange}
         onTimeUpdate={handleTimeUpdate}
