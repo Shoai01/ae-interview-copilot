@@ -112,6 +112,9 @@ def change_password(
     if not verify_password(request.old_password, current_user.password_hash):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect old password")
         
+    if request.new_password == request.old_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="New password must be different from the old password")
+        
     current_user.password_hash = get_password_hash(request.new_password)
     current_user.must_change_password = False
     db.commit()

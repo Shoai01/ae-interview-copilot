@@ -18,7 +18,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import { vivaService } from '@/services/api';
-import { globalState } from '@/store';
+import { globalState, AUDIO_CONSTRAINTS } from '@/store';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/store/AuthContext';
 
@@ -116,7 +116,7 @@ export default function WelcomeCheck() {
     const setupMedia = async () => {
       try {
         if (!globalState.mediaStream) {
-          globalState.mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          globalState.mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: AUDIO_CONSTRAINTS });
         }
         activeStream = globalState.mediaStream;
         setStream(activeStream);

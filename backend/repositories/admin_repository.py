@@ -143,7 +143,7 @@ def delete_set_questions(db: Session, module_id: int, set_name: str) -> None:
             q.is_active = False
         db.commit()
 
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, case
 
 def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
     session_query = db.query(domain.VivaSession)
@@ -155,7 +155,10 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
         
     total_interviews = session_query.count()
     
-    avg_score = report_query.with_entities(func.avg(domain.VivaReport.aggregate_score)).scalar()
+    # Average the raw final_score exactly as it is in the database (e.g. out of 20)
+    avg_score = report_query.with_entities(
+        func.avg(domain.VivaReport.final_score)
+    ).scalar()
     avg_performance_score = round(avg_score, 1) if avg_score else 0.0
     
     active_sessions = session_query.filter(domain.VivaSession.status == domain.SessionStatus.IN_PROGRESS).count()
@@ -185,7 +188,7 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
         )
     ).count()
     
-    completed_reports_query = db.query(domain.VivaSession.start_time, domain.VivaReport.aggregate_score)\
+    completed_reports_query = db.query(domain.VivaSession.start_time, domain.VivaReport.final_score)\
         .join(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)\
         .filter(domain.VivaSession.status == domain.SessionStatus.COMPLETED)
         
@@ -211,7 +214,7 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
         
     module_scores_query = db.query(
         domain.TrainingModule.name,
-        func.avg(domain.VivaReport.aggregate_score).label("avg_score")
+        func.avg(domain.VivaReport.final_score).label("avg_score")
     )\
     .select_from(domain.VivaSession)\
     .join(domain.TrainingModule, domain.VivaSession.module_id == domain.TrainingModule.id)\
@@ -235,7 +238,15 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
         domain.User.full_name,
         domain.User.username,
         domain.TrainingModule.name.label("module_name"),
-        domain.VivaReport.aggregate_score
+        domain.VivaReport.final_score.label("score"),
+        (domain.VivaReport.aggregate_score * (domain.VivaSession.max_marks / 10.0)).label("ai_score"),
+        func.nullif(
+            func.coalesce(
+                case((domain.VivaReport.reviewed_by != None, domain.VivaReport.final_score)), 
+                None
+            ), None
+        ).label("trainer_score"),
+        domain.VivaSession.max_marks
     )\
     .join(domain.User, domain.VivaSession.trainee_id == domain.User.id)\
     .join(domain.TrainingModule, domain.VivaSession.module_id == domain.TrainingModule.id)\
@@ -249,7 +260,7 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
     .limit(5).all()
     
     recent_activity = []
-    for sess, f_name, u_name, m_name, score in recent_sessions:
+    for sess, f_name, u_name, m_name, score, ai_score, trainer_score, max_marks in recent_sessions:
         name = f_name or u_name
         initials = "".join([part[0] for part in name.split()[:2]]).upper() if name else "??"
         recent_activity.append({
@@ -259,6 +270,9 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
             "module_name": m_name,
             "date": sess.start_time.strftime("%d %b, %Y") if sess.start_time else "N/A",
             "score": round(score, 1) if score is not None else None,
+            "ai_score": round(ai_score, 1) if ai_score is not None else None,
+            "trainer_score": round(trainer_score, 1) if trainer_score is not None else None,
+            "max_marks": max_marks,
             "status": sess.status.value
         })
         

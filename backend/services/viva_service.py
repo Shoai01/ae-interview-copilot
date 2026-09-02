@@ -55,12 +55,18 @@ def assign_session(db: Session, session_data: viva_schemas.SessionCreate, curren
     existing_session = viva_repository.get_active_session_by_trainee_id(db, trainee.id)
     
     if existing_session:
+        now = datetime.datetime.utcnow()
         if existing_session.status == domain.SessionStatus.PENDING and existing_session.start_time:
-            now = datetime.datetime.utcnow()
             if (now - existing_session.start_time).total_seconds() > 86400: # 24 hours
                 existing_session.status = domain.SessionStatus.EXPIRED
                 viva_repository.save_session(db, existing_session)
                 existing_session = None # It's expired, so they CAN have a new one
+        elif existing_session.status == domain.SessionStatus.IN_PROGRESS and existing_session.start_time:
+            # If session has exceeded its duration, it is timed out and abandoned
+            max_duration_seconds = existing_session.duration_minutes * 60
+            if (now - existing_session.start_time).total_seconds() >= max_duration_seconds:
+                viva_repository.end_session(db, existing_session, now)
+                existing_session = None
 
     if existing_session:
         raise ValueError("Trainee already has an active or pending session.")
@@ -351,8 +357,20 @@ def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSum
     
     last_answer_time = max([q.answered_at for q in answered_questions], default=session.start_time) if answered_questions else session.start_time
     
-    if session.end_time is None and questions_answered > 0 and questions_answered == total_questions:
-        viva_repository.end_session(db, session, last_answer_time)
+    if session.end_time is None:
+        now = datetime.datetime.utcnow()
+        should_end = False
+        
+        if questions_answered > 0 and questions_answered == total_questions:
+            should_end = True
+        elif session.status == domain.SessionStatus.IN_PROGRESS and session.start_time:
+            # Once backend time exceeds session duration, it is definitively over.
+            max_duration = session.duration_minutes * 60
+            if (now - session.start_time).total_seconds() >= max_duration:
+                should_end = True
+                
+        if should_end:
+            viva_repository.end_session(db, session, last_answer_time)
         
     end_time_to_use = session.end_time if session.end_time else last_answer_time
     duration_seconds = int((end_time_to_use - session.start_time).total_seconds())
@@ -393,6 +411,9 @@ def evaluate_session(db: Session, session_id: int):
                 'fraud_flags': flags
             })
             
+    if session.status != domain.SessionStatus.COMPLETED:
+        viva_repository.end_session(db, session, datetime.datetime.utcnow())
+        
     eval_result = ai_service.evaluate_interview_session(questions_data)
     
     for q_eval in eval_result.question_evaluations:
@@ -419,6 +440,7 @@ def evaluate_session(db: Session, session_id: int):
         areas_of_improvement=eval_result.areas_of_improvement
     )
     viva_repository.save_report(db, db_report)
+    
     return True
 
 def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFullReportResponse:

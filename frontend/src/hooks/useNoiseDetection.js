@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { globalState } from '@/store';
+import { acquireAudioGraph, releaseAudioGraph, ANALYSER_FFT_SIZE } from '@/utils/audioGraph';
 import { vivaService } from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -11,34 +11,34 @@ export function useNoiseDetection(sessionId, activeQuestionId, isEndingRef) {
   const [noiseLevel, setNoiseLevel] = useState('quiet'); // 'quiet', 'moderate', 'loud'
   const consecutiveLoudRef = useRef(0);
   const lastTriggeredRef = useRef(0);
-  const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
-  const sourceRef = useRef(null);
+  const dataArrayRef = useRef(new Uint8Array(ANALYSER_FFT_SIZE));
 
+  // Acquire the shared analyser once for the whole session (component lifetime)
   useEffect(() => {
-    if (!globalState.mediaStream) return;
-
-    try {
-      // Create audio context only if not exists
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-        analyserRef.current = audioContextRef.current.createAnalyser();
-        analyserRef.current.fftSize = 256;
-        sourceRef.current = audioContextRef.current.createMediaStreamSource(globalState.mediaStream);
-        sourceRef.current.connect(analyserRef.current);
-      }
-    } catch (err) {
-      console.warn("Failed to initialize AudioContext for noise detection", err);
+    const graph = acquireAudioGraph();
+    if (!graph) {
+      console.warn("Failed to initialize shared audio graph for noise detection");
       return;
     }
+    analyserRef.current = graph.analyserNode;
 
-    const dataArray = new Uint8Array(analyserRef.current.fftSize);
-    
+    return () => {
+      analyserRef.current = null;
+      releaseAudioGraph();
+    };
+  }, []);
+
+  // Poll for sustained loud noise
+  useEffect(() => {
     const intervalId = setInterval(() => {
       if (isEndingRef?.current || !activeQuestionId) return;
+      const analyser = analyserRef.current;
+      if (!analyser) return;
 
-      analyserRef.current.getByteTimeDomainData(dataArray);
-      
+      const dataArray = dataArrayRef.current;
+      analyser.getByteTimeDomainData(dataArray);
+
       let sumSquares = 0;
       for (let i = 0; i < dataArray.length; i++) {
         const normalized = (dataArray[i] / 128.0) - 1.0;
@@ -63,27 +63,16 @@ export function useNoiseDetection(sessionId, activeQuestionId, isEndingRef) {
         if (now - lastTriggeredRef.current > COOLDOWN_MS) {
           lastTriggeredRef.current = now;
           consecutiveLoudRef.current = 0; // Reset counter
-          
+
           toast.error("⚠️ Warning: Excessive background noise detected and recorded.");
-          
+
           vivaService.reportFraudFlag(sessionId, activeQuestionId, 'BACKGROUND_NOISE')
             .catch(err => console.warn("Failed to report noise flag", err));
         }
       }
     }, 500);
 
-    return () => {
-      clearInterval(intervalId);
-      // Clean up audio context
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        try {
-          audioContextRef.current.close();
-          audioContextRef.current = null;
-        } catch (e) {
-          console.error("Error closing AudioContext", e);
-        }
-      }
-    };
+    return () => clearInterval(intervalId);
   }, [sessionId, activeQuestionId, isEndingRef]);
 
   return { noiseLevel };

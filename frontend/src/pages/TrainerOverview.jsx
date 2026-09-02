@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableHead, TableRow, TablePagination, Avatar, Chip, keyframes, CircularProgress, Select, MenuItem, LinearProgress } from '@mui/material';
+import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableHead, TableRow, TablePagination, Avatar, Chip, keyframes, CircularProgress, Select, MenuItem, LinearProgress, Tooltip } from '@mui/material';
 import Layout from '@/components/Layout';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import GroupIcon from '@mui/icons-material/Group';
@@ -113,7 +113,7 @@ export default function TrainerOverview() {
     { 
       label: 'Average Score', 
       value: metrics.avg_performance_score != null ? `${Number(metrics.avg_performance_score).toFixed(1)}` : '—',
-      suffix: '/10',
+      suffix: '',
       icon: <GradeIcon sx={{ fontSize: 20 }} />,
       lightBg: 'rgba(242, 101, 34, 0.08)',
       color: '#F26522'
@@ -351,7 +351,7 @@ export default function TrainerOverview() {
                         ))}
                       </Pie>
                       <RechartsTooltip 
-                        formatter={(value) => [`${value}%`, 'Avg Score']}
+                        formatter={(value) => [`${value}`, 'Avg Score']}
                         contentStyle={{ 
                           borderRadius: 8, 
                           border: '1px solid #E2E8F0', 
@@ -518,14 +518,21 @@ export default function TrainerOverview() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {metrics.recent_activity.length > 0 ? metrics.recent_activity.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((activity, idx) => (
+                  {metrics.recent_activity.length > 0 ? metrics.recent_activity.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((activity, idx) => {
+                    const max = activity.max_marks || 20;
+                    const pct = activity.score != null ? (activity.score / max) * 100 : 0;
+                    const trainerPct = activity.trainer_score != null ? (activity.trainer_score / max) * 100 : 0;
+                    const aiPct = activity.ai_score != null ? (activity.ai_score / max) * 100 : 0;
+                    
+                    return (
                   <TableRow 
                     hover 
                     key={idx}
+                    onClick={() => navigate(`/hr/review/${activity.session_id}`)}
                     sx={{ 
                       '&:hover': { bgcolor: '#F8FAFC' },
                       transition: 'background 0.15s',
-                      cursor: 'default'
+                      cursor: 'pointer'
                     }}
                   >
                     <TableCell sx={{ borderBottom: '1px solid #F1F5F9', py: 1.6 }}>
@@ -554,38 +561,41 @@ export default function TrainerOverview() {
                     </TableCell>
                     <TableCell sx={{ borderBottom: '1px solid #F1F5F9' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Typography variant="body2" sx={{ 
-                          fontWeight: 700, 
-                          fontFamily: 'DM Sans, sans-serif',
-                          color: activity.score ? (activity.score >= 80 ? '#16A34A' : activity.score >= 50 ? '#D97706' : '#DC2626') : '#94A3B8',
-                          minWidth: 28,
-                          fontSize: '0.875rem'
-                        }}>
-                          {activity.score ?? '—'}
-                        </Typography>
-                        <Box sx={{ width: 52, height: 5, bgcolor: '#F1F5F9', borderRadius: 2, overflow: 'hidden' }}>
-                          <Box sx={{ 
-                            width: activity.score ? `${activity.score}%` : (activity.status === 'IN_PROGRESS' ? '45%' : '0%'), 
-                            height: '100%', 
-                            bgcolor: activity.score 
-                              ? (activity.score >= 80 ? '#22C55E' : activity.score >= 50 ? '#F59E0B' : '#EF4444') 
-                              : '#F26522', 
-                            borderRadius: 2,
-                            transition: 'width 0.4s ease',
-                            animation: activity.status === 'IN_PROGRESS' ? `${shimmer} 2s infinite` : 'none',
-                            backgroundSize: activity.status === 'IN_PROGRESS' ? '200% 100%' : 'auto',
-                            backgroundImage: activity.status === 'IN_PROGRESS' 
-                              ? 'linear-gradient(90deg, #F26522 25%, #ff9a44 50%, #F26522 75%)' 
-                              : 'none'
-                          }} />
-                        </Box>
+                        {activity.trainer_score !== null && activity.trainer_score !== undefined ? (
+                          <Tooltip title={`Trainer Reviewed (AI originally scored ${activity.ai_score ?? 'N/A'})`} placement="top">
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'help' }}>
+                              <Typography variant="body2" sx={{ 
+                                fontWeight: 800, 
+                                fontFamily: 'DM Sans, sans-serif',
+                                color: '#0F172A',
+                                minWidth: 28,
+                                fontSize: '0.875rem'
+                              }}>
+                                {activity.trainer_score}
+                              </Typography>
+                            </Box>
+                          </Tooltip>
+                        ) : (
+                          <Tooltip title="AI Auto-Score" placement="top">
+                            <Typography variant="body2" sx={{ 
+                              fontWeight: 700, 
+                              fontFamily: 'DM Sans, sans-serif',
+                              color: activity.ai_score ? '#0F172A' : '#94A3B8',
+                              minWidth: 28,
+                              fontSize: '0.875rem',
+                              cursor: 'default'
+                            }}>
+                              {activity.ai_score ?? '—'}
+                            </Typography>
+                          </Tooltip>
+                        )}
                       </Box>
                     </TableCell>
                     <TableCell sx={{ borderBottom: '1px solid #F1F5F9' }}>
                       <StatusChip status={activity.status} pulse={pulse} />
                     </TableCell>
                   </TableRow>
-                )) : (
+                  )}) : (
                   <TableRow>
                     <TableCell colSpan={5} align="center" sx={{ py: 6, borderBottom: 'none' }}>
                       <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 1.5 }}>

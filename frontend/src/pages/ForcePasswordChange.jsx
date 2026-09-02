@@ -61,6 +61,11 @@ export default function ForcePasswordChange() {
       return;
     }
 
+    if (newPassword === oldPassword) {
+      setErrorMsg('New password must be different from your current temporary password.');
+      return;
+    }
+
     setLoading(true);
     try {
       await authService.changePassword(oldPassword, newPassword);

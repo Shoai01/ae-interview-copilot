@@ -97,6 +97,9 @@ class RecentActivity(BaseModel):
     module_name: str
     date: str
     score: Optional[float]
+    ai_score: Optional[float] = None
+    trainer_score: Optional[float] = None
+    max_marks: Optional[int] = None
     status: str
 
 class DashboardResponse(BaseModel):
