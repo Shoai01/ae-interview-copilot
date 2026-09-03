@@ -164,16 +164,16 @@ export default function ForcePasswordChange() {
           >
             <KeyOutlinedIcon sx={{ fontSize: 28 }} />
           </Box>
-          <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', letterSpacing: '-0.02em', mb: 1 }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', mb: 1 }}>
             Reset Password
           </Typography>
-          <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5 }}>
+          <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5 }}>
             Welcome, <strong>{user?.full_name || user?.username}</strong>! For your account security, please update your temporary credentials before continuing.
           </Typography>
         </Box>
 
         {errorMsg && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: 2, fontFamily: 'DM Sans, sans-serif' }}>
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2}}>
             {errorMsg}
           </Alert>
         )}
@@ -182,7 +182,7 @@ export default function ForcePasswordChange() {
           <Stack spacing={2.5}>
             {/* Current Password Field */}
             <Box>
-              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155'}}>
                 Temporary / Current Password *
               </Typography>
               <TextField
@@ -218,7 +218,6 @@ export default function ForcePasswordChange() {
                   '& .MuiOutlinedInput-root': {
                     bgcolor: '#F8FAFC',
                     borderRadius: 2,
-                    fontFamily: 'DM Sans, sans-serif',
                     '& fieldset': { borderColor: '#E2E8F0' },
                     '&:hover fieldset': { borderColor: '#CBD5E1' },
                     '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '1.5px' },
@@ -229,7 +228,7 @@ export default function ForcePasswordChange() {
 
             {/* New Password Field */}
             <Box>
-              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155'}}>
                 New Password *
               </Typography>
               <TextField
@@ -265,7 +264,6 @@ export default function ForcePasswordChange() {
                   '& .MuiOutlinedInput-root': {
                     bgcolor: '#F8FAFC',
                     borderRadius: 2,
-                    fontFamily: 'DM Sans, sans-serif',
                     '& fieldset': { borderColor: '#E2E8F0' },
                     '&:hover fieldset': { borderColor: '#CBD5E1' },
                     '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '1.5px' },
@@ -276,7 +274,7 @@ export default function ForcePasswordChange() {
 
             {/* Confirm New Password Field */}
             <Box>
-              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ display: 'block', mb: 0.75, fontWeight: 600, color: '#334155'}}>
                 Confirm New Password *
               </Typography>
               <TextField
@@ -312,7 +310,6 @@ export default function ForcePasswordChange() {
                   '& .MuiOutlinedInput-root': {
                     bgcolor: '#F8FAFC',
                     borderRadius: 2,
-                    fontFamily: 'DM Sans, sans-serif',
                     '& fieldset': { borderColor: '#E2E8F0' },
                     '&:hover fieldset': { borderColor: '#CBD5E1' },
                     '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '1.5px' },
@@ -325,13 +322,13 @@ export default function ForcePasswordChange() {
             <Box sx={{ p: 1.5, bgcolor: '#F8FAFC', borderRadius: 2, border: '1px solid #E2E8F0' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                 <CheckCircleOutlinedIcon sx={{ fontSize: 16, color: isLengthValid ? '#16A34A' : '#94A3B8' }} />
-                <Typography variant="caption" sx={{ color: isLengthValid ? '#16A34A' : '#64748B', fontWeight: isLengthValid ? 600 : 400, fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="caption" sx={{ color: isLengthValid ? '#16A34A' : '#64748B', fontWeight: isLengthValid ? 600 : 400}}>
                   At least 4 characters long
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <CheckCircleOutlinedIcon sx={{ fontSize: 16, color: isMatchValid ? '#16A34A' : '#94A3B8' }} />
-                <Typography variant="caption" sx={{ color: isMatchValid ? '#16A34A' : '#64748B', fontWeight: isMatchValid ? 600 : 400, fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="caption" sx={{ color: isMatchValid ? '#16A34A' : '#64748B', fontWeight: isMatchValid ? 600 : 400}}>
                   New passwords match
                 </Typography>
               </Box>
@@ -347,7 +344,6 @@ export default function ForcePasswordChange() {
               sx={{
                 py: 1.3,
                 fontWeight: 700,
-                fontFamily: 'DM Sans, sans-serif',
                 mt: 1,
                 borderRadius: 2,
                 textTransform: 'none',
@@ -374,7 +370,6 @@ export default function ForcePasswordChange() {
                   color: '#64748B',
                   fontSize: '0.85rem',
                   fontWeight: 600,
-                  fontFamily: 'DM Sans, sans-serif',
                   textTransform: 'none',
                   '&:hover': {
                     color: '#0F172A',

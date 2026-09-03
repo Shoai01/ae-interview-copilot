@@ -335,7 +335,7 @@ export default function TrainerSessions() {
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', letterSpacing: '-0.02em' }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>
                 Viva Sessions
               </Typography>
               <Tooltip title="Refresh sessions" arrow>
@@ -355,7 +355,7 @@ export default function TrainerSessions() {
                 </IconButton>
               </Tooltip>
             </Box>
-            <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', mt: 0.5 }}>
+            <Typography variant="body2" sx={{ color: '#64748B', mt: 0.5 }}>
               Monitor live candidate examinations, assign new interviews, and review performance reports.
             </Typography>
           </Box>
@@ -371,7 +371,6 @@ export default function TrainerSessions() {
               px: 3,
               py: 1.1,
               fontWeight: 700,
-              fontFamily: 'DM Sans, sans-serif',
               textTransform: 'none',
               boxShadow: '0 4px 14px rgba(242, 101, 34, 0.3)',
               alignSelf: { xs: 'flex-start', sm: 'auto' },
@@ -389,10 +388,10 @@ export default function TrainerSessions() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2 }}>
           <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 Total Sessions
               </Typography>
-              <Typography variant="h4" sx={{ color: '#0F172A', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h4" sx={{ color: '#0F172A', fontWeight: 700, mt: 0.5 }}>
                 {totalCount}
               </Typography>
             </Box>
@@ -403,10 +402,10 @@ export default function TrainerSessions() {
 
           <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 In Progress
               </Typography>
-              <Typography variant="h4" sx={{ color: '#F26522', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h4" sx={{ color: '#F26522', fontWeight: 700, mt: 0.5 }}>
                 {inProgressCount}
               </Typography>
             </Box>
@@ -417,10 +416,10 @@ export default function TrainerSessions() {
 
           <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 Pending Review
               </Typography>
-              <Typography variant="h4" sx={{ color: '#D97706', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h4" sx={{ color: '#D97706', fontWeight: 700, mt: 0.5 }}>
                 {pendingCount}
               </Typography>
             </Box>
@@ -431,10 +430,10 @@ export default function TrainerSessions() {
 
           <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 Certified (Pass)
               </Typography>
-              <Typography variant="h4" sx={{ color: '#16A34A', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h4" sx={{ color: '#16A34A', fontWeight: 700, mt: 0.5 }}>
                 {passCount}
               </Typography>
             </Box>
@@ -459,7 +458,6 @@ export default function TrainerSessions() {
                   minWidth: 180,
                   bgcolor: '#FFFFFF',
                   borderRadius: 2,
-                  fontFamily: 'DM Sans, sans-serif',
                   fontSize: '0.85rem',
                   '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E2E8F0' },
                   '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
@@ -480,7 +478,6 @@ export default function TrainerSessions() {
                   minWidth: 140,
                   bgcolor: '#FFFFFF',
                   borderRadius: 2,
-                  fontFamily: 'DM Sans, sans-serif',
                   fontSize: '0.85rem',
                   '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E2E8F0' },
                   '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
@@ -501,7 +498,6 @@ export default function TrainerSessions() {
                   minWidth: 140,
                   bgcolor: '#FFFFFF',
                   borderRadius: 2,
-                  fontFamily: 'DM Sans, sans-serif',
                   fontSize: '0.85rem',
                   '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E2E8F0' },
                   '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
@@ -521,7 +517,6 @@ export default function TrainerSessions() {
                   startIcon={<FilterListOffIcon sx={{ fontSize: 16 }} />}
                   sx={{
                     color: '#64748B',
-                    fontFamily: 'DM Sans, sans-serif',
                     textTransform: 'none',
                     fontWeight: 600,
                     fontSize: '0.8rem',
@@ -533,7 +528,7 @@ export default function TrainerSessions() {
               )}
             </Box>
 
-            <Typography variant="caption" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
+            <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 500 }}>
               Showing {filteredSessions.length} session{filteredSessions.length !== 1 ? 's' : ''}
             </Typography>
           </Box>
@@ -543,7 +538,7 @@ export default function TrainerSessions() {
             {loading ? (
               <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 350, gap: 1.5 }}>
                 <CircularProgress sx={{ color: 'primary.main' }} />
-                <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="body2" sx={{ color: '#64748B'}}>
                   Loading sessions...
                 </Typography>
               </Box>
@@ -551,19 +546,19 @@ export default function TrainerSessions() {
               <Table sx={{ minWidth: 800 }} aria-label="sessions table">
                 <TableHead>
                   <TableRow sx={{ bgcolor: '#F8FAFC' }}>
-                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Trainee</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Identifier</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Module</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Result</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Date</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Action</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Trainee</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Identifier</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Module</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Result</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Date</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #E2E8F0', py: 1.75 }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {filteredSessions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 8, color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+                      <TableCell colSpan={7} align="center" sx={{ py: 8, color: '#64748B'}}>
                         No viva sessions found matching the selected criteria.
                       </TableCell>
                     </TableRow>
@@ -579,23 +574,23 @@ export default function TrainerSessions() {
                     >
                       <TableCell sx={{ py: 1.75, borderBottom: '1px solid #F1F5F9' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-                          <Avatar sx={{ width: 30, height: 30, bgcolor: 'rgba(242, 101, 34, 0.1)', color: '#F26522', fontSize: '0.75rem', fontWeight: 700, fontFamily: 'Syne, sans-serif' }}>
+                          <Avatar sx={{ width: 30, height: 30, bgcolor: 'rgba(242, 101, 34, 0.1)', color: '#F26522', fontSize: '0.75rem', fontWeight: 700}}>
                             {(row.trainee_name || 'U').charAt(0).toUpperCase()}
                           </Avatar>
-                          <Typography sx={{ fontWeight: 600, color: '#0F172A', fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem' }}>
+                          <Typography sx={{ fontWeight: 600, color: '#0F172A', fontSize: '0.875rem' }}>
                             {row.trainee_name || 'Unknown'}
                           </Typography>
                         </Box>
                       </TableCell>
 
                       <TableCell sx={{ py: 1.75, borderBottom: '1px solid #F1F5F9' }}>
-                        <Typography sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontSize: '0.825rem' }}>
+                        <Typography sx={{ color: '#64748B', fontSize: '0.825rem' }}>
                           {row.username || '—'}
                         </Typography>
                       </TableCell>
 
                       <TableCell sx={{ py: 1.75, borderBottom: '1px solid #F1F5F9' }}>
-                        <Box sx={{ display: 'inline-flex', px: 1.25, py: 0.4, bgcolor: 'rgba(242, 101, 34, 0.08)', border: '1px solid rgba(242, 101, 34, 0.2)', borderRadius: 1.5, fontSize: '0.775rem', fontWeight: 600, color: '#F26522', fontFamily: 'DM Sans, sans-serif' }}>
+                        <Box sx={{ display: 'inline-flex', px: 1.25, py: 0.4, bgcolor: 'rgba(242, 101, 34, 0.08)', border: '1px solid rgba(242, 101, 34, 0.2)', borderRadius: 1.5, fontSize: '0.775rem', fontWeight: 600, color: '#F26522'}}>
                           {row.module_name}
                         </Box>
                       </TableCell>
@@ -606,7 +601,7 @@ export default function TrainerSessions() {
                             {row.trainer_decision === 'PASS' && <CheckCircleIcon sx={{ fontSize: 16, color: '#16A34A' }} />}
                             {row.trainer_decision === 'HOLD' && <WarningIcon sx={{ fontSize: 16, color: '#D97706' }} />}
                             {row.trainer_decision === 'FAIL' && <CancelIcon sx={{ fontSize: 16, color: '#DC2626' }} />}
-                            <Typography sx={{ fontSize: '0.825rem', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', color: row.trainer_decision === 'PASS' ? '#16A34A' : row.trainer_decision === 'HOLD' ? '#D97706' : '#DC2626' }}>
+                            <Typography sx={{ fontSize: '0.825rem', fontWeight: 700, color: row.trainer_decision === 'PASS' ? '#16A34A' : row.trainer_decision === 'HOLD' ? '#D97706' : '#DC2626' }}>
                               {row.trainer_decision} (Trainer)
                             </Typography>
                           </Stack>
@@ -615,12 +610,12 @@ export default function TrainerSessions() {
                             {row.ai_recommendation === 'PASS' && <CheckCircleIcon sx={{ fontSize: 16, color: '#16A34A' }} />}
                             {row.ai_recommendation === 'BORDERLINE' && <WarningIcon sx={{ fontSize: 16, color: '#D97706' }} />}
                             {row.ai_recommendation === 'FAIL' && <CancelIcon sx={{ fontSize: 16, color: '#DC2626' }} />}
-                            <Typography sx={{ fontSize: '0.825rem', fontWeight: 600, fontFamily: 'DM Sans, sans-serif', color: row.ai_recommendation === 'PASS' ? '#16A34A' : row.ai_recommendation === 'BORDERLINE' ? '#D97706' : '#DC2626' }}>
+                            <Typography sx={{ fontSize: '0.825rem', fontWeight: 600, color: row.ai_recommendation === 'PASS' ? '#16A34A' : row.ai_recommendation === 'BORDERLINE' ? '#D97706' : '#DC2626' }}>
                               {row.ai_recommendation} (AI)
                             </Typography>
                           </Stack>
                         ) : row.status === 'Pending Review' ? (
-                          <Typography sx={{ fontSize: '0.825rem', color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontStyle: 'italic' }}>
+                          <Typography sx={{ fontSize: '0.825rem', color: '#64748B', fontStyle: 'italic' }}>
                             Evaluating...
                           </Typography>
                         ) : (
@@ -636,7 +631,6 @@ export default function TrainerSessions() {
                             height: 24, 
                             fontSize: '0.725rem',
                             fontWeight: 700,
-                            fontFamily: 'DM Sans, sans-serif',
                             bgcolor: row.status === 'Reviewed' ? 'rgba(34, 197, 94, 0.1)' : row.status === 'Expired' ? 'rgba(239, 68, 68, 0.1)' : row.status === 'In Progress' ? 'rgba(242, 101, 34, 0.1)' : row.status === 'Pending Review' ? 'rgba(245, 158, 11, 0.1)' : '#F1F5F9',
                             color: row.status === 'Reviewed' ? '#16A34A' : row.status === 'Expired' ? '#DC2626' : row.status === 'In Progress' ? '#F26522' : row.status === 'Pending Review' ? '#D97706' : '#64748B',
                             border: '1px solid',
@@ -646,7 +640,7 @@ export default function TrainerSessions() {
                         />
                       </TableCell>
 
-                      <TableCell sx={{ py: 1.75, color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontSize: '0.825rem', borderBottom: '1px solid #F1F5F9' }}>
+                      <TableCell sx={{ py: 1.75, color: '#64748B', fontSize: '0.825rem', borderBottom: '1px solid #F1F5F9' }}>
                         {row.date}
                       </TableCell>
 
@@ -660,7 +654,6 @@ export default function TrainerSessions() {
                             fontWeight: 600, 
                             textTransform: 'none',
                             fontSize: '0.8rem',
-                            fontFamily: 'DM Sans, sans-serif',
                             borderColor: '#CBD5E1',
                             color: '#0F172A',
                             px: 1.75,
@@ -694,9 +687,7 @@ export default function TrainerSessions() {
               sx={{
                 borderTop: '1px solid #E2E8F0',
                 bgcolor: '#FFFFFF',
-                fontFamily: 'DM Sans, sans-serif',
                 '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-                  fontFamily: 'DM Sans, sans-serif',
                   fontSize: '0.85rem',
                   color: '#64748B',
                 }
@@ -722,7 +713,7 @@ export default function TrainerSessions() {
           },
         }}
       >
-        <DialogTitle sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, pb: 2, borderBottom: '1px solid #E2E8F0', bgcolor: '#FFFFFF', color: '#0F172A', fontSize: '1.2rem' }}>
+        <DialogTitle sx={{ fontWeight: 700, pb: 2, borderBottom: '1px solid #E2E8F0', bgcolor: '#FFFFFF', color: '#0F172A', fontSize: '1.2rem' }}>
           Assign New Viva Session
         </DialogTitle>
         <DialogContent sx={{ mt: 2, p: 3 }}>
@@ -745,7 +736,6 @@ export default function TrainerSessions() {
                     py: 0.75,
                     fontWeight: 600,
                     textTransform: 'none',
-                    fontFamily: 'DM Sans, sans-serif',
                     color: '#64748B',
                     '&.Mui-selected': {
                       bgcolor: '#FFFFFF',
@@ -808,7 +798,7 @@ export default function TrainerSessions() {
               </>
             ) : (
               <Box sx={{ p: 2.5, bgcolor: '#F8FAFC', borderRadius: 2, border: '1px dashed #CBD5E1' }}>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontFamily: 'DM Sans, sans-serif', textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, textAlign: 'center' }}>
                   Paste rows directly from Excel or upload a CSV file.<br/>
                   <strong>Format:</strong> <code>Username, Full Name</code>
                 </Typography>
@@ -824,7 +814,7 @@ export default function TrainerSessions() {
                 />
                 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Button variant="text" size="small" onClick={handleDownloadTemplate} sx={{ textTransform: 'none', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+                  <Button variant="text" size="small" onClick={handleDownloadTemplate} sx={{ textTransform: 'none', fontWeight: 600}}>
                     Download Template
                   </Button>
                   <Box>
@@ -840,7 +830,7 @@ export default function TrainerSessions() {
                       size="small"
                       startIcon={<FileUploadIcon />}
                       onClick={() => fileInputRef.current?.click()}
-                      sx={{ textTransform: 'none', fontWeight: 600, fontFamily: 'DM Sans, sans-serif', borderColor: '#CBD5E1', color: '#0F172A' }}
+                      sx={{ textTransform: 'none', fontWeight: 600, borderColor: '#CBD5E1', color: '#0F172A' }}
                     >
                       Upload CSV
                     </Button>
@@ -850,7 +840,7 @@ export default function TrainerSessions() {
             )}
 
             <Divider />
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0F172A', fontFamily: 'DM Sans, sans-serif' }}>Module Settings</Typography>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0F172A'}}>Module Settings</Typography>
             <FormControl fullWidth>
               <InputLabel>Module</InputLabel>
               <Select
@@ -885,10 +875,10 @@ export default function TrainerSessions() {
                     i
                   </Box>
                   <Box>
-                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', fontFamily: 'DM Sans, sans-serif', mb: 0.25 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', mb: 0.25 }}>
                       Dynamic Question Set Allocation
                     </Typography>
-                    <Typography variant="caption" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5, display: 'block' }}>
+                    <Typography variant="caption" sx={{ color: '#64748B', lineHeight: 1.5, display: 'block' }}>
                       For bulk batches, question sets are automatically distributed at random when each candidate starts their exam to ensure question variety across the cohort.
                     </Typography>
                   </Box>
@@ -922,7 +912,7 @@ export default function TrainerSessions() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2.5, bgcolor: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
-          <Button onClick={closeAssignModal} sx={{ color: '#64748B', fontWeight: 600, fontFamily: 'DM Sans, sans-serif', textTransform: 'none' }}>
+          <Button onClick={closeAssignModal} sx={{ color: '#64748B', fontWeight: 600, textTransform: 'none' }}>
             Cancel
           </Button>
           <Button 
@@ -933,7 +923,6 @@ export default function TrainerSessions() {
               background: 'linear-gradient(90deg, #e8581a 0%, #F26522 50%, #ff8c42 100%)',
               color: '#FFFFFF !important',
               fontWeight: 700,
-              fontFamily: 'DM Sans, sans-serif',
               px: 3.5,
               py: 1,
               borderRadius: 2,
@@ -951,7 +940,7 @@ export default function TrainerSessions() {
 
       {/* Bulk Results Dialog */}
       <Dialog open={Boolean(bulkResults)} onClose={() => setBulkResults(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, border: '1px solid #E2E8F0' } }}>
-        <DialogTitle sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, bgcolor: '#FFFFFF', borderBottom: '1px solid #E2E8F0', color: '#0F172A' }}>
+        <DialogTitle sx={{ fontWeight: 700, bgcolor: '#FFFFFF', borderBottom: '1px solid #E2E8F0', color: '#0F172A' }}>
           Bulk Assignment Results
         </DialogTitle>
         <DialogContent sx={{ p: 0 }}>
@@ -960,12 +949,12 @@ export default function TrainerSessions() {
               <Box key={i}>
                 <ListItem sx={{ py: 1.5, px: 3 }}>
                   <ListItemText 
-                    primary={<Typography sx={{ fontWeight: 600, fontSize: 14, fontFamily: 'DM Sans, sans-serif' }}>{res.identifier} {res.full_name ? `(${res.full_name})` : ''}</Typography>}
+                    primary={<Typography sx={{ fontWeight: 600, fontSize: 14}}>{res.identifier} {res.full_name ? `(${res.full_name})` : ''}</Typography>}
                     secondary={
                       res.error ? (
-                        <Typography variant="body2" color="error.main" sx={{ mt: 0.5, fontFamily: 'DM Sans, sans-serif' }}>Error: {res.error}</Typography>
+                        <Typography variant="body2" color="error.main" sx={{ mt: 0.5}}>Error: {res.error}</Typography>
                       ) : (
-                        <Typography variant="body2" sx={{ color: 'success.main', mt: 0.5, fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" sx={{ color: 'success.main', mt: 0.5}}>
                           Assigned successfully!
                         </Typography>
                       )
@@ -978,7 +967,7 @@ export default function TrainerSessions() {
           </List>
         </DialogContent>
         <DialogActions sx={{ p: 2, bgcolor: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
-          <Button variant="contained" onClick={() => setBulkResults(null)} sx={{ borderRadius: 2, px: 3, textTransform: 'none', fontWeight: 600, fontFamily: 'DM Sans, sans-serif', bgcolor: '#0F172A', '&:hover': { bgcolor: '#1E293B' } }}>
+          <Button variant="contained" onClick={() => setBulkResults(null)} sx={{ borderRadius: 2, px: 3, textTransform: 'none', fontWeight: 600, bgcolor: '#0F172A', '&:hover': { bgcolor: '#1E293B' } }}>
             Close
           </Button>
         </DialogActions>

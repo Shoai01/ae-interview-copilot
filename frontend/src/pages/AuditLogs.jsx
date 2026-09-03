@@ -115,10 +115,10 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
             <PeopleAltOutlinedIcon sx={{ fontSize: 20 }} />
           </Box>
           <Box>
-            <Typography variant="subtitle2" sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, color: '#0F172A', fontSize: '0.95rem', lineHeight: 1.2 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#0F172A', fontSize: '0.95rem', lineHeight: 1.2 }}>
               Assigned Trainees
             </Typography>
-            <Typography variant="caption" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#64748B', fontSize: '0.75rem' }}>
+            <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.75rem' }}>
               Batch enrollment recipient list
             </Typography>
           </Box>
@@ -130,7 +130,6 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
               height: 22, 
               fontSize: '11px', 
               fontWeight: 700, 
-              fontFamily: 'DM Sans, sans-serif',
               bgcolor: 'rgba(242, 101, 34, 0.1)', 
               color: 'primary.main', 
               borderRadius: 1 
@@ -144,7 +143,6 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                 height: 22, 
                 fontSize: '11px', 
                 fontWeight: 700, 
-                fontFamily: 'DM Sans, sans-serif',
                 bgcolor: 'rgba(34, 197, 94, 0.1)', 
                 color: '#16A34A', 
                 border: '1px solid rgba(34, 197, 94, 0.2)',
@@ -160,7 +158,6 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                 height: 22, 
                 fontSize: '11px', 
                 fontWeight: 700, 
-                fontFamily: 'DM Sans, sans-serif',
                 bgcolor: 'rgba(239, 68, 68, 0.1)', 
                 color: '#DC2626', 
                 border: '1px solid rgba(239, 68, 68, 0.2)',
@@ -197,7 +194,6 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                 '& .MuiOutlinedInput-root': {
                   height: 34,
                   fontSize: 12,
-                  fontFamily: 'DM Sans, sans-serif',
                   bgcolor: '#F8FAFC',
                   borderRadius: 1.5,
                   '& fieldset': { borderColor: '#E2E8F0' },
@@ -217,7 +213,6 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
               sx={{
                 height: 34,
                 fontSize: 12,
-                fontFamily: 'DM Sans, sans-serif',
                 textTransform: 'none',
                 fontWeight: 600,
                 color: copied ? '#16A34A' : '#0F172A',
@@ -240,10 +235,10 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
       {/* Trainees Grid Area */}
       {filtered.length === 0 ? (
         <Box sx={{ py: 3, textAlign: 'center' }}>
-          <Typography variant="body2" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#64748B', fontSize: 13 }}>
+          <Typography variant="body2" sx={{ color: '#64748B', fontSize: 13 }}>
             No trainees match "{search}"
           </Typography>
-          <Button size="small" onClick={() => setSearch('')} sx={{ mt: 1, textTransform: 'none', fontSize: 12, fontFamily: 'DM Sans, sans-serif' }}>
+          <Button size="small" onClick={() => setSearch('')} sx={{ mt: 1, textTransform: 'none', fontSize: 12}}>
             Clear filter
           </Button>
         </Box>
@@ -284,7 +279,6 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                     height: 28,
                     fontSize: 11,
                     fontWeight: 700,
-                    fontFamily: 'DM Sans, sans-serif',
                     bgcolor: getAvatarBgColor(traineeName),
                     color: '#FFFFFF',
                     flexShrink: 0
@@ -295,7 +289,6 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                 <Typography
                   noWrap
                   sx={{
-                    fontFamily: 'DM Sans, sans-serif',
                     fontSize: 13,
                     fontWeight: 500,
                     color: '#0F172A',
@@ -307,7 +300,6 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
                 <Typography
                   component="span"
                   sx={{
-                    fontFamily: 'DM Sans, sans-serif',
                     fontSize: 10,
                     fontWeight: 700,
                     color: '#94A3B8',
@@ -330,7 +322,7 @@ function AssignedTraineesView({ trainees = [], successCount, failedCount }) {
       {/* Filter Info Footer */}
       {search && (
         <Box sx={{ mt: 1.5, pt: 1, borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="caption" sx={{ fontFamily: 'DM Sans, sans-serif', color: '#64748B', fontSize: 11 }}>
+          <Typography variant="caption" sx={{ color: '#64748B', fontSize: 11 }}>
             Showing {filtered.length} of {trainees.length} trainees
           </Typography>
         </Box>
@@ -447,7 +439,7 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
           )}
         </TableCell>
         {visibleCols.includes('date') && (
-          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.85rem', color: '#64748B', py: 2 }}>
+          <TableCell sx={{ fontSize: '0.85rem', color: '#64748B', py: 2 }}>
             {new Date(log.created_at).toLocaleString('en-IN', {
               day: '2-digit', month: 'short', year: 'numeric',
               hour: '2-digit', minute: '2-digit'
@@ -455,12 +447,12 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
           </TableCell>
         )}
         {visibleCols.includes('actor') && (
-          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: '#0F172A', py: 2 }}>
+          <TableCell sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#0F172A', py: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
               <Avatar sx={{ width: 28, height: 28, fontSize: 11, fontWeight: 700, bgcolor: getAvatarBgColor(log.actor_name), color: '#FFFFFF' }}>
                 {getInitials(log.actor_name)}
               </Avatar>
-              <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A'}}>
                 {log.actor_name || 'System Engine'}
               </Typography>
             </Box>
@@ -472,7 +464,6 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
               size="small" 
               label={log.action_type.replace(/_/g, ' ')} 
               sx={{ 
-                fontFamily: 'DM Sans, sans-serif', 
                 fontSize: '0.75rem', 
                 fontWeight: 700, 
                 bgcolor: actionStyle.bgcolor, 
@@ -484,12 +475,12 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
           </TableCell>
         )}
         {visibleCols.includes('module') && (
-          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', color: '#0F172A', py: 2 }}>
+          <TableCell sx={{ fontSize: '0.875rem', color: '#0F172A', py: 2 }}>
             {modName}
           </TableCell>
         )}
         {visibleCols.includes('target') && (
-          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', color: '#475569', py: 2 }}>
+          <TableCell sx={{ fontSize: '0.875rem', color: '#475569', py: 2 }}>
             {isExpandable ? (
               <Tooltip title={open ? "Click to collapse" : "Click to view assigned trainees"}>
                 <Chip
@@ -498,7 +489,6 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
                   size="small"
                   onClick={() => setOpen(!open)}
                   sx={{
-                    fontFamily: 'DM Sans, sans-serif',
                     fontSize: '0.75rem',
                     fontWeight: 700,
                     cursor: 'pointer',
@@ -520,7 +510,7 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
           </TableCell>
         )}
         {visibleCols.includes('decision') && (
-          <TableCell sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.85rem', fontWeight: decision !== '-' ? 700 : 400, color: decision === 'PASS' ? '#16A34A' : (decision === 'FAIL' ? '#DC2626' : '#64748B'), py: 2 }}>
+          <TableCell sx={{ fontSize: '0.85rem', fontWeight: decision !== '-' ? 700 : 400, color: decision === 'PASS' ? '#16A34A' : (decision === 'FAIL' ? '#DC2626' : '#64748B'), py: 2 }}>
             {decision}
           </TableCell>
         )}
@@ -530,7 +520,6 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
               size="small" 
               label={statusLabel} 
               sx={{ 
-                fontFamily: 'DM Sans, sans-serif', 
                 fontSize: '0.75rem', 
                 fontWeight: 700, 
                 bgcolor: statusBg, 
@@ -542,12 +531,12 @@ function LogRow({ log, visibleCols, modules, formatTarget }) {
           </TableCell>
         )}
         {visibleCols.includes('success') && (
-          <TableCell align="center" sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: '#16A34A', py: 2 }}>
+          <TableCell align="center" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#16A34A', py: 2 }}>
             {sCount}
           </TableCell>
         )}
         {visibleCols.includes('failed') && (
-          <TableCell align="center" sx={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', fontWeight: 600, color: fCount !== '-' && fCount > 0 ? '#DC2626' : '#94A3B8', py: 2 }}>
+          <TableCell align="center" sx={{ fontSize: '0.875rem', fontWeight: 600, color: fCount !== '-' && fCount > 0 ? '#DC2626' : '#94A3B8', py: 2 }}>
             {fCount}
           </TableCell>
         )}
@@ -707,7 +696,7 @@ export default function AuditLogs() {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', letterSpacing: '-0.02em' }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>
                 Activity & Audit Trail
               </Typography>
               <Tooltip title="Refresh audit logs" arrow>
@@ -726,7 +715,7 @@ export default function AuditLogs() {
                 </IconButton>
               </Tooltip>
             </Box>
-            <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', mt: 0.5 }}>
+            <Typography variant="body2" sx={{ color: '#64748B', mt: 0.5 }}>
               Immutable system audit events tracking viva assignments, evaluator decisions, syllabus changes, and account activity.
             </Typography>
           </Box>
@@ -736,10 +725,10 @@ export default function AuditLogs() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2.5 }}>
           <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 Events In Buffer
               </Typography>
-              <Typography variant="h4" sx={{ color: '#0F172A', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h4" sx={{ color: '#0F172A', fontWeight: 700, mt: 0.5 }}>
                 {nextCursor ? `${totalEvents}+` : totalEvents}
               </Typography>
             </Box>
@@ -750,10 +739,10 @@ export default function AuditLogs() {
 
           <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 Session Events
               </Typography>
-              <Typography variant="h4" sx={{ color: '#7C3AED', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h4" sx={{ color: '#7C3AED', fontWeight: 700, mt: 0.5 }}>
                 {nextCursor ? `${sessionEvents}+` : sessionEvents}
               </Typography>
             </Box>
@@ -764,10 +753,10 @@ export default function AuditLogs() {
 
           <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 Security & Accounts
               </Typography>
-              <Typography variant="h4" sx={{ color: '#059669', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h4" sx={{ color: '#059669', fontWeight: 700, mt: 0.5 }}>
                 {nextCursor ? `${userEvents}+` : userEvents}
               </Typography>
             </Box>
@@ -778,10 +767,10 @@ export default function AuditLogs() {
 
           <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 Compliance Trail
               </Typography>
-              <Typography variant="h6" sx={{ color: '#16A34A', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h6" sx={{ color: '#16A34A', fontWeight: 700, mt: 0.5 }}>
                 Active & Verified
               </Typography>
             </Box>
@@ -806,7 +795,6 @@ export default function AuditLogs() {
                   width: { xs: '100%', sm: 190 }, 
                   bgcolor: '#F8FAFC', 
                   borderRadius: 2,
-                  fontFamily: 'DM Sans, sans-serif',
                   fontSize: '0.875rem',
                   '& fieldset': { borderColor: '#E2E8F0' }
                 }}
@@ -827,7 +815,6 @@ export default function AuditLogs() {
                   width: { xs: '100%', sm: 220 }, 
                   bgcolor: '#F8FAFC', 
                   borderRadius: 2,
-                  fontFamily: 'DM Sans, sans-serif',
                   fontSize: '0.875rem',
                   '& fieldset': { borderColor: '#E2E8F0' }
                 }}
@@ -854,7 +841,6 @@ export default function AuditLogs() {
                 onClick={(e) => setColumnMenuAnchor(e.currentTarget)}
                 sx={{ 
                   textTransform: 'none', 
-                  fontFamily: 'DM Sans, sans-serif', 
                   color: '#0F172A', 
                   borderColor: '#E2E8F0', 
                   borderRadius: 2,
@@ -877,7 +863,7 @@ export default function AuditLogs() {
                     setVisibleCols(prev => prev.includes(col.id) ? prev.filter(c => c !== col.id) : [...prev, col.id]);
                   }}>
                     <Checkbox checked={visibleCols.includes(col.id)} size="small" sx={{ color: 'primary.main', '&.Mui-checked': { color: 'primary.main' } }} />
-                    <ListItemText primary={col.label} primaryTypographyProps={{ fontFamily: 'DM Sans, sans-serif', fontSize: 13, fontWeight: 500 }} />
+                    <ListItemText primary={col.label} primaryTypographyProps={{ fontSize: 13, fontWeight: 500 }} />
                   </MenuItem>
                 ))}
               </Menu>
@@ -892,7 +878,7 @@ export default function AuditLogs() {
             ) : (
               <Table aria-label="audit logs table">
                 <TableHead>
-                  <TableRow sx={{ '& th': { bgcolor: '#F8FAFC', color: '#64748B', fontWeight: 700, fontSize: '0.75rem', letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: 'DM Sans, sans-serif', py: 1.75, borderBottom: '1px solid #E2E8F0' } }}>
+                  <TableRow sx={{ '& th': { bgcolor: '#F8FAFC', color: '#64748B', fontWeight: 700, fontSize: '0.75rem', letterSpacing: '0.04em', textTransform: 'uppercase', py: 1.75, borderBottom: '1px solid #E2E8F0' } }}>
                     <TableCell padding="checkbox" sx={{ width: 40 }} />
                     {COLUMNS.map(col => visibleCols.includes(col.id) && (
                       <TableCell key={col.id} align={col.align}>
@@ -905,7 +891,7 @@ export default function AuditLogs() {
                   {logs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={visibleCols.length + 1} align="center" sx={{ py: 8, borderBottom: 'none' }}>
-                        <Typography sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography sx={{ color: '#64748B'}}>
                           No audit events recorded for the selected filter.
                         </Typography>
                       </TableCell>
@@ -936,10 +922,8 @@ export default function AuditLogs() {
             onRowsPerPageChange={handleChangeRowsPerPage}
             sx={{
               borderTop: '1px solid #E2E8F0',
-              fontFamily: 'DM Sans, sans-serif',
               bgcolor: '#FFFFFF',
               '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-                fontFamily: 'DM Sans, sans-serif',
                 fontSize: '0.85rem',
                 color: '#64748B',
               }

@@ -209,7 +209,7 @@ export default function TrainerReviewDetail() {
           }}
         >
           <ArrowBackIcon sx={{ fontSize: 16 }} />
-          <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+          <Typography variant="body2" sx={{ fontWeight: 600}}>
             Back to Viva Sessions
           </Typography>
         </Box>
@@ -219,18 +219,18 @@ export default function TrainerReviewDetail() {
           <Alert
             severity="info"
             icon={<LockIcon sx={{ fontSize: 20 }} />}
-            sx={{ borderRadius: 2.5, border: '1px solid rgba(99, 102, 241, 0.25)', fontFamily: 'DM Sans, sans-serif' }}
+            sx={{ borderRadius: 2.5, border: '1px solid rgba(99, 102, 241, 0.25)'}}
           >
-            <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: 'DM Sans, sans-serif' }}>
+            <Typography variant="body2" sx={{ fontWeight: 700}}>
               This session was already reviewed by {reviewConflict.reviewed_by_name || 'another trainer'}
               {formatReviewTimestamp(reviewConflict.reviewed_at) ? ` on ${formatReviewTimestamp(reviewConflict.reviewed_at)}` : ''}.
             </Typography>
-            <Typography variant="body2" sx={{ mt: 0.5, fontFamily: 'DM Sans, sans-serif' }}>
+            <Typography variant="body2" sx={{ mt: 0.5}}>
               Decision: <strong>{reviewConflict.trainer_decision || '—'}</strong>
               {reviewConflict.final_score != null && <> · Score: <strong>{reviewConflict.final_score}</strong></>}
               {reviewConflict.trainer_notes && <> · Notes: "{reviewConflict.trainer_notes}"</>}
             </Typography>
-            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#64748B'}}>
               Only they or an admin can change this review. The form below is read-only.
             </Typography>
           </Alert>
@@ -244,20 +244,19 @@ export default function TrainerReviewDetail() {
               <Avatar sx={{
                 width: 54, height: 54,
                 bgcolor: 'rgba(242, 101, 34, 0.1)',
-                color: '#F26522', fontWeight: 700, fontSize: 22, fontFamily: 'Syne, sans-serif'
-              }}>
+                color: '#F26522', fontWeight: 700, fontSize: 22}}>
                 {avatarLetter}
               </Avatar>
               <Box>
-                <Typography variant="h5" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
                   {candidateName}
                 </Typography>
                 <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 0.75 }}>
-                  <Typography variant="caption" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
+                  <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 500 }}>
                     {trainee?.username || 'N/A'}
                   </Typography>
                   <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: '#CBD5E1' }} />
-                  <Box sx={{ display: 'inline-flex', px: 1, py: 0.25, bgcolor: 'rgba(242, 101, 34, 0.08)', border: '1px solid rgba(242, 101, 34, 0.2)', borderRadius: 1, fontSize: '0.75rem', fontWeight: 600, color: '#F26522', fontFamily: 'DM Sans, sans-serif' }}>
+                  <Box sx={{ display: 'inline-flex', px: 1, py: 0.25, bgcolor: 'rgba(242, 101, 34, 0.08)', border: '1px solid rgba(242, 101, 34, 0.2)', borderRadius: 1, fontSize: '0.75rem', fontWeight: 600, color: '#F26522'}}>
                     {reportData.session?.module_name || 'Module'}
                   </Box>
                 </Stack>
@@ -267,37 +266,37 @@ export default function TrainerReviewDetail() {
             {/* Meta Stats Tiles */}
             <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
               <Box sx={{ bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 2, px: 2, py: 1.25, minWidth: 110 }}>
-                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                   Exam Date
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', fontFamily: 'DM Sans, sans-serif', mt: 0.25 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', mt: 0.25 }}>
                   {reportData.session?.start_time ? new Date(reportData.session.start_time).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                 </Typography>
               </Box>
 
               <Box sx={{ bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 2, px: 2, py: 1.25, minWidth: 100 }}>
-                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                   Duration
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', fontFamily: 'DM Sans, sans-serif', mt: 0.25 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', mt: 0.25 }}>
                   {formatDuration(summary.duration_seconds)}
                 </Typography>
               </Box>
 
               <Box sx={{ bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 2, px: 2, py: 1.25, minWidth: 110 }}>
-                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                   AI Score
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main', fontFamily: 'Syne, sans-serif', fontSize: '1.05rem', mt: 0.25 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main', fontSize: '1.05rem', mt: 0.25 }}>
                   {report?.aggregate_score != null ? `${Number((report.aggregate_score / 10) * maxMarks).toFixed(1)} / ${maxMarks}` : '—'}
                 </Typography>
               </Box>
 
               <Box sx={{ bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 2, px: 2, py: 1.25, minWidth: 110 }}>
-                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                   Final Score
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', fontFamily: 'Syne, sans-serif', fontSize: '1.05rem', mt: 0.25 }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', fontSize: '1.05rem', mt: 0.25 }}>
                   {report?.final_score != null ? `${Math.min(maxMarks, Number(report.final_score)).toFixed(1)} / ${maxMarks}` : '—'}
                 </Typography>
               </Box>
@@ -314,7 +313,7 @@ export default function TrainerReviewDetail() {
                   <Box sx={{ width: 34, height: 34, borderRadius: 1.5, bgcolor: 'rgba(242, 101, 34, 0.1)', color: '#F26522', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <PsychologyIcon sx={{ fontSize: 20 }} />
                   </Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', letterSpacing: '-0.02em', fontSize: '1.05rem' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', fontSize: '1.05rem' }}>
                     AI Evaluation & Analysis
                   </Typography>
                 </Stack>
@@ -327,7 +326,6 @@ export default function TrainerReviewDetail() {
                     sx={{
                       fontWeight: 700,
                       fontSize: '0.75rem',
-                      fontFamily: 'DM Sans, sans-serif',
                       borderRadius: 1.5,
                       px: 1,
                       bgcolor: report.ai_recommendation === 'PASS' ? 'rgba(34, 197, 94, 0.1)' : report.ai_recommendation === 'FAIL' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
@@ -342,20 +340,20 @@ export default function TrainerReviewDetail() {
               <Grid container spacing={2.5}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: '#F8FAFC', border: '1px solid rgba(34, 197, 94, 0.25)', height: '100%' }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#16A34A', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 0.75, mb: 1, fontFamily: 'DM Sans, sans-serif' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#16A34A', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 0.75, mb: 1}}>
                       <CheckCircleIcon sx={{ fontSize: 16 }} /> Key Strengths
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#334155', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.65 }}>
+                    <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.65 }}>
                       {report.strengths || "No specific strengths recorded."}
                     </Typography>
                   </Box>
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: '#F8FAFC', border: '1px solid rgba(242, 101, 34, 0.25)', height: '100%' }}>
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#EA580C', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 0.75, mb: 1, fontFamily: 'DM Sans, sans-serif' }}>
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: '#EA580C', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 0.75, mb: 1}}>
                       <WarningIcon sx={{ fontSize: 16 }} /> Areas For Improvement
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#334155', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.65 }}>
+                    <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.65 }}>
                       {report.areas_of_improvement || "No specific improvements recorded."}
                     </Typography>
                   </Box>
@@ -365,7 +363,7 @@ export default function TrainerReviewDetail() {
           </Card>
         ) : (
           <Card elevation={0} sx={{ p: 3, border: '1px solid #E2E8F0', borderRadius: 2.5, bgcolor: '#FFFFFF' }}>
-            <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+            <Typography variant="body2" sx={{ color: '#64748B'}}>
               AI Evaluation is pending or generating in the background.
             </Typography>
           </Card>
@@ -378,12 +376,12 @@ export default function TrainerReviewDetail() {
               <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(99, 102, 241, 0.1)', color: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <BadgeIcon sx={{ fontSize: 18 }} />
               </Box>
-              <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', fontSize: '1.05rem' }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, color: '#0F172A', fontSize: '1.05rem' }}>
                 Trainer Review Remarks
               </Typography>
             </Stack>
             <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-              <Typography variant="body2" sx={{ color: '#334155', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
+              <Typography variant="body2" sx={{ color: '#334155', lineHeight: 1.65, whiteSpace: 'pre-wrap' }}>
                 {report.trainer_notes}
               </Typography>
             </Box>
@@ -392,13 +390,13 @@ export default function TrainerReviewDetail() {
 
         {/* Questions & Responses Section */}
         <Box>
-          <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', letterSpacing: '-0.02em', mb: 2, fontSize: '1.1rem' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', mb: 2, fontSize: '1.1rem' }}>
             Questions & Evaluated Responses ({questions.length})
           </Typography>
 
           <Stack spacing={2.5}>
             {questions.length === 0 ? (
-              <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="body2" sx={{ color: '#64748B'}}>
                 No questions were recorded for this session.
               </Typography>
             ) : (
@@ -411,33 +409,33 @@ export default function TrainerReviewDetail() {
                         width: 32, height: 32, borderRadius: 1.5, flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         bgcolor: 'rgba(242, 101, 34, 0.1)', color: '#F26522',
-                        fontSize: 13, fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.2
+                        fontSize: 13, fontWeight: 700, mt: 0.2
                       }}>
                         Q{index + 1}
                       </Box>
-                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#0F172A', fontFamily: 'DM Sans, sans-serif', lineHeight: 1.5, pt: 0.25 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 600, color: '#0F172A', lineHeight: 1.5, pt: 0.25 }}>
                         {q.text}
                       </Typography>
                     </Stack>
                     <Chip size="small" icon={<AccessTimeIcon sx={{ fontSize: 13 }} />} label={formatDuration(q.duration)} variant="outlined"
-                      sx={{ ml: 2, flexShrink: 0, fontSize: 11, fontWeight: 600, borderColor: '#E2E8F0', color: '#64748B', fontFamily: 'DM Sans, sans-serif', borderRadius: 1.5 }}
+                      sx={{ ml: 2, flexShrink: 0, fontSize: 11, fontWeight: 600, borderColor: '#E2E8F0', color: '#64748B', borderRadius: 1.5 }}
                     />
                   </Box>
 
                   {/* Transcript */}
                   <Box sx={{ mx: { xs: 2, md: 2.5 }, mt: 1, p: 2, borderRadius: 2, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-                    <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, display: 'block', mb: 0.5, fontFamily: 'DM Sans, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, display: 'block', mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       Candidate Spoken Transcript
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#0F172A', fontFamily: 'DM Sans, sans-serif', fontStyle: 'italic', lineHeight: 1.7 }}>
+                    <Typography variant="body2" sx={{ color: '#0F172A', fontStyle: 'italic', lineHeight: 1.7 }}>
                       "{q.transcript || "(No spoken answer was recorded)"}"
                     </Typography>
                     {q.evaluation?.ai_feedback && (
                       <Box sx={{ mt: 1.5, pt: 1.5, borderTop: '1px solid #E2E8F0' }}>
-                        <Typography variant="caption" sx={{ color: '#F26522', fontWeight: 700, display: 'block', mb: 0.3, fontFamily: 'DM Sans, sans-serif', letterSpacing: '0.02em' }}>
+                        <Typography variant="caption" sx={{ color: '#F26522', fontWeight: 700, display: 'block', mb: 0.3, letterSpacing: '0.02em' }}>
                           AI Feedback
                         </Typography>
-                        <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.85rem', lineHeight: 1.6, fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" sx={{ color: '#475569', fontSize: '0.85rem', lineHeight: 1.6}}>
                           {q.evaluation.ai_feedback}
                         </Typography>
                       </Box>
@@ -471,7 +469,7 @@ export default function TrainerReviewDetail() {
                         )}
                       </Stack>
                     ) : (
-                      <Typography variant="caption" sx={{ color: '#94A3B8', fontFamily: 'DM Sans, sans-serif' }}>No evaluation metrics available.</Typography>
+                      <Typography variant="caption" sx={{ color: '#94A3B8'}}>No evaluation metrics available.</Typography>
                     )}
                   </Box>
                 </Card>
@@ -512,7 +510,6 @@ export default function TrainerReviewDetail() {
                     py: 0.9,
                     fontWeight: 700,
                     fontSize: '0.85rem',
-                    fontFamily: 'DM Sans, sans-serif',
                     borderRadius: 2,
                     textTransform: 'none',
                     borderColor: isSelected ? btn.border : '#CBD5E1',
@@ -544,7 +541,6 @@ export default function TrainerReviewDetail() {
               flex: 1,
               '& .MuiOutlinedInput-root': {
                 fontSize: '0.875rem',
-                fontFamily: 'DM Sans, sans-serif',
                 bgcolor: '#F8FAFC',
                 borderRadius: 2,
                 '& fieldset': { borderColor: '#E2E8F0' },
@@ -589,14 +585,12 @@ export default function TrainerReviewDetail() {
               flexShrink: 0,
               '& .MuiInputLabel-root': {
                 fontSize: '0.8rem',
-                fontFamily: 'DM Sans, sans-serif',
                 fontWeight: 600,
                 color: '#64748B',
               },
               '& .MuiOutlinedInput-root': {
                 fontSize: '0.95rem',
                 fontWeight: 700,
-                fontFamily: 'Syne, sans-serif',
                 bgcolor: '#FFFFFF',
                 borderRadius: 2,
               },
@@ -654,7 +648,6 @@ export default function TrainerReviewDetail() {
               py: 1.1,
               fontWeight: 700,
               fontSize: '0.9rem',
-              fontFamily: 'DM Sans, sans-serif',
               borderRadius: 2,
               flexShrink: 0,
               whiteSpace: 'nowrap',
@@ -682,13 +675,13 @@ function ScoreBar({ label, score, color, isCount = false }) {
   const percentage = Math.min(100, Math.max(0, (score || 0) * scaleFactor));
   return (
     <Stack direction="row" spacing={1.25} alignItems="center" sx={{ flex: 1 }}>
-      <Typography variant="caption" sx={{ minWidth: 96, fontWeight: 600, color: '#475569', fontFamily: 'DM Sans, sans-serif', fontSize: '0.775rem' }}>
+      <Typography variant="caption" sx={{ minWidth: 96, fontWeight: 600, color: '#475569', fontSize: '0.775rem' }}>
         {label}
       </Typography>
       <Box sx={{ flex: 1, height: 6, bgcolor: '#F1F5F9', borderRadius: 3, overflow: 'hidden', minWidth: 60 }}>
         <Box sx={{ width: `${percentage}%`, height: '100%', bgcolor: color, borderRadius: 3, transition: 'width 0.5s ease' }} />
       </Box>
-      <Typography variant="caption" sx={{ minWidth: 32, textAlign: 'right', fontFamily: 'Syne, sans-serif', fontWeight: 700, color: '#0F172A', fontSize: '0.8rem' }}>
+      <Typography variant="caption" sx={{ minWidth: 32, textAlign: 'right', fontWeight: 700, color: '#0F172A', fontSize: '0.8rem' }}>
         {isCount ? Math.floor(score) : Number(score).toFixed(1)}
       </Typography>
     </Stack>

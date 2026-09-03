@@ -255,7 +255,7 @@ export default function UserManagement() {
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', gap: 2 }}>
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', letterSpacing: '-0.02em' }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>
                 User Management
               </Typography>
               <Tooltip title="Refresh users" arrow>
@@ -274,7 +274,7 @@ export default function UserManagement() {
                 </IconButton>
               </Tooltip>
             </Box>
-            <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', mt: 0.5 }}>
+            <Typography variant="body2" sx={{ color: '#64748B', mt: 0.5 }}>
               Provision, manage, and audit system access for trainers, evaluators, and candidates.
             </Typography>
           </Box>
@@ -291,7 +291,6 @@ export default function UserManagement() {
                 borderRadius: 2,
                 fontWeight: 700,
                 fontSize: '0.875rem',
-                fontFamily: 'DM Sans, sans-serif',
                 textTransform: 'none',
                 boxShadow: '0 4px 14px rgba(242, 101, 34, 0.3)',
                 '&:hover': {
@@ -308,10 +307,10 @@ export default function UserManagement() {
         <Box sx={{ display: 'grid', gridTemplateColumns: isAdmin ? { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } : { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2.5 }}>
           <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 {isAdmin ? 'Total Accounts' : 'Total Trainees'}
               </Typography>
-              <Typography variant="h4" sx={{ color: '#0F172A', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h4" sx={{ color: '#0F172A', fontWeight: 700, mt: 0.5 }}>
                 {isAdmin ? totalUsers : traineeCount}
               </Typography>
             </Box>
@@ -323,10 +322,10 @@ export default function UserManagement() {
           {isAdmin && (
             <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
               <Box>
-                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                   Trainees
                 </Typography>
-                <Typography variant="h4" sx={{ color: '#7C3AED', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+                <Typography variant="h4" sx={{ color: '#7C3AED', fontWeight: 700, mt: 0.5 }}>
                   {traineeCount}
                 </Typography>
               </Box>
@@ -339,10 +338,10 @@ export default function UserManagement() {
           {isAdmin && (
             <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
               <Box>
-                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                   Trainers & Staff
                 </Typography>
-                <Typography variant="h4" sx={{ color: '#059669', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+                <Typography variant="h4" sx={{ color: '#059669', fontWeight: 700, mt: 0.5 }}>
                   {trainerCount + adminCount}
                 </Typography>
               </Box>
@@ -354,10 +353,10 @@ export default function UserManagement() {
 
           <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 {isAdmin ? 'Active Accounts' : 'Active Trainees'}
               </Typography>
-              <Typography variant="h4" sx={{ color: '#16A34A', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+              <Typography variant="h4" sx={{ color: '#16A34A', fontWeight: 700, mt: 0.5 }}>
                 {activeCount}
               </Typography>
             </Box>
@@ -369,10 +368,10 @@ export default function UserManagement() {
           {!isAdmin && (
             <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
               <Box>
-                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                   Inactive Trainees
                 </Typography>
-                <Typography variant="h4" sx={{ color: '#D97706', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
+                <Typography variant="h4" sx={{ color: '#D97706', fontWeight: 700, mt: 0.5 }}>
                   {inactiveCount}
                 </Typography>
               </Box>
@@ -409,7 +408,6 @@ export default function UserManagement() {
                       py: 0.6,
                       fontSize: '0.8rem',
                       fontWeight: isSelected ? 700 : 500,
-                      fontFamily: 'DM Sans, sans-serif',
                       textTransform: 'none',
                       bgcolor: isSelected ? '#F26522' : '#F8FAFC',
                       color: isSelected ? '#FFFFFF' : '#64748B',
@@ -441,7 +439,6 @@ export default function UserManagement() {
                     bgcolor: '#F8FAFC',
                     borderRadius: 2,
                     fontSize: '0.875rem',
-                    fontFamily: 'DM Sans, sans-serif',
                     '& fieldset': { borderColor: '#E2E8F0' },
                     '&:hover fieldset': { borderColor: '#CBD5E1' },
                     '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: '1.5px' },
@@ -460,7 +457,7 @@ export default function UserManagement() {
             ) : (
               <Table aria-label="user management table">
                 <TableHead>
-                  <TableRow sx={{ '& th': { bgcolor: '#F8FAFC', color: '#64748B', fontWeight: 700, fontSize: '0.75rem', letterSpacing: '0.04em', textTransform: 'uppercase', fontFamily: 'DM Sans, sans-serif', py: 1.75, borderBottom: '1px solid #E2E8F0' } }}>
+                  <TableRow sx={{ '& th': { bgcolor: '#F8FAFC', color: '#64748B', fontWeight: 700, fontSize: '0.75rem', letterSpacing: '0.04em', textTransform: 'uppercase', py: 1.75, borderBottom: '1px solid #E2E8F0' } }}>
                     <TableCell>User</TableCell>
                     <TableCell>Username / Email</TableCell>
                     <TableCell>Role</TableCell>
@@ -472,7 +469,7 @@ export default function UserManagement() {
                   {paginatedUsers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} align="center" sx={{ py: 8, borderBottom: 'none' }}>
-                        <Typography sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography sx={{ color: '#64748B'}}>
                           No users found matching the selected filter.
                         </Typography>
                       </TableCell>
@@ -493,18 +490,18 @@ export default function UserManagement() {
                             {getInitials(u.full_name, u.username)}
                           </Avatar>
                           <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', fontFamily: 'DM Sans, sans-serif' }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A'}}>
                               {u.full_name || u.username}
                             </Typography>
                             {u.employee_id && (
-                              <Typography variant="caption" sx={{ color: '#94A3B8', fontFamily: 'DM Sans, sans-serif' }}>
+                              <Typography variant="caption" sx={{ color: '#94A3B8'}}>
                                 ID: {u.employee_id}
                               </Typography>
                             )}
                           </Box>
                         </Stack>
                       </TableCell>
-                      <TableCell sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontSize: '0.875rem', borderBottom: '1px solid #F1F5F9', py: 2 }}>
+                      <TableCell sx={{ color: '#64748B', fontSize: '0.875rem', borderBottom: '1px solid #F1F5F9', py: 2 }}>
                         {u.username}
                       </TableCell>
                       <TableCell sx={{ borderBottom: '1px solid #F1F5F9', py: 2 }}>
@@ -517,7 +514,6 @@ export default function UserManagement() {
                             border: u.role === 'ADMIN' ? 'none' : (u.role === 'TRAINER' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(242, 101, 34, 0.25)'),
                             fontWeight: 700, 
                             borderRadius: 1, 
-                            fontFamily: 'DM Sans, sans-serif', 
                             fontSize: '0.75rem',
                             letterSpacing: '0.02em',
                           }} 
@@ -572,10 +568,8 @@ export default function UserManagement() {
             onRowsPerPageChange={handleChangeRowsPerPage}
             sx={{
               borderTop: '1px solid #E2E8F0',
-              fontFamily: 'DM Sans, sans-serif',
               bgcolor: '#FFFFFF',
               '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-                fontFamily: 'DM Sans, sans-serif',
                 fontSize: '0.85rem',
                 color: '#64748B',
               }
@@ -600,7 +594,7 @@ export default function UserManagement() {
           } 
         }}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.25rem', bgcolor: '#FFFFFF', color: '#0F172A', borderBottom: '1px solid #E2E8F0', pb: 2, pt: 2.5 }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 700, fontSize: '1.25rem', bgcolor: '#FFFFFF', color: '#0F172A', borderBottom: '1px solid #E2E8F0', pb: 2, pt: 2.5 }}>
           <Box sx={{ p: 1, bgcolor: 'rgba(242, 101, 34, 0.1)', borderRadius: 2, display: 'flex', color: 'primary.main' }}>
             <PersonAddIcon fontSize="small" />
           </Box>
@@ -678,7 +672,7 @@ export default function UserManagement() {
         <DialogActions sx={{ p: 2.5, bgcolor: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
           <Button 
             onClick={() => setOpenDialog(false)} 
-            sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontWeight: 600, textTransform: 'none' }}
+            sx={{ color: '#64748B', fontWeight: 600, textTransform: 'none' }}
           >
             Cancel
           </Button>
@@ -695,7 +689,6 @@ export default function UserManagement() {
               borderRadius: 2, 
               textTransform: 'none', 
               fontWeight: 700, 
-              fontFamily: 'DM Sans, sans-serif',
               boxShadow: '0 4px 14px rgba(242, 101, 34, 0.3)', 
               '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.4)' } 
             }}
@@ -720,7 +713,7 @@ export default function UserManagement() {
           } 
         }}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.25rem', bgcolor: '#FFFFFF', color: '#0F172A', borderBottom: '1px solid #E2E8F0', pb: 2, pt: 2.5 }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, fontWeight: 700, fontSize: '1.25rem', bgcolor: '#FFFFFF', color: '#0F172A', borderBottom: '1px solid #E2E8F0', pb: 2, pt: 2.5 }}>
           <Box sx={{ p: 1, bgcolor: 'rgba(242, 101, 34, 0.1)', borderRadius: 2, display: 'flex', color: 'primary.main' }}>
             <EditIcon fontSize="small" />
           </Box>
@@ -784,7 +777,7 @@ export default function UserManagement() {
         <DialogActions sx={{ p: 2.5, bgcolor: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
           <Button 
             onClick={() => setOpenEditDialog(false)} 
-            sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontWeight: 600, textTransform: 'none' }}
+            sx={{ color: '#64748B', fontWeight: 600, textTransform: 'none' }}
           >
             Cancel
           </Button>
@@ -801,7 +794,6 @@ export default function UserManagement() {
               borderRadius: 2, 
               textTransform: 'none', 
               fontWeight: 700, 
-              fontFamily: 'DM Sans, sans-serif',
               boxShadow: '0 4px 14px rgba(242, 101, 34, 0.3)', 
               '&:hover': { boxShadow: '0 6px 20px rgba(242, 101, 34, 0.4)' } 
             }}
@@ -826,11 +818,11 @@ export default function UserManagement() {
           } 
         }}
       >
-        <DialogTitle sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.2rem', color: '#DC2626', bgcolor: '#FFFFFF', borderBottom: '1px solid #E2E8F0', pb: 2, pt: 2.5 }}>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: '1.2rem', color: '#DC2626', bgcolor: '#FFFFFF', borderBottom: '1px solid #E2E8F0', pb: 2, pt: 2.5 }}>
           Delete User Account
         </DialogTitle>
         <DialogContent sx={{ p: 3, pt: '24px !important', bgcolor: '#FFFFFF' }}>
-          <Typography sx={{ fontFamily: 'DM Sans, sans-serif', color: '#475569', lineHeight: 1.6 }}>
+          <Typography sx={{ color: '#475569', lineHeight: 1.6 }}>
             Are you sure you want to permanently delete the user <strong>{selectedUser?.username}</strong>? All their session histories and credentials will be removed.
           </Typography>
           {errorMsg && <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>{errorMsg}</Alert>}
@@ -838,7 +830,7 @@ export default function UserManagement() {
         <DialogActions sx={{ p: 2.5, bgcolor: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
           <Button 
             onClick={() => setOpenDeleteDialog(false)} 
-            sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontWeight: 600, textTransform: 'none' }}
+            sx={{ color: '#64748B', fontWeight: 600, textTransform: 'none' }}
           >
             Cancel
           </Button>
@@ -847,7 +839,7 @@ export default function UserManagement() {
             variant="contained" 
             color="error"
             disabled={loading}
-            sx={{ px: 3, py: 0.9, borderRadius: 2, textTransform: 'none', fontWeight: 700, fontFamily: 'DM Sans, sans-serif' }}
+            sx={{ px: 3, py: 0.9, borderRadius: 2, textTransform: 'none', fontWeight: 700}}
           >
             {loading ? <CircularProgress size={20} color="inherit" /> : 'Delete Account'}
           </Button>

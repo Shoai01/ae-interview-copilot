@@ -258,7 +258,6 @@ export default function WelcomeCheck() {
               sx={{
                 color: '#0F172A',
                 fontWeight: 700,
-                fontFamily: 'Syne, sans-serif',
                 fontSize: '1.05rem',
                 lineHeight: 1.1,
               }}
@@ -271,7 +270,6 @@ export default function WelcomeCheck() {
                 color: '#94A3B8',
                 fontSize: '0.7rem',
                 display: 'block',
-                fontFamily: 'DM Sans, sans-serif',
                 fontWeight: 500,
               }}
             >
@@ -303,8 +301,7 @@ export default function WelcomeCheck() {
                   fontSize: '0.85rem',
                   color: '#0F172A',
                   lineHeight: 1.2,
-                  fontFamily: 'DM Sans, sans-serif',
-                }}
+                  }}
               >
                 {traineeName !== 'Loading...' ? traineeName : user?.username || 'Candidate'}
               </Typography>
@@ -315,8 +312,7 @@ export default function WelcomeCheck() {
                   fontSize: '0.7rem',
                   display: 'block',
                   lineHeight: 1.1,
-                  fontFamily: 'DM Sans, sans-serif',
-                }}
+                  }}
               >
                 Trainee
               </Typography>
@@ -332,7 +328,6 @@ export default function WelcomeCheck() {
               borderColor: '#E2E8F0',
               border: '1px solid #E2E8F0',
               textTransform: 'none',
-              fontFamily: 'DM Sans, sans-serif',
               fontWeight: 600,
               fontSize: '0.8rem',
               borderRadius: 1.5,
@@ -367,7 +362,7 @@ export default function WelcomeCheck() {
         {isFetchingSession ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', my: 'auto', gap: 2 }}>
             <CircularProgress sx={{ color: 'primary.main' }} />
-            <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+            <Typography variant="body2" sx={{ color: '#64748B'}}>
               Verifying active assessment schedule...
             </Typography>
           </Box>
@@ -406,13 +401,13 @@ export default function WelcomeCheck() {
             <Box>
               <Typography
                 variant="h5"
-                sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', mb: 1 }}
+                sx={{ fontWeight: 700, color: '#0F172A', mb: 1 }}
               >
                 No Session Assigned
               </Typography>
               <Typography
                 variant="body2"
-                sx={{ color: '#64748B', lineHeight: 1.6, fontFamily: 'DM Sans, sans-serif' }}
+                sx={{ color: '#64748B', lineHeight: 1.6}}
               >
                 You do not have an active or pending viva assessment scheduled. Please contact your trainer or administrator to assign your module.
               </Typography>
@@ -427,7 +422,6 @@ export default function WelcomeCheck() {
                 textTransform: 'none',
                 px: 3,
                 py: 0.8,
-                fontFamily: 'DM Sans, sans-serif',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 borderColor: '#E2E8F0',
@@ -456,7 +450,6 @@ export default function WelcomeCheck() {
                   border: '1px solid rgba(242, 101, 34, 0.2)',
                   px: 1,
                   py: 0.4,
-                  fontFamily: 'DM Sans, sans-serif',
                   mb: 1,
                 }}
               />
@@ -466,7 +459,6 @@ export default function WelcomeCheck() {
                   fontWeight: 700,
                   fontSize: { xs: '1.75rem', md: '2.25rem' },
                   color: '#0F172A',
-                  fontFamily: 'Syne, sans-serif',
                   letterSpacing: '-0.02em',
                   lineHeight: 1.2,
                 }}
@@ -478,7 +470,6 @@ export default function WelcomeCheck() {
                 sx={{
                   color: '#64748B',
                   fontSize: '0.95rem',
-                  fontFamily: 'DM Sans, sans-serif',
                   maxWidth: 580,
                 }}
               >
@@ -504,7 +495,7 @@ export default function WelcomeCheck() {
                     <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(242, 101, 34, 0.08)', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <InfoOutlinedIcon sx={{ fontSize: 18 }} />
                     </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.05rem', color: '#0F172A' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
                       Assessment Protocol
                     </Typography>
                   </Stack>
@@ -515,10 +506,10 @@ export default function WelcomeCheck() {
                         <TimerOutlinedIcon sx={{ fontSize: 16 }} />
                       </Box>
                       <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25, fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25}}>
                           Session Duration
                         </Typography>
-                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem'}}>
                           Approximately {currentSession?.duration_minutes || '15'} minutes. Ensure you remain seated in a quiet, well-lit environment.
                         </Typography>
                       </Box>
@@ -529,10 +520,10 @@ export default function WelcomeCheck() {
                         <FormatListNumberedOutlinedIcon sx={{ fontSize: 16 }} />
                       </Box>
                       <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25, fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25}}>
                           Adaptive Questions
                         </Typography>
-                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem'}}>
                           {currentSession?.total_questions ? `${currentSession.total_questions} questions` : 'Targeted questions'} covering core competencies in {currentSession?.module_name || 'your assigned module'}.
                         </Typography>
                       </Box>
@@ -543,10 +534,10 @@ export default function WelcomeCheck() {
                         <SmartToyOutlinedIcon sx={{ fontSize: 16 }} />
                       </Box>
                       <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25, fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25}}>
                           AI Voice Evaluation
                         </Typography>
-                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem'}}>
                           Spoken responses are transcribed and graded for technical depth, terminology, and concept clarity.
                         </Typography>
                       </Box>
@@ -557,10 +548,10 @@ export default function WelcomeCheck() {
                         <ShieldOutlinedIcon sx={{ fontSize: 16 }} />
                       </Box>
                       <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25, fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25}}>
                           Integrity & Proctoring
                         </Typography>
-                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem', fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem'}}>
                           Maintain camera presence and avoid tab switching. Live proctoring logs environmental integrity.
                         </Typography>
                       </Box>
@@ -586,7 +577,7 @@ export default function WelcomeCheck() {
                       <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(242, 101, 34, 0.08)', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <FactCheckOutlinedIcon sx={{ fontSize: 18 }} />
                       </Box>
-                      <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', fontSize: '1.05rem', color: '#0F172A' }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
                         Hardware Readiness
                       </Typography>
                     </Stack>
@@ -596,7 +587,6 @@ export default function WelcomeCheck() {
                       sx={{
                         fontWeight: 700,
                         fontSize: '0.72rem',
-                        fontFamily: 'DM Sans, sans-serif',
                         bgcolor: isReady ? 'rgba(34, 197, 94, 0.08)' : 'rgba(242, 101, 34, 0.08)',
                         color: isReady ? '#16A34A' : '#F26522',
                         border: `1px solid ${isReady ? 'rgba(34, 197, 94, 0.25)' : 'rgba(242, 101, 34, 0.25)'}`,
@@ -648,7 +638,7 @@ export default function WelcomeCheck() {
                       </Box>
                     ) : (
                       <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Typography variant="caption" sx={{ color: '#94A3B8', fontFamily: 'DM Sans, sans-serif' }}>
+                        <Typography variant="caption" sx={{ color: '#94A3B8'}}>
                           Requesting camera & microphone access...
                         </Typography>
                       </Box>
@@ -679,7 +669,7 @@ export default function WelcomeCheck() {
                       >
                         <Stack direction="row" alignItems="center" spacing={1.25}>
                           <Box sx={{ color: '#64748B', display: 'flex', alignItems: 'center' }}>{item.icon}</Box>
-                          <Typography variant="body2" sx={{ color: '#0F172A', fontSize: '0.825rem', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
+                          <Typography variant="body2" sx={{ color: '#0F172A', fontSize: '0.825rem', fontWeight: 500 }}>
                             {item.label}
                           </Typography>
                         </Stack>
@@ -705,7 +695,6 @@ export default function WelcomeCheck() {
                   textTransform: 'none',
                   fontWeight: 700,
                   fontSize: '0.95rem',
-                  fontFamily: 'DM Sans, sans-serif',
                   px: 5,
                   py: 1.35,
                   borderRadius: 2,
@@ -732,7 +721,7 @@ export default function WelcomeCheck() {
                 )}
               </Button>
               {!isReady && (
-                <Typography variant="caption" sx={{ color: '#EF4444', fontSize: '0.8rem', fontWeight: 500, fontFamily: 'DM Sans, sans-serif' }}>
+                <Typography variant="caption" sx={{ color: '#EF4444', fontSize: '0.8rem', fontWeight: 500}}>
                   Please allow camera and microphone permissions in your browser to proceed.
                 </Typography>
               )}

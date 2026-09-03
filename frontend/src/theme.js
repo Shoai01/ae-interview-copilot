@@ -36,39 +36,33 @@ const theme = createTheme({
     }
   },
   typography: {
-    fontFamily: '"DM Sans", "Inter", sans-serif',
+    fontFamily: '"Inter", sans-serif',
     h1: {
-      fontFamily: '"Syne", sans-serif',
       fontSize: '48px',
       fontWeight: 700,
       letterSpacing: '-0.5px',
     },
     h2: {
-      fontFamily: '"Syne", sans-serif',
       fontSize: '32px',
       fontWeight: 700,
       letterSpacing: '-0.5px',
     },
     h3: {
-      fontFamily: '"Syne", sans-serif',
       fontSize: '24px',
       fontWeight: 700,
       letterSpacing: '-0.5px',
     },
     h4: {
-      fontFamily: '"Syne", sans-serif',
       fontSize: '20px',
       fontWeight: 600,
       letterSpacing: '-0.5px',
     },
     h5: {
-      fontFamily: '"Syne", sans-serif',
       fontSize: '18px',
       fontWeight: 600,
       letterSpacing: '-0.5px',
     },
     h6: {
-      fontFamily: '"Syne", sans-serif',
       fontSize: '16px',
       fontWeight: 600,
       letterSpacing: '-0.5px',
@@ -84,7 +78,6 @@ const theme = createTheme({
       lineHeight: 1.5,
     },
     button: {
-      fontFamily: '"DM Sans", sans-serif',
       fontSize: '15px',
       fontWeight: 700,
       textTransform: 'none',

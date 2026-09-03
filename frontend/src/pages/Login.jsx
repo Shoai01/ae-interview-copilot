@@ -104,7 +104,7 @@ export default function Login() {
             alt="AutomationEdge"
             sx={{ height: 28, width: 'auto', objectFit: 'contain' }}
           />
-          <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '-0.01em', fontSize: '1.1rem' }}>
+          <Typography variant="h6" sx={{ color: '#FFFFFF', fontWeight: 700, letterSpacing: '-0.01em', fontSize: '1.1rem' }}>
             Viva Copilot
           </Typography>
         </Box>
@@ -115,7 +115,6 @@ export default function Login() {
             variant="h2"
             sx={{
               fontWeight: 700,
-              fontFamily: 'Syne, sans-serif',
               fontSize: { lg: '2.2rem', xl: '2.6rem' },
               lineHeight: 1.25,
               letterSpacing: '-0.03em',
@@ -135,7 +134,6 @@ export default function Login() {
               color: '#94A3B8',
               lineHeight: 1.65,
               fontSize: '1rem',
-              fontFamily: 'DM Sans, sans-serif',
               mb: 4.5,
             }}
           >
@@ -197,8 +195,7 @@ export default function Login() {
                     fontWeight: 700,
                     color: '#F8FAFC',
                     fontSize: '0.92rem',
-                    fontFamily: 'Syne, sans-serif',
-                  }}
+                    }}
                 >
                   {col.title}
                 </Typography>
@@ -208,8 +205,7 @@ export default function Login() {
                     color: '#94A3B8',
                     lineHeight: 1.45,
                     fontSize: '0.78rem',
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}
+                    }}
                 >
                   {col.desc}
                 </Typography>
@@ -270,11 +266,11 @@ export default function Login() {
               }}
             />
             <Box sx={{ mb: 1 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', letterSpacing: '-0.02em' }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
                 Viva Copilot
               </Typography>
             </Box>
-            <Typography variant="body2" sx={{ color: 'text.secondary', fontFamily: 'DM Sans, sans-serif' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary'}}>
               Sign in with your work credentials to access your session.
             </Typography>
           </Box>
@@ -333,7 +329,6 @@ export default function Login() {
                       bgcolor: '#F8FAFC',
                       borderRadius: 2,
                       fontSize: '0.925rem',
-                      fontFamily: 'DM Sans, sans-serif',
                       transition: 'all 0.18s ease',
                       '& fieldset': {
                         borderColor: '#E2E8F0',
@@ -403,7 +398,6 @@ export default function Login() {
                       bgcolor: '#F8FAFC',
                       borderRadius: 2,
                       fontSize: '0.925rem',
-                      fontFamily: 'DM Sans, sans-serif',
                       transition: 'all 0.18s ease',
                       '& fieldset': {
                         borderColor: '#E2E8F0',
@@ -436,7 +430,6 @@ export default function Login() {
                   mt: 1,
                   borderRadius: 2,
                   fontSize: '0.95rem',
-                  fontFamily: 'DM Sans, sans-serif',
                   color: '#FFFFFF',
                   background: 'linear-gradient(135deg, #F26522 0%, #EA580C 100%)',
                   boxShadow: '0 2px 8px rgba(242, 101, 34, 0.22)',

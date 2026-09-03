@@ -213,7 +213,6 @@ export default function Layout({ children, breadcrumbs }) {
             variant="subtitle1"
             sx={{
               fontWeight: 700,
-              fontFamily: 'Syne, sans-serif',
               lineHeight: 1.2,
               color: '#FFFFFF',
               fontSize: '1.05rem',
@@ -280,7 +279,6 @@ export default function Layout({ children, breadcrumbs }) {
                   slotProps={{
                     primary: {
                       variant: 'body2',
-                      fontFamily: 'DM Sans, sans-serif',
                       fontWeight: isSelected ? 600 : 500,
                       color: isSelected ? '#FFFFFF' : '#94A3B8',
                       fontSize: '0.875rem',
@@ -476,7 +474,6 @@ export default function Layout({ children, breadcrumbs }) {
                       component="span"
                       sx={{
                         fontWeight: 700,
-                        fontFamily: 'DM Sans, sans-serif',
                         fontSize: { xs: '0.95rem', sm: '1.05rem' },
                         color: '#0F172A',
                         letterSpacing: '-0.01em',
@@ -511,7 +508,6 @@ export default function Layout({ children, breadcrumbs }) {
                       display: 'inline-flex',
                       alignItems: 'center',
                       color: '#64748B',
-                      fontFamily: 'DM Sans, sans-serif',
                       fontSize: { xs: '0.85rem', sm: '0.925rem' },
                       fontWeight: 500,
                       transition: 'color 0.18s ease',
@@ -573,7 +569,6 @@ export default function Layout({ children, breadcrumbs }) {
                         : '#94A3B8',
                     fontWeight: 500,
                     fontSize: '0.78rem',
-                    fontFamily: 'DM Sans, sans-serif',
                     transition: 'color 0.3s ease',
                   }}
                 >

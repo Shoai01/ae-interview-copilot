@@ -172,7 +172,6 @@ export default function TrainerOverview() {
           <Box>
             <Typography variant="h4" sx={{ 
               fontWeight: 700, 
-              fontFamily: 'Syne, sans-serif', 
               color: '#0F172A', 
               letterSpacing: '-0.02em',
               fontSize: { xs: '1.4rem', md: '1.75rem' }
@@ -181,7 +180,6 @@ export default function TrainerOverview() {
             </Typography>
             <Typography variant="body2" sx={{ 
               color: '#64748B', 
-              fontFamily: 'DM Sans, sans-serif', 
               mt: 0.5,
               fontSize: '0.875rem'
             }}>
@@ -202,7 +200,6 @@ export default function TrainerOverview() {
               minWidth: 190,
               bgcolor: '#FFFFFF',
               borderRadius: 2,
-              fontFamily: 'DM Sans, sans-serif',
               fontWeight: 500,
               fontSize: '0.875rem',
               color: '#0F172A',
@@ -251,7 +248,6 @@ export default function TrainerOverview() {
                   fontSize: '0.72rem', 
                   fontWeight: 600, 
                   color: '#64748B', 
-                  fontFamily: 'DM Sans, sans-serif',
                   textTransform: 'uppercase', 
                   letterSpacing: '0.04em',
                 }}>
@@ -271,14 +267,13 @@ export default function TrainerOverview() {
                 <Typography sx={{ 
                   fontSize: '1.65rem', 
                   fontWeight: 700, 
-                  fontFamily: 'Syne, sans-serif', 
                   color: '#0F172A',
                   lineHeight: 1.2
                 }}>
                   {kpi.value}
                 </Typography>
                 {kpi.suffix && (
-                  <Typography sx={{ fontSize: '0.825rem', fontWeight: 600, color: '#94A3B8', fontFamily: 'DM Sans, sans-serif' }}>
+                  <Typography sx={{ fontSize: '0.825rem', fontWeight: 600, color: '#94A3B8'}}>
                     {kpi.suffix}
                   </Typography>
                 )}
@@ -318,10 +313,10 @@ export default function TrainerOverview() {
           }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Box>
-                <Typography sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
                   Module Performance
                 </Typography>
-                <Typography variant="caption" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontSize: '0.8rem' }}>
+                <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.8rem' }}>
                   Average evaluation scores across modules
                 </Typography>
               </Box>
@@ -336,7 +331,6 @@ export default function TrainerOverview() {
                     border: `1px solid ${passRate >= 50 ? 'rgba(34, 197, 94, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
                     fontWeight: 600,
                     fontSize: '0.72rem',
-                    fontFamily: 'DM Sans, sans-serif',
                     '& .MuiChip-icon': { color: 'inherit' }
                   }} 
                 />
@@ -368,14 +362,13 @@ export default function TrainerOverview() {
                           borderRadius: 8, 
                           border: '1px solid #E2E8F0', 
                           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)', 
-                          fontFamily: 'DM Sans, sans-serif',
                           fontSize: 13,
                           padding: '8px 14px',
                           backgroundColor: '#FFFFFF',
                         }}
                       />
                       <Legend 
-                        wrapperStyle={{ fontFamily: 'DM Sans, sans-serif', fontSize: 12 }} 
+                        wrapperStyle={{ fontSize: 12 }} 
                         iconType="circle"
                         iconSize={8}
                       />
@@ -384,10 +377,10 @@ export default function TrainerOverview() {
                   
                   {/* Center Text */}
                   <Box sx={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', top: 'calc(50% - 30px)' }}>
-                    <Typography sx={{ fontWeight: 700, fontFamily: 'Syne, sans-serif', color: '#0F172A', fontSize: '1.75rem', lineHeight: 1 }}>
+                    <Typography sx={{ fontWeight: 700, color: '#0F172A', fontSize: '1.75rem', lineHeight: 1 }}>
                       {metrics.avg_performance_score != null ? Number(metrics.avg_performance_score).toFixed(1) : '0.0'}
                     </Typography>
-                    <Typography sx={{ fontWeight: 600, fontFamily: 'DM Sans, sans-serif', fontSize: '0.68rem', textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.05em', mt: 0.5 }}>
+                    <Typography sx={{ fontWeight: 600, fontSize: '0.68rem', textTransform: 'uppercase', color: '#64748B', letterSpacing: '0.05em', mt: 0.5 }}>
                       Avg Score
                     </Typography>
                   </Box>
@@ -397,10 +390,10 @@ export default function TrainerOverview() {
                   <Box sx={{ width: 52, height: 52, borderRadius: 2, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 1.5 }}>
                     <GradeIcon sx={{ color: '#94A3B8', fontSize: 24 }} />
                   </Box>
-                  <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
+                  <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 500 }}>
                     No module data available yet
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#94A3B8', fontFamily: 'DM Sans, sans-serif', fontSize: '0.75rem' }}>
+                  <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.75rem' }}>
                     Assign interviews to see performance metrics
                   </Typography>
                 </Box>
@@ -425,10 +418,10 @@ export default function TrainerOverview() {
             }
           }}>
             <Box sx={{ mb: 2 }}>
-              <Typography sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
                 Quick Actions
               </Typography>
-              <Typography variant="caption" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontSize: '0.8rem' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.8rem' }}>
                 Frequently used management shortcuts
               </Typography>
             </Box>
@@ -481,10 +474,10 @@ export default function TrainerOverview() {
             borderBottom: '1px solid #F1F5F9'
           }}>
             <Box>
-              <Typography sx={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
                 Recent Activity
               </Typography>
-              <Typography variant="caption" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontSize: '0.8rem' }}>
+              <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.8rem' }}>
                 {metrics.recent_activity.length} recorded session{metrics.recent_activity.length !== 1 ? 's' : ''}
               </Typography>
             </Box>
@@ -495,7 +488,6 @@ export default function TrainerOverview() {
               sx={{ 
                 textTransform: 'none', 
                 fontWeight: 600, 
-                fontFamily: 'DM Sans, sans-serif',
                 fontSize: '0.825rem',
                 color: 'primary.main',
                 borderRadius: 1.5,
@@ -520,7 +512,6 @@ export default function TrainerOverview() {
                       textTransform: 'uppercase', 
                       fontSize: '0.7rem',
                       letterSpacing: '0.04em',
-                      fontFamily: 'DM Sans, sans-serif',
                       borderBottom: '1px solid #E2E8F0',
                       py: 1.5,
                     }}>
@@ -555,20 +546,19 @@ export default function TrainerOverview() {
                           color: 'primary.main', 
                           fontSize: 12, 
                           fontWeight: 700,
-                          fontFamily: 'DM Sans, sans-serif',
                           border: '1px solid rgba(242, 101, 34, 0.2)'
                         }}>
                           {activity.trainee_initials}
                         </Avatar>
-                        <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'DM Sans, sans-serif', color: '#0F172A', fontSize: '0.875rem' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', fontSize: '0.875rem' }}>
                           {activity.trainee_name}
                         </Typography>
                       </Box>
                     </TableCell>
-                    <TableCell sx={{ color: '#475569', borderBottom: '1px solid #F1F5F9', fontFamily: 'DM Sans, sans-serif', fontSize: '0.85rem' }}>
+                    <TableCell sx={{ color: '#475569', borderBottom: '1px solid #F1F5F9', fontSize: '0.85rem' }}>
                       {activity.module_name}
                     </TableCell>
-                    <TableCell sx={{ color: '#64748B', borderBottom: '1px solid #F1F5F9', fontFamily: 'DM Sans, sans-serif', fontSize: '0.85rem' }}>
+                    <TableCell sx={{ color: '#64748B', borderBottom: '1px solid #F1F5F9', fontSize: '0.85rem' }}>
                       {activity.date}
                     </TableCell>
                     <TableCell sx={{ borderBottom: '1px solid #F1F5F9' }}>
@@ -578,7 +568,6 @@ export default function TrainerOverview() {
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, cursor: 'help' }}>
                               <Typography variant="body2" sx={{ 
                                 fontWeight: 800, 
-                                fontFamily: 'DM Sans, sans-serif',
                                 color: '#0F172A',
                                 minWidth: 28,
                                 fontSize: '0.875rem'
@@ -591,7 +580,6 @@ export default function TrainerOverview() {
                           <Tooltip title="AI Auto-Score" placement="top">
                             <Typography variant="body2" sx={{ 
                               fontWeight: 700, 
-                              fontFamily: 'DM Sans, sans-serif',
                               color: activity.ai_score ? '#0F172A' : '#94A3B8',
                               minWidth: 28,
                               fontSize: '0.875rem',
@@ -613,10 +601,10 @@ export default function TrainerOverview() {
                       <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 1.5 }}>
                         <AssignmentIcon sx={{ color: '#94A3B8' }} />
                       </Box>
-                      <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
+                      <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 500 }}>
                         No recent activity
                       </Typography>
-                      <Typography variant="caption" sx={{ color: '#94A3B8', fontFamily: 'DM Sans, sans-serif' }}>
+                      <Typography variant="caption" sx={{ color: '#94A3B8'}}>
                         Sessions will appear here once assigned
                       </Typography>
                     </TableCell>
@@ -636,10 +624,8 @@ export default function TrainerOverview() {
               onRowsPerPageChange={handleChangeRowsPerPage}
               sx={{
                 borderTop: '1px solid #E2E8F0',
-                fontFamily: 'DM Sans, sans-serif',
                 bgcolor: '#FAFBFD',
                 '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-                  fontFamily: 'DM Sans, sans-serif',
                   fontSize: '0.85rem',
                   color: '#64748B'
                 }
@@ -678,7 +664,6 @@ function StatusChip({ status, pulse }) {
         borderRadius: 1.5,
         fontWeight: 600,
         fontSize: '0.72rem',
-        fontFamily: 'DM Sans, sans-serif',
         height: 24,
         '& .MuiChip-icon': { color: 'inherit' },
         '& .MuiChip-label': { px: 1 }
@@ -731,7 +716,6 @@ function QuickAction({ title, subtitle, icon, color, onClick }) {
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography className="qa-title" sx={{ 
           fontWeight: 600, 
-          fontFamily: 'DM Sans, sans-serif', 
           fontSize: '0.875rem',
           transition: 'color 0.18s ease',
           color: '#0F172A'
@@ -741,7 +725,6 @@ function QuickAction({ title, subtitle, icon, color, onClick }) {
         <Typography sx={{ 
           fontSize: '0.75rem', 
           color: '#64748B', 
-          fontFamily: 'DM Sans, sans-serif',
           mt: 0.25,
           whiteSpace: 'nowrap',
           overflow: 'hidden',

@@ -532,7 +532,6 @@ export default function VivaInProgress() {
             sx={{
               display: { xs: 'none', sm: 'block' },
               fontWeight: 700,
-              fontFamily: 'Syne, sans-serif',
               fontSize: '1rem',
               color: '#0F172A',
               whiteSpace: 'nowrap',
@@ -546,14 +545,14 @@ export default function VivaInProgress() {
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', px: 1.5, py: 0.5, borderRadius: 1.5, flexShrink: 0 }}>
             <PersonIcon sx={{ fontSize: 16, color: '#64748B' }} />
-            <Typography sx={{ fontSize: '0.825rem', fontWeight: 600, color: '#0F172A', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>
+            <Typography sx={{ fontSize: '0.825rem', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
               {traineeName}
             </Typography>
           </Box>
 
           <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.75, bgcolor: 'rgba(242, 101, 34, 0.08)', border: '1px solid rgba(242, 101, 34, 0.2)', px: 1.5, py: 0.5, borderRadius: 1.5, flexShrink: 0 }}>
             <CodeIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-            <Typography sx={{ fontSize: '0.825rem', fontWeight: 600, color: 'primary.main', fontFamily: 'DM Sans, sans-serif', whiteSpace: 'nowrap' }}>
+            <Typography sx={{ fontSize: '0.825rem', fontWeight: 600, color: 'primary.main', whiteSpace: 'nowrap' }}>
               {moduleName}
             </Typography>
           </Box>
@@ -561,7 +560,7 @@ export default function VivaInProgress() {
 
         {/* Right: Question Counter & Live Timer */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', fontFamily: 'DM Sans, sans-serif' }}>
+          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569'}}>
             {currentQuestion ? `Question ${currentQuestion.current_question_index} of ${currentQuestion.total_questions}` : 'Loading...'}
           </Typography>
 
@@ -582,7 +581,6 @@ export default function VivaInProgress() {
             <TimerIcon sx={{ fontSize: 18 }} />
             <Typography
               sx={{
-                fontFamily: 'Syne, sans-serif',
                 fontWeight: 700,
                 fontSize: '1rem',
                 letterSpacing: '0.02em',
@@ -712,7 +710,6 @@ export default function VivaInProgress() {
               fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.1rem' },
               letterSpacing: '-0.02em',
               mb: 3,
-              fontFamily: 'Syne, sans-serif',
               fontWeight: 600,
               color: '#0F172A',
               lineHeight: 1.35,
@@ -781,7 +778,7 @@ export default function VivaInProgress() {
           </IconButton>
 
           {/* Real-time speech status line */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: isRecording ? '#EF4444' : '#64748B', fontFamily: 'DM Sans, sans-serif', fontWeight: 600, fontSize: '0.8rem', mb: 2.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: isRecording ? '#EF4444' : '#64748B', fontWeight: 600, fontSize: '0.8rem', mb: 2.5 }}>
             <Box
               sx={{
                 width: 7,
@@ -822,7 +819,6 @@ export default function VivaInProgress() {
                 py: 1.3,
                 fontSize: '0.95rem',
                 fontWeight: 700,
-                fontFamily: 'DM Sans, sans-serif',
                 borderRadius: 2,
                 boxShadow: '0 4px 20px rgba(242, 101, 34, 0.35)',
                 textTransform: 'none',

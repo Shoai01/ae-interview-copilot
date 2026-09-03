@@ -49,7 +49,6 @@ const TranscriptPanel = React.memo(function TranscriptPanel({ value, isRecording
         sx={{
           '& .MuiOutlinedInput-root': {
             fontSize: '0.975rem',
-            fontFamily: 'DM Sans, sans-serif',
             color: '#0F172A',
             lineHeight: 1.7,
             '& fieldset': { border: 'none' },
@@ -84,7 +83,7 @@ const TranscriptPanel = React.memo(function TranscriptPanel({ value, isRecording
               animation: 'pulse 1.5s infinite',
             }}
           />
-          <Typography variant="caption" sx={{ color: '#EF4444', fontSize: '0.72rem', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+          <Typography variant="caption" sx={{ color: '#EF4444', fontSize: '0.72rem', fontWeight: 600}}>
             listening...
           </Typography>
         </Box>

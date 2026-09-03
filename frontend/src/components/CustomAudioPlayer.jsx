@@ -285,11 +285,11 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
               />
             ))}
           </Box>
-          <Typography variant="caption" sx={{ color: '#0F172A', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <Typography variant="caption" sx={{ color: '#0F172A', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             {title}
           </Typography>
           {loadError && (
-            <Typography variant="caption" sx={{ color: '#EF4444', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+            <Typography variant="caption" sx={{ color: '#EF4444', fontWeight: 600}}>
               — recording unavailable
             </Typography>
           )}
@@ -306,7 +306,6 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
               height: 26,
               fontSize: '0.75rem',
               fontWeight: 700,
-              fontFamily: 'DM Sans, sans-serif',
               textTransform: 'none',
               px: 1,
               py: 0,
@@ -343,7 +342,6 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
                 selected={playbackRate === rate}
                 onClick={() => handleSpeedSelect(rate)}
                 sx={{
-                  fontFamily: 'DM Sans, sans-serif',
                   fontSize: '0.8rem',
                   fontWeight: playbackRate === rate ? 700 : 500,
                   color: playbackRate === rate ? 'primary.main' : '#0F172A',
@@ -492,10 +490,10 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
           />
 
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: -0.5 }}>
-            <Typography variant="caption" sx={{ color: '#64748B', fontFamily: 'DM Sans, monospace', fontSize: '0.75rem', fontWeight: 600 }}>
+            <Typography variant="caption" sx={{ color: '#64748B', fontFamily: 'Inter, monospace', fontSize: '0.75rem', fontWeight: 600 }}>
               {formatTime(isSeeking ? seekValue : currentTime)}
             </Typography>
-            <Typography variant="caption" sx={{ color: '#94A3B8', fontFamily: 'DM Sans, monospace', fontSize: '0.75rem', fontWeight: 500 }}>
+            <Typography variant="caption" sx={{ color: '#94A3B8', fontFamily: 'Inter, monospace', fontSize: '0.75rem', fontWeight: 500 }}>
               {formatTime(duration)}
             </Typography>
           </Box>

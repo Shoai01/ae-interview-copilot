@@ -97,7 +97,7 @@ export default function VivaComplete() {
     return (
       <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#F8FAFC', gap: 2 }}>
         <CircularProgress sx={{ color: 'primary.main' }} />
-        <Typography variant="body2" sx={{ color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+        <Typography variant="body2" sx={{ color: '#64748B'}}>
           Finalizing interview record...
         </Typography>
       </Box>
@@ -107,7 +107,7 @@ export default function VivaComplete() {
   if (error) {
     return (
       <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: '#F8FAFC', gap: 2, p: 3 }}>
-        <Typography sx={{ color: '#DC2626', fontFamily: 'DM Sans, sans-serif', fontWeight: 600 }}>{error}</Typography>
+        <Typography sx={{ color: '#DC2626', fontWeight: 600 }}>{error}</Typography>
         <Button variant="outlined" onClick={handleLogout} sx={{ borderRadius: 2, textTransform: 'none', color: '#0F172A', borderColor: '#E2E8F0' }}>
           Return to Login
         </Button>
@@ -152,7 +152,6 @@ export default function VivaComplete() {
             sx={{
               color: '#0F172A',
               fontWeight: 700,
-              fontFamily: 'Syne, sans-serif',
               fontSize: '1.05rem',
               lineHeight: 1.1,
             }}
@@ -170,7 +169,6 @@ export default function VivaComplete() {
             borderColor: '#E2E8F0',
             border: '1px solid #E2E8F0',
             textTransform: 'none',
-            fontFamily: 'DM Sans, sans-serif',
             fontWeight: 600,
             fontSize: '0.8rem',
             borderRadius: 1.5,
@@ -257,8 +255,7 @@ export default function VivaComplete() {
                 borderRadius: 1.5,
                 px: 1,
                 mb: 1.5,
-                fontFamily: 'DM Sans, sans-serif',
-              }}
+                }}
             />
 
             <Typography
@@ -268,7 +265,6 @@ export default function VivaComplete() {
                 mb: 1.5,
                 fontWeight: 700,
                 letterSpacing: '-0.02em',
-                fontFamily: 'Syne, sans-serif',
                 fontSize: { xs: '1.5rem', md: '1.85rem' },
               }}
             >
@@ -280,7 +276,6 @@ export default function VivaComplete() {
               sx={{
                 color: '#64748B',
                 lineHeight: 1.6,
-                fontFamily: 'DM Sans, sans-serif',
                 maxWidth: 460,
                 fontSize: '0.9rem',
                 mb: 4,
@@ -316,7 +311,6 @@ export default function VivaComplete() {
                 <TimerOutlinedIcon sx={{ fontSize: 20, color: 'primary.main', mb: 0.75 }} />
                 <Typography
                   sx={{
-                    fontFamily: 'Syne, sans-serif',
                     fontSize: '1.25rem',
                     fontWeight: 700,
                     color: '#0F172A',
@@ -334,8 +328,7 @@ export default function VivaComplete() {
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                     mt: 0.5,
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}
+                    }}
                 >
                   Duration
                 </Typography>
@@ -355,7 +348,6 @@ export default function VivaComplete() {
                 <FormatListNumberedOutlinedIcon sx={{ fontSize: 20, color: '#0EA5E9', mb: 0.75 }} />
                 <Typography
                   sx={{
-                    fontFamily: 'Syne, sans-serif',
                     fontSize: '1.25rem',
                     fontWeight: 700,
                     color: '#0F172A',
@@ -373,8 +365,7 @@ export default function VivaComplete() {
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                     mt: 0.5,
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}
+                    }}
                 >
                   Questions
                 </Typography>
@@ -393,7 +384,6 @@ export default function VivaComplete() {
                 py: 1.3,
                 fontWeight: 700,
                 fontSize: '0.95rem',
-                fontFamily: 'DM Sans, sans-serif',
                 textTransform: 'none',
                 boxShadow: '0 4px 20px rgba(242, 101, 34, 0.35)',
                 transition: 'all 0.2s ease',
