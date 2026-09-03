@@ -206,7 +206,7 @@ class AuditLog(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     actor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     actor_name = Column(String, nullable=True) # Denormalized
-    category = Column(SQLEnum(AuditLogCategory), nullable=False, index=True)
+    category = Column(SQLEnum(AuditLogCategory), nullable=False)
     action_type = Column(SQLEnum(AuditActionType), nullable=False)
     target = Column(String, nullable=True)
     details = Column(JSONType, nullable=True)

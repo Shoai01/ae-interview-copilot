@@ -1,4 +1,4 @@
-﻿# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
 *$py.class
@@ -255,3 +255,7 @@ backend/uploads/
 *.db
 *.db-journal
 backend/faiss_index/
+
+# Test scripts
+backend/tests/
+TEST_CASES*.md
