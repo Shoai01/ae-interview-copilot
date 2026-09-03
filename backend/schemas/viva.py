@@ -78,7 +78,8 @@ class VivaReportResponse(BaseModel):
     areas_of_improvement: Optional[str]
     trainer_decision: Optional[str]
     trainer_notes: Optional[str] = None
-    
+    needs_review: bool = False
+
     model_config = ConfigDict(from_attributes=True)
 
 class SessionFullReportResponse(BaseModel):

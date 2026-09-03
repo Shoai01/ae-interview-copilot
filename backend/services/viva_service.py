@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from models import domain
 from schemas import viva as viva_schemas
@@ -397,7 +398,13 @@ def evaluate_session(db: Session, session_id: int):
     session = viva_repository.get_session_by_id(db, session_id)
     if not session:
         return False
-        
+
+    if session.report is not None:
+        # Already evaluated. Re-running would violate the unique constraints on
+        # evaluations.viva_question_id / viva_reports.session_id; treat repeat
+        # calls (e.g. a trainee double-submitting) as a no-op success.
+        return True
+
     questions_data = []
     for q in session.questions:
         if q.answered_at and q.transcript:
@@ -436,10 +443,17 @@ def evaluate_session(db: Session, session_id: int):
         final_score=scaled_final_score,
         ai_recommendation=eval_result.ai_recommendation,
         strengths=eval_result.strengths,
-        areas_of_improvement=eval_result.areas_of_improvement
+        areas_of_improvement=eval_result.areas_of_improvement,
+        needs_review=eval_result.is_fallback
     )
-    viva_repository.save_report(db, db_report)
-    
+    try:
+        viva_repository.save_report(db, db_report)
+    except IntegrityError:
+        # Lost a race with a concurrent evaluate call for the same session;
+        # the other request's write already stands.
+        db.rollback()
+
+
     return True
 
 def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFullReportResponse:
@@ -489,7 +503,8 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
             "strengths": session.report.strengths,
             "areas_of_improvement": session.report.areas_of_improvement,
             "trainer_decision": session.report.trainer_decision.value if session.report.trainer_decision else None,
-            "trainer_notes": session.report.trainer_notes
+            "trainer_notes": session.report.trainer_notes,
+            "needs_review": session.report.needs_review
         }
         
     session_response = viva_schemas.SessionResponse(
@@ -621,6 +636,9 @@ def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewe
             max_allowed = session.max_marks if (getattr(session, 'max_marks', None) and session.max_marks > 0) else (len(session.questions) * 10 if session.questions else 20.0)
             clamped_score = max(0.0, min(float(decision_data.final_score), float(max_allowed)))
             report.final_score = round(clamped_score, 1)
+            # A trainer-supplied score replaces the AI-fallback placeholder, so
+            # this report is now safe to include in dashboard averages again.
+            report.needs_review = False
             
         # Store notes in dedicated field
         if decision_data.notes:

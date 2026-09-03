@@ -30,6 +30,9 @@ class SessionEvaluationResult(BaseModel):
     strengths: str
     areas_of_improvement: str
     question_evaluations: List[QuestionEvaluationResult]
+    # True when this result came from the error-fallback path below, not a real
+    # LLM evaluation. Callers must not treat these scores as genuine.
+    is_fallback: bool = False
 
 def evaluate_interview_session(questions_data: list) -> SessionEvaluationResult:
     """
@@ -148,5 +151,6 @@ def evaluate_interview_session(questions_data: list) -> SessionEvaluationResult:
             ai_recommendation=AIRecommendationType.BORDERLINE,
             strengths="N/A",
             areas_of_improvement="Evaluation failed.",
-            question_evaluations=evals
+            question_evaluations=evals,
+            is_fallback=True
         )

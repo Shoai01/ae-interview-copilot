@@ -167,6 +167,9 @@ class VivaReport(Base):
     trainer_notes = Column(Text, nullable=True)
     reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True) # Trainer/Admin who made the call
     reviewed_at = Column(DateTime, nullable=True)
+    # True when scores came from the LLM-failure fallback path, not a real evaluation.
+    # Excluded from dashboard averages; trainers should re-run or manually score these.
+    needs_review = Column(Boolean, default=False, nullable=False, server_default="false")
 
     session = relationship("VivaSession", back_populates="report")
     reviewer = relationship("User", back_populates="reviewed_reports", foreign_keys=[reviewed_by])

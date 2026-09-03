@@ -154,9 +154,11 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
         report_query = report_query.filter(domain.VivaSession.module_id == module_id)
         
     total_interviews = session_query.count()
-    
-    # Average the raw final_score exactly as it is in the database (e.g. out of 20)
-    avg_score = report_query.with_entities(
+
+    # Average the raw final_score exactly as it is in the database (e.g. out of 20).
+    # Reports still flagged needs_review carry an LLM-failure placeholder score
+    # (not a real evaluation) and must not pull the average toward it.
+    avg_score = report_query.filter(domain.VivaReport.needs_review == False).with_entities(
         func.avg(domain.VivaReport.final_score)
     ).scalar()
     avg_performance_score = round(avg_score, 1) if avg_score else 0.0
@@ -190,7 +192,8 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
     
     completed_reports_query = db.query(domain.VivaSession.start_time, domain.VivaReport.final_score)\
         .join(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)\
-        .filter(domain.VivaSession.status == domain.SessionStatus.COMPLETED)
+        .filter(domain.VivaSession.status == domain.SessionStatus.COMPLETED)\
+        .filter(domain.VivaReport.needs_review == False)
         
     if module_id is not None:
         completed_reports_query = completed_reports_query.filter(domain.VivaSession.module_id == module_id)
@@ -218,8 +221,9 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
     )\
     .select_from(domain.VivaSession)\
     .join(domain.TrainingModule, domain.VivaSession.module_id == domain.TrainingModule.id)\
-    .join(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)
-    
+    .join(domain.VivaReport, domain.VivaSession.id == domain.VivaReport.session_id)\
+    .filter(domain.VivaReport.needs_review == False)
+
     if module_id is not None:
         module_scores_query = module_scores_query.filter(domain.VivaSession.module_id == module_id)
         
