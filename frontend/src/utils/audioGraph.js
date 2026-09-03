@@ -54,6 +54,33 @@ export function releaseAudioGraph() {
   }
 }
 
+/**
+ * Resolves once globalState.mediaStream is available, polling for it.
+ * On a page refresh mid-exam, the media stream is re-acquired asynchronously
+ * (see VivaInProgress's re-acquisition effect) — consumers whose own setup
+ * effect runs first (useNoiseDetection, useFraudDetection) would otherwise
+ * see a null stream and silently never start. Resolves to null if the
+ * stream still isn't available after `timeoutMs`.
+ */
+export function waitForMediaStream(timeoutMs = 15000, intervalMs = 300) {
+  return new Promise((resolve) => {
+    if (globalState.mediaStream) {
+      resolve(globalState.mediaStream);
+      return;
+    }
+    const start = Date.now();
+    const id = setInterval(() => {
+      if (globalState.mediaStream) {
+        clearInterval(id);
+        resolve(globalState.mediaStream);
+      } else if (Date.now() - start > timeoutMs) {
+        clearInterval(id);
+        resolve(null);
+      }
+    }, intervalMs);
+  });
+}
+
 /** Loads the PCM worklet module into the shared context (idempotent per context lifetime). */
 export function loadPcmWorkletModule() {
   if (!audioContext) return Promise.reject(new Error('Audio graph not acquired'));

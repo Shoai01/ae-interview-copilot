@@ -22,6 +22,37 @@ import { globalState, AUDIO_CONSTRAINTS } from '@/store';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/store/AuthContext';
 
+/**
+ * Real feature-support check instead of a hardcoded 'passed' — verifies the
+ * three browser APIs the exam actually depends on: MediaRecorder (archival
+ * audio), AudioWorklet (live PCM tap for Deepgram), and the Fullscreen API
+ * (proctoring).
+ */
+function checkBrowserCompatibility() {
+  const hasMediaRecorder = typeof window.MediaRecorder !== 'undefined';
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const hasAudioWorklet = !!AudioCtx && 'audioWorklet' in AudioCtx.prototype;
+  const hasFullscreen = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+  return hasMediaRecorder && hasAudioWorklet && hasFullscreen;
+}
+
+/**
+ * Real speaker check instead of assuming 'passed' whenever getUserMedia
+ * succeeds (mic/camera access says nothing about audio output). Confirms at
+ * least one audio output device is present. Device labels are only
+ * populated after a media permission has been granted, so call this after
+ * getUserMedia resolves.
+ */
+async function checkSpeakerAvailable() {
+  if (!navigator.mediaDevices?.enumerateDevices) return true; // can't verify — don't block on it
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.some(d => d.kind === 'audiooutput');
+  } catch {
+    return true; // enumeration failing isn't evidence of no speaker — don't false-fail
+  }
+}
+
 const StatusIcon = ({ status }) => {
   if (status === 'passed') return <CheckCircleIcon sx={{ color: '#16A34A', fontSize: 18 }} />;
   if (status === 'failed') return <CancelIcon sx={{ color: '#DC2626', fontSize: 18 }} />;
@@ -40,25 +71,17 @@ export default function WelcomeCheck() {
   const videoRef = useRef(null);
   const { user, logout } = useAuth();
 
-  const getInitialChecks = () => {
-    try {
-      const saved = sessionStorage.getItem(`viva_checks_${user?.id}`);
-      if (saved) {
-        return {
-          ...JSON.parse(saved),
-          network: navigator.onLine ? 'passed' : 'failed',
-          browser: 'passed'
-        };
-      }
-    } catch {}
-    return {
-      camera: 'checking',
-      mic: 'checking',
-      speaker: 'checking', 
-      network: navigator.onLine ? 'passed' : 'failed',
-      browser: 'passed'
-    };
-  };
+  // Camera/mic/speaker are always re-verified fresh on every mount (see the
+  // setupMedia effect below) — nothing here is restored from storage and
+  // trusted verbatim, since a passed check from a prior visit says nothing
+  // about whether the camera is still connected or permission still holds.
+  const getInitialChecks = () => ({
+    camera: 'checking',
+    mic: 'checking',
+    speaker: 'checking',
+    network: navigator.onLine ? 'passed' : 'failed',
+    browser: checkBrowserCompatibility() ? 'passed' : 'failed',
+  });
 
   const [checks, setChecks] = useState(getInitialChecks);
 
@@ -115,36 +138,41 @@ export default function WelcomeCheck() {
     let activeStream = null;
     const setupMedia = async () => {
       try {
-        if (!globalState.mediaStream) {
-          globalState.mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: AUDIO_CONSTRAINTS });
+        // Reuse the existing stream only if its tracks are actually still
+        // live — a stale globalState.mediaStream reference (permission
+        // revoked, device unplugged, track ended) must not short-circuit
+        // real verification.
+        const existing = globalState.mediaStream;
+        const existingIsLive = !!existing && existing.getTracks().length > 0 && existing.getTracks().every(t => t.readyState === 'live');
+
+        if (existingIsLive) {
+          activeStream = existing;
+        } else {
+          activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: AUDIO_CONSTRAINTS });
+          globalState.mediaStream = activeStream;
         }
-        activeStream = globalState.mediaStream;
         setStream(activeStream);
-        
+
         if (videoRef.current) {
           videoRef.current.srcObject = activeStream;
         }
 
-        const passedChecks = {
-          camera: 'passed', 
-          mic: 'passed', 
-          speaker: 'passed',
+        const speakerOk = await checkSpeakerAvailable();
+
+        setChecks({
+          camera: 'passed',
+          mic: 'passed',
+          speaker: speakerOk ? 'passed' : 'failed',
           network: navigator.onLine ? 'passed' : 'failed',
-          browser: 'passed'
-        };
-        setChecks(passedChecks);
-        try {
-          if (user?.id) {
-            sessionStorage.setItem(`viva_checks_${user.id}`, JSON.stringify(passedChecks));
-          }
-        } catch {}
+          browser: checkBrowserCompatibility() ? 'passed' : 'failed',
+        });
       } catch (err) {
         console.error("Media access error:", err);
-        setChecks(prev => ({ 
-          ...prev, 
-          camera: 'failed', 
-          mic: 'failed', 
-          speaker: 'failed' 
+        setChecks(prev => ({
+          ...prev,
+          camera: 'failed',
+          mic: 'failed',
+          speaker: 'failed'
         }));
       }
     };
@@ -188,9 +216,6 @@ export default function WelcomeCheck() {
   const readyCount = Object.values(checks).filter(status => status === 'passed').length;
 
   const handleLogout = async () => {
-    try {
-      if (user?.id) sessionStorage.removeItem(`viva_checks_${user.id}`);
-    } catch {}
     await logout();
     navigate('/');
   };

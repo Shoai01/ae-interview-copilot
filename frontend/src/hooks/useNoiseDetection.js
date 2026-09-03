@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { acquireAudioGraph, releaseAudioGraph, ANALYSER_FFT_SIZE } from '@/utils/audioGraph';
+import { acquireAudioGraph, releaseAudioGraph, waitForMediaStream, ANALYSER_FFT_SIZE } from '@/utils/audioGraph';
 import { vivaService } from '@/services/api';
 import toast from 'react-hot-toast';
 
@@ -14,18 +14,37 @@ export function useNoiseDetection(sessionId, activeQuestionId, isEndingRef) {
   const analyserRef = useRef(null);
   const dataArrayRef = useRef(new Uint8Array(ANALYSER_FFT_SIZE));
 
-  // Acquire the shared analyser once for the whole session (component lifetime)
+  // Acquire the shared analyser once for the whole session (component lifetime).
+  // On a mid-exam page refresh, globalState.mediaStream isn't available yet on
+  // first render — wait for it instead of giving up permanently.
   useEffect(() => {
-    const graph = acquireAudioGraph();
-    if (!graph) {
-      console.warn("Failed to initialize shared audio graph for noise detection");
-      return;
-    }
-    analyserRef.current = graph.analyserNode;
+    let cancelled = false;
+
+    (async () => {
+      let graph = acquireAudioGraph();
+      if (!graph) {
+        const stream = await waitForMediaStream();
+        if (cancelled || !stream) {
+          if (!stream) console.warn("No media stream available — noise detection disabled");
+          return;
+        }
+        graph = acquireAudioGraph();
+      }
+      if (!graph) return;
+      if (cancelled) {
+        // Unmounted while we were awaiting the stream — release what we just acquired.
+        releaseAudioGraph();
+        return;
+      }
+      analyserRef.current = graph.analyserNode;
+    })();
 
     return () => {
-      analyserRef.current = null;
-      releaseAudioGraph();
+      cancelled = true;
+      if (analyserRef.current) {
+        analyserRef.current = null;
+        releaseAudioGraph();
+      }
     };
   }, []);
 

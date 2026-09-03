@@ -332,7 +332,7 @@ export default function TrainerReviewDetail() {
               </Box>
 
               <Grid container spacing={2.5}>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: '#F8FAFC', border: '1px solid rgba(34, 197, 94, 0.25)', height: '100%' }}>
                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#16A34A', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 0.75, mb: 1, fontFamily: 'DM Sans, sans-serif' }}>
                       <CheckCircleIcon sx={{ fontSize: 16 }} /> Key Strengths
@@ -342,7 +342,7 @@ export default function TrainerReviewDetail() {
                     </Typography>
                   </Box>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Box sx={{ p: 2.5, borderRadius: 2, bgcolor: '#F8FAFC', border: '1px solid rgba(242, 101, 34, 0.25)', height: '100%' }}>
                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#EA580C', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 0.75, mb: 1, fontFamily: 'DM Sans, sans-serif' }}>
                       <WarningIcon sx={{ fontSize: 16 }} /> Areas For Improvement

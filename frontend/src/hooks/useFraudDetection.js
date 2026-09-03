@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { vivaService } from '@/services/api';
 import { globalState } from '@/store';
+import { waitForMediaStream } from '@/utils/audioGraph';
 import toast from 'react-hot-toast';
 
 /**
@@ -106,11 +107,19 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
         videoEl.id = '__fraud_detection_video';
         document.body.appendChild(videoEl);
 
-        if (globalState.mediaStream) {
-          videoEl.srcObject = globalState.mediaStream;
-          await videoEl.play().catch(() => {});
-        }
+        // On a mid-exam page refresh, globalState.mediaStream may not be
+        // (re)assigned yet at this point — wait for it instead of silently
+        // skipping video assignment forever.
+        const stream = globalState.mediaStream || await waitForMediaStream();
         if (!isActive) return;
+        if (stream) {
+          videoEl.srcObject = stream;
+          await videoEl.play().catch(() => {});
+        } else {
+          addLog('SYSTEM', 'No media stream available — face detection disabled', 'error');
+          setDetectorStatus(prev => ({ ...prev, faceDetection: 'error' }));
+          return;
+        }
 
         const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
 
