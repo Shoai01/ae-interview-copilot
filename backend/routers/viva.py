@@ -239,6 +239,7 @@ def report_fraud_flag(session_id: int, flag_data: viva_schemas.FraudFlagCreate, 
 
 @router.post("/{session_id}/evaluate", response_model=viva_schemas.StatusResponse, status_code=status.HTTP_200_OK)
 def evaluate_session_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _verify_session_access(db, session_id, current_user)
     success = viva_service.evaluate_session(db, session_id)
     if not success:
         raise HTTPException(status_code=404, detail="Session not found")
