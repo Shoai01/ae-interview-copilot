@@ -118,6 +118,17 @@ export function useSpeechRecognition() {
   const stopResolveRef = useRef(null);
   const keepAliveTimerRef = useRef(null); // pings Deepgram while paused so the connection survives between questions
 
+  // The socket is kept open and reused across questions (see startRecording),
+  // so its onmessage handler can outlive the question whose audio produced a
+  // given result — e.g. Deepgram's belated final transcript for the tail of
+  // question N's audio arriving after resetTranscript() already moved on to
+  // question N+1. activeGenerationRef bumps on every resetTranscript();
+  // audioGenerationRef snapshots it whenever we start actually sending audio.
+  // A message is only applied if the two still match — otherwise it's stale
+  // and gets dropped instead of bleeding into the new question's transcript.
+  const activeGenerationRef = useRef(0);
+  const audioGenerationRef = useRef(0);
+
   // Refs mirror state to avoid stale closures in async/event-driven code paths
   const liveTextRef = useRef('');
   const renderedLiveTextRef = useRef('');
@@ -449,6 +460,7 @@ export function useSpeechRecognition() {
     // Only clear transcription text on the FIRST mic activation per question.
     // On resume (chunks already exist), preserve the previously transcribed text.
     if (audioChunksRef.current.length === 0) {
+      activeGenerationRef.current += 1;
       setFinalText('');
       setLiveText('');
       liveTextRef.current = '';
@@ -483,6 +495,7 @@ export function useSpeechRecognition() {
       stopKeepAlive();
       isConnectingRef.current = false;
       isSendingRef.current = true;
+      audioGenerationRef.current = activeGenerationRef.current;
       setIsRecording(true);
       return;
     }
@@ -517,12 +530,16 @@ export function useSpeechRecognition() {
 
     console.log("[Deepgram] Connecting to WebSocket...");
 
-    const socket = new WebSocket(buildDeepgramUrl(), ['token', deepgramToken]);
+    // Deepgram's temporary JWTs (from /v1/auth/grant) must be presented via
+    // the "Bearer" subprotocol scheme, not "token" (that's only for permanent
+    // API keys) — "token" silently 401s the handshake for a JWT.
+    const socket = new WebSocket(buildDeepgramUrl(), ['Bearer', deepgramToken]);
     socketRef.current = socket;
 
     socket.onopen = () => {
       console.log("[Deepgram] WebSocket connected successfully");
       isConnectingRef.current = false;
+      audioGenerationRef.current = activeGenerationRef.current;
       setIsConnectingState(false);
       setIsRecording(true);
       // Flush whatever PCM frames accumulated while we were connecting/reconnecting
@@ -548,6 +565,12 @@ export function useSpeechRecognition() {
           // interim text until Deepgram either finalizes or revises it.
           return;
         }
+
+        // Drop results belonging to a question we've already moved past —
+        // the socket stays open across questions, so a belated result for
+        // the previous question's trailing audio can otherwise land after
+        // resetTranscript() and bleed into the new question's transcript.
+        if (audioGenerationRef.current !== activeGenerationRef.current) return;
 
         const alt = received?.channel?.alternatives?.[0];
         if (!alt) return;
@@ -649,6 +672,11 @@ export function useSpeechRecognition() {
     liveTextRef.current = '';
 
     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      // Force Deepgram to finalize whatever audio it's still holding right
+      // now, rather than waiting out the full endpointing window — shrinks
+      // the race where a late result for this question arrives after the
+      // next question has already reset the transcript.
+      try { socketRef.current.send(JSON.stringify({ type: 'Finalize' })); } catch { /* ignore */ }
       startKeepAlive();
     }
 
@@ -706,6 +734,7 @@ export function useSpeechRecognition() {
   }, [isRecording, startRecording, stopRecording]);
 
   const resetTranscript = useCallback(() => {
+    activeGenerationRef.current += 1;
     setFinalText('');
     setLiveText('');
     liveTextRef.current = '';

@@ -36,8 +36,24 @@ def get_questions_by_module(db: Session, module_id: int) -> List[domain.Question
 from services.audit_service import log_action
 from models.domain import AuditActionType
 
+def _with_kb_grounded_ideal_answer(question: admin_schemas.QuestionCreate) -> admin_schemas.QuestionCreate:
+    """
+    Manually-authored questions often skip the ideal answer field, which
+    otherwise leaves the evaluator scoring that question with no reference
+    to grade against. If it's blank, try to ground one in the module's
+    knowledge base via retrieval before the question is stored.
+    """
+    if question.ideal_answer and question.ideal_answer.strip():
+        return question
+    from ai.ideal_answer import generate_ideal_answer_from_kb
+    generated = generate_ideal_answer_from_kb(question.module_id, question.text)
+    if not generated:
+        return question
+    return question.model_copy(update={"ideal_answer": generated})
+
 def create_question(db: Session, question: admin_schemas.QuestionCreate, actor_id: int = None, actor_name: str = None) -> domain.QuestionBank:
     with log_action(db, AuditActionType.QUESTION_CREATED, actor_id, actor_name) as log:
+        question = _with_kb_grounded_ideal_answer(question)
         new_q = admin_repository.create_question(db, question)
         log['target'] = f"Question: {new_q.id} (Set: {new_q.set_name})"
         log['details'] = {"module_id": new_q.module_id, "difficulty": new_q.difficulty.value}
@@ -54,9 +70,10 @@ def create_questions_bulk(db: Session, bulk_data: admin_schemas.BulkQuestionCrea
                 difficulty=q.difficulty,
                 set_name=q.set_name
             )
+            q_create = _with_kb_grounded_ideal_answer(q_create)
             admin_repository.create_question(db, q_create)
             count += 1
-        
+
         log['target'] = f"Module: {bulk_data.module_id}"
         log['details'] = {"count": count}
         return admin_schemas.BulkQuestionResponse(message="Successfully created questions in bulk", count=count)

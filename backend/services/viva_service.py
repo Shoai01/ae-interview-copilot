@@ -5,6 +5,17 @@ from schemas import viva as viva_schemas
 from repositories import viva_repository
 import datetime
 
+class ReviewConflictError(Exception):
+    """
+    Raised when a trainer tries to submit a decision on a session another
+    trainer has already reviewed. Carries the existing review so the caller
+    can show the requester who got there first, instead of just a generic
+    error.
+    """
+    def __init__(self, report: domain.VivaReport):
+        self.report = report
+        super().__init__("Session already reviewed by another trainer.")
+
 def assign_session(db: Session, session_data: viva_schemas.SessionCreate, current_user_id: int = 1, skip_audit: bool = False) -> viva_schemas.SessionResponse:
     """
     Assign a new viva session to a trainee. If the trainee does not exist by identifier,
@@ -496,6 +507,7 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
         
     report_data = None
     if session.report:
+        reviewer = session.report.reviewer  # None until a trainer has submitted a decision
         report_data = {
             "aggregate_score": session.report.aggregate_score,
             "final_score": session.report.final_score,
@@ -504,7 +516,10 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
             "areas_of_improvement": session.report.areas_of_improvement,
             "trainer_decision": session.report.trainer_decision.value if session.report.trainer_decision else None,
             "trainer_notes": session.report.trainer_notes,
-            "needs_review": session.report.needs_review
+            "needs_review": session.report.needs_review,
+            "reviewed_by_id": session.report.reviewed_by,
+            "reviewed_by_name": (reviewer.full_name or reviewer.username) if reviewer else None,
+            "reviewed_at": session.report.reviewed_at
         }
         
     session_response = viva_schemas.SessionResponse(
@@ -609,14 +624,26 @@ def create_fraud_flag(db: Session, session_id: int, flag_data: viva_schemas.Frau
 from services.audit_service import log_action
 from models.domain import AuditActionType
 
-def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewer_id: int):
+def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewer_id: int, reviewer_role: domain.UserRole = None):
     """
     Save a trainer's manual review decision for a completed session.
+
+    Once a session has been reviewed, only the original reviewer or an admin
+    may change the decision — a different trainer gets a ReviewConflictError
+    instead of silently overwriting someone else's call.
     """
     session = viva_repository.get_session_by_id(db, session_id)
     if not session or not session.report:
         return None
-        
+
+    report = session.report
+    if (
+        report.reviewed_by is not None
+        and report.reviewed_by != reviewer_id
+        and reviewer_role != domain.UserRole.ADMIN
+    ):
+        raise ReviewConflictError(report)
+
     reviewer = db.query(domain.User).filter(domain.User.id == reviewer_id).first()
     reviewer_name = reviewer.full_name or reviewer.username if reviewer else None
 
@@ -624,8 +651,6 @@ def submit_trainer_decision(db: Session, session_id: int, decision_data, reviewe
     from models.domain import AuditActionType
 
     with log_action(db, AuditActionType.TRAINER_DECISION_SUBMITTED, reviewer_id, reviewer_name) as log:
-        report = session.report
-        
         old_score = report.final_score
         
         report.trainer_decision = domain.TrainerDecisionType(decision_data.decision)

@@ -43,6 +43,9 @@ class DeepgramTokenResponse(BaseModel):
     access_token: str
     expires_in: int
 
+class TTSRequest(BaseModel):
+    text: str
+
 class StatusResponse(BaseModel):
     status: str
     
@@ -83,6 +86,9 @@ class VivaReportResponse(BaseModel):
     trainer_decision: Optional[str]
     trainer_notes: Optional[str] = None
     needs_review: bool = False
+    reviewed_by_id: Optional[int] = None
+    reviewed_by_name: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

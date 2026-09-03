@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Box, Typography, Button, Avatar, Stack, CircularProgress, Grid, Card, Chip, TextField } from '@mui/material';
+import { Box, Typography, Button, Avatar, Stack, CircularProgress, Grid, Card, Chip, TextField, Alert } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -13,14 +13,26 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import BadgeIcon from '@mui/icons-material/Badge';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import LockIcon from '@mui/icons-material/Lock';
 import CustomAudioPlayer from '@/components/CustomAudioPlayer';
 import { vivaService } from '@/services/api';
+import { useAuth } from '@/store/AuthContext';
 import toast from 'react-hot-toast';
+
+function formatReviewTimestamp(iso) {
+  if (!iso) return null;
+  try {
+    return new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return null;
+  }
+}
 
 export default function TrainerReviewDetail() {
   const navigate = useNavigate();
   const { id: sessionId } = useParams();
-  
+  const { user } = useAuth();
+
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,6 +40,9 @@ export default function TrainerReviewDetail() {
   const [trainerNotes, setTrainerNotes] = useState('');
   const [finalScore, setFinalScore] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Set from the report on load, or from a 409 if another trainer reviews it
+  // in the moment between us loading the page and us submitting.
+  const [reviewConflict, setReviewConflict] = useState(null);
   const isSubmittedRef = useRef(false);
 
   // 1. Restore report & check for unsaved local review drafts
@@ -40,20 +55,37 @@ export default function TrainerReviewDetail() {
           const maxMarksForSession = data.session?.max_marks || (data.questions?.length ? data.questions.length * 10 : 20);
           let decisionVal = data.report.trainer_decision || null;
           let notesVal = data.report.trainer_notes || '';
-          let scoreVal = data.report.final_score != null 
+          let scoreVal = data.report.final_score != null
             ? Math.min(maxMarksForSession, Number(data.report.final_score))
             : (data.report.aggregate_score != null ? Number((data.report.aggregate_score / 10) * maxMarksForSession).toFixed(1) : '');
 
-          // Check if trainer had an unsaved draft in session
-          try {
-            const savedDraft = sessionStorage.getItem(`trainer_review_draft_${sessionId}`);
-            if (savedDraft) {
-              const draft = JSON.parse(savedDraft);
-              if (draft.selectedDecision !== undefined) decisionVal = draft.selectedDecision;
-              if (draft.trainerNotes !== undefined) notesVal = draft.trainerNotes;
-              if (draft.finalScore !== undefined) scoreVal = draft.finalScore;
-            }
-          } catch {}
+          // If someone else already reviewed this session, lock the form to
+          // read-only for anyone but them or an admin — don't even load a
+          // stale local draft over their review.
+          const reviewedByOther = data.report.reviewed_by_id
+            && data.report.reviewed_by_id !== user?.id
+            && user?.role !== 'ADMIN';
+
+          if (reviewedByOther) {
+            setReviewConflict({
+              reviewed_by_name: data.report.reviewed_by_name,
+              reviewed_at: data.report.reviewed_at,
+              trainer_decision: data.report.trainer_decision,
+              final_score: data.report.final_score,
+              trainer_notes: data.report.trainer_notes,
+            });
+          } else {
+            // Check if trainer had an unsaved draft in session
+            try {
+              const savedDraft = sessionStorage.getItem(`trainer_review_draft_${sessionId}`);
+              if (savedDraft) {
+                const draft = JSON.parse(savedDraft);
+                if (draft.selectedDecision !== undefined) decisionVal = draft.selectedDecision;
+                if (draft.trainerNotes !== undefined) notesVal = draft.trainerNotes;
+                if (draft.finalScore !== undefined) scoreVal = draft.finalScore;
+              }
+            } catch {}
+          }
 
           setSelectedDecision(decisionVal);
           setTrainerNotes(notesVal);
@@ -173,6 +205,28 @@ export default function TrainerReviewDetail() {
             Back to Viva Sessions
           </Typography>
         </Box>
+
+        {/* Already-reviewed-by-another-trainer notice */}
+        {reviewConflict && (
+          <Alert
+            severity="info"
+            icon={<LockIcon sx={{ fontSize: 20 }} />}
+            sx={{ borderRadius: 2.5, border: '1px solid rgba(99, 102, 241, 0.25)', fontFamily: 'DM Sans, sans-serif' }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: 'DM Sans, sans-serif' }}>
+              This session was already reviewed by {reviewConflict.reviewed_by_name || 'another trainer'}
+              {formatReviewTimestamp(reviewConflict.reviewed_at) ? ` on ${formatReviewTimestamp(reviewConflict.reviewed_at)}` : ''}.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5, fontFamily: 'DM Sans, sans-serif' }}>
+              Decision: <strong>{reviewConflict.trainer_decision || '—'}</strong>
+              {reviewConflict.final_score != null && <> · Score: <strong>{reviewConflict.final_score}</strong></>}
+              {reviewConflict.trainer_notes && <> · Notes: "{reviewConflict.trainer_notes}"</>}
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#64748B', fontFamily: 'DM Sans, sans-serif' }}>
+              Only they or an admin can change this review. The form below is read-only.
+            </Typography>
+          </Alert>
+        )}
 
         {/* Candidate Info + Meta Stats Banner */}
         <Card elevation={0} sx={{ p: 0, overflow: 'hidden', border: '1px solid #E2E8F0', borderRadius: 2.5, bgcolor: '#FFFFFF', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
@@ -443,6 +497,7 @@ export default function TrainerReviewDetail() {
                   key={btn.key}
                   variant={isSelected ? "contained" : "outlined"}
                   onClick={() => setSelectedDecision(btn.key)}
+                  disabled={!!reviewConflict}
                   startIcon={btn.icon}
                   sx={{
                     px: 2.25,
@@ -475,6 +530,7 @@ export default function TrainerReviewDetail() {
             fullWidth
             value={trainerNotes}
             onChange={(e) => setTrainerNotes(e.target.value)}
+            disabled={!!reviewConflict}
             aria-label="Trainer notes"
             sx={{
               flex: 1,
@@ -495,6 +551,7 @@ export default function TrainerReviewDetail() {
             type="number"
             size="small"
             value={finalScore}
+            disabled={!!reviewConflict}
             error={parseFloat(finalScore) > maxMarks || parseFloat(finalScore) < 0}
             helperText={parseFloat(finalScore) > maxMarks ? `Max is ${maxMarks}` : parseFloat(finalScore) < 0 ? 'Cannot be negative' : ''}
             onChange={(e) => {
@@ -542,7 +599,7 @@ export default function TrainerReviewDetail() {
           <Button
             variant="contained"
             endIcon={<SendIcon sx={{ fontSize: 16 }} />}
-            disabled={!selectedDecision || submitting || (finalScore !== '' && (parseFloat(finalScore) < 0 || parseFloat(finalScore) > maxMarks))}
+            disabled={!!reviewConflict || !selectedDecision || submitting || (finalScore !== '' && (parseFloat(finalScore) < 0 || parseFloat(finalScore) > maxMarks))}
             onClick={async () => {
               if (finalScore !== '') {
                 const numScore = parseFloat(finalScore);
@@ -563,7 +620,22 @@ export default function TrainerReviewDetail() {
                 navigate('/hr/sessions');
               } catch (err) {
                 console.error('Failed to submit decision:', err);
-                toast.error(err.response?.data?.detail || 'Failed to submit decision.', { id: 'decision-status' });
+                const detail = err.response?.data?.detail;
+                // A 409 means someone else's review landed while we had this
+                // page open — surface it the same way as the load-time check
+                // instead of a generic error, and lock the form.
+                if (err.response?.status === 409 && detail && typeof detail === 'object') {
+                  setReviewConflict({
+                    reviewed_by_name: detail.reviewed_by_name,
+                    reviewed_at: detail.reviewed_at,
+                    trainer_decision: detail.trainer_decision,
+                    final_score: detail.final_score,
+                    trainer_notes: detail.trainer_notes,
+                  });
+                  toast.error(detail.message || 'This session was already reviewed by another trainer.', { id: 'decision-status' });
+                } else {
+                  toast.error((typeof detail === 'string' && detail) || 'Failed to submit decision.', { id: 'decision-status' });
+                }
                 setSubmitting(false);
               }
             }}
