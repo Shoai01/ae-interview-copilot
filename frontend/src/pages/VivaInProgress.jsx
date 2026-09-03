@@ -9,7 +9,7 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import SendIcon from '@mui/icons-material/Send';
 import PersonIcon from '@mui/icons-material/Person';
-import { vivaService } from '@/services/api';
+import api, { vivaService } from '@/services/api';
 import { globalState, AUDIO_CONSTRAINTS } from '@/store';
 import TranscriptPanel from '@/components/TranscriptPanel';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
@@ -60,8 +60,39 @@ export default function VivaInProgress() {
   const [sessionStartTime, setSessionStartTime] = useState(sessionInfo.startTime || null);
   const [sessionDuration, setSessionDuration] = useState(sessionInfo.durationMinutes || 15);
   const [nowTime, setNowTime] = useState(Date.now());
+  // server_time (from /health) minus local Date.now() at the moment of that
+  // response, adjusted for round-trip latency — added to nowTime so the
+  // countdown tracks the server's clock instead of blindly trusting the
+  // candidate's machine. A slow local clock previously granted extra time;
+  // a fast one triggered auto-submit early. Re-synced periodically to
+  // correct for drift over a long exam, not just once at mount.
+  const [clockOffset, setClockOffset] = useState(0);
   const isAutoSubmittingRef = useRef(false);
   const isEndingRef = useRef(false);
+
+  const syncServerClock = useCallback(async () => {
+    const requestSentAt = Date.now();
+    try {
+      const res = await api.get('/health', { timeout: 5000 });
+      const requestReceivedAt = Date.now();
+      const serverTimeMs = res.data?.server_time ? new Date(res.data.server_time).getTime() : NaN;
+      if (!isNaN(serverTimeMs)) {
+        // Assume symmetric latency — estimate the server's clock at the
+        // midpoint of the round trip, then diff against that midpoint.
+        const roundTripMidpoint = (requestSentAt + requestReceivedAt) / 2;
+        setClockOffset(serverTimeMs - roundTripMidpoint);
+      }
+    } catch {
+      // Sync failed (offline blip, etc.) — keep the last known offset
+      // rather than falling back to raw, uncorrected local time.
+    }
+  }, []);
+
+  useEffect(() => {
+    syncServerClock();
+    const resyncInterval = setInterval(syncServerClock, 60000);
+    return () => clearInterval(resyncInterval);
+  }, [syncServerClock]);
 
   // Clock tick every second
   useEffect(() => {
@@ -176,9 +207,11 @@ export default function VivaInProgress() {
   const parsedStartTime = parseUtcTimestamp(sessionStartTime);
   const totalSeconds = (sessionDuration || 15) * 60;
   
-  // Calculate elapsed seconds based on UTC server start time; clamp future skew to 0
-  const elapsedSeconds = parsedStartTime 
-    ? Math.max(0, Math.floor((nowTime - parsedStartTime) / 1000))
+  // Calculate elapsed seconds based on UTC server start time, correcting
+  // nowTime for the candidate machine's clock offset from the server (see
+  // syncServerClock above); clamp any remaining skew to 0.
+  const elapsedSeconds = parsedStartTime
+    ? Math.max(0, Math.floor((nowTime + clockOffset - parsedStartTime) / 1000))
     : 0;
   const remainingSeconds = Math.min(totalSeconds, Math.max(0, totalSeconds - elapsedSeconds));
   const timerMinutes = String(Math.floor(remainingSeconds / 60)).padStart(2, '0');
@@ -384,18 +417,24 @@ export default function VivaInProgress() {
         cancelConnecting();
       }
 
-      // Stop audio capture and wait for the final Blob to be generated
-      await stopAudioCapture();
-
       // Read transcript from refs to avoid stale closure values
       const transcriptToSubmit = getTranscriptText();
-      
-      // 1. Submit transcript JSON to answer endpoint
+
+      // 1. Submit transcript JSON to answer endpoint — deliberately BEFORE
+      //    stopAudioCapture(). If this fails (network blip) and the
+      //    candidate retries by tapping the mic, startAudioCapture() sees a
+      //    'paused' recorder and resumes it; only a torn-down ('inactive')
+      //    recorder gets its chunks wiped for a fresh take. Tearing down
+      //    audio capture before this point risked silently losing the
+      //    original recording on a failed-then-retried submit.
       await vivaService.submitAnswer(sessionId, currentQuestion.viva_question_id, transcriptToSubmit);
       try {
         sessionStorage.removeItem(`viva_draft_${sessionId}_${currentQuestion.viva_question_id}`);
       } catch {}
-      
+
+      // Now safe to finalize the archival recording and grab the Blob.
+      await stopAudioCapture();
+
       // 2. Immediately submit the recorded audio Blob to the /audio endpoint
       const recordedBlob = getAudioBlob();
       console.log(`[Viva] Submitting audio for question ${currentQuestion.viva_question_id}:`, recordedBlob?.size, 'bytes');

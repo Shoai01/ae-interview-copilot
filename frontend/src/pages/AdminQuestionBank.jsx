@@ -15,6 +15,9 @@ import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import { adminService } from '@/services/api';
+import { parseCsvLine } from '@/utils/csv';
+
+const MAX_BULK_UPLOAD_BYTES = 2 * 1024 * 1024; // 2MB — this is a small bulk-question CSV, not a file store
 
 export default function AdminQuestionBank() {
   const [modules, setModules] = useState([]);
@@ -115,10 +118,24 @@ export default function AdminQuestionBank() {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      toast.error("Please upload a .csv file.");
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    if (file.size > MAX_BULK_UPLOAD_BYTES) {
+      toast.error("File is too large — please upload a CSV under 2MB.");
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       setBulkQuestionsText(event.target.result);
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read the file.");
     };
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -157,7 +174,7 @@ export default function AdminQuestionBank() {
           continue;
         }
 
-        const parts = line.split(',').map(s => s.trim());
+        const parts = parseCsvLine(line);
         if (parts.length >= 1) {
           parsedQuestions.push({
             text: parts[0],
@@ -215,7 +232,7 @@ export default function AdminQuestionBank() {
       try {
         await adminService.deleteSet(activeModuleId, name);
         toast.success(`Set "${name}" deleted. (If questions were in use, they were deactivated instead).`);
-        if (activeSet === name) setActiveSet('All Sets');
+        if (activeSet === name) { setActiveSet('All Sets'); setPage(0); }
         fetchQuestions(activeModuleId);
       } catch (err) {
         console.error("Failed to delete set:", err);
@@ -349,7 +366,7 @@ export default function AdminQuestionBank() {
         activeSet !== 'All Sets'
           ? [
               { label: 'Dashboard', path: '/hr/dashboard' },
-              { label: 'Question Bank', onClick: () => setActiveSet('All Sets') },
+              { label: 'Question Bank', onClick: () => { setActiveSet('All Sets'); setPage(0); } },
               { label: activeSet },
             ]
           : undefined
@@ -544,8 +561,8 @@ export default function AdminQuestionBank() {
                 const isSelected = activeSet === setName;
                 return (
                   <Button 
-                    key={setName} 
-                    onClick={() => setActiveSet(setName)}
+                    key={setName}
+                    onClick={() => { setActiveSet(setName); setPage(0); }}
                     sx={{ 
                       px: 2,
                       py: 0.6,
@@ -588,7 +605,7 @@ export default function AdminQuestionBank() {
               <InputBase 
                 placeholder="Search questions in set..." 
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
                 sx={{
                   width: '100%',
                   pl: 4.5,

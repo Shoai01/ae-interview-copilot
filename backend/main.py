@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import datetime
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from core.database import engine, get_db
@@ -67,10 +68,15 @@ def health_check():
     Real-time health check API to verify system and database status.
     Can be used by the frontend to drive the 'Engine Active' indicator.
     """
+    # Also doubles as a clock-sync source for the exam timer (VivaInProgress
+    # polls this to correct for candidate-machine clock skew against the
+    # server-issued session start_time) — cheap to include since this
+    # endpoint is already polled regularly.
+    server_time = datetime.datetime.utcnow().isoformat() + "Z"
     try:
         # Simple DB connectivity check
         with engine.connect() as connection:
             pass
-        return {"status": "ok", "engine": "active", "database": "connected"}
+        return {"status": "ok", "engine": "active", "database": "connected", "server_time": server_time}
     except Exception as e:
-        return {"status": "error", "engine": "down", "database": "disconnected", "details": str(e)}
+        return {"status": "error", "engine": "down", "database": "disconnected", "details": str(e), "server_time": server_time}

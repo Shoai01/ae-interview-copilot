@@ -217,7 +217,13 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
     };
   }, []);
 
-  // Keep playbackRate synced if src changes
+  // Reset playback UI only when the actual audio resource changes — not on
+  // every playbackRate/isMuted change. Selecting a speed or hitting mute
+  // mid-playback already applies directly to the element in
+  // handleSpeedSelect/toggleMute; including them here was snapping the
+  // progress bar to 0:00 and showing "paused" while audio kept playing.
+  // Still re-applies the current rate/mute to a freshly loaded element so a
+  // choice made before switching recordings carries over.
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.playbackRate = playbackRate;
@@ -225,7 +231,8 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
     }
     setIsPlaying(false);
     setCurrentTime(0);
-  }, [src, playbackRate, isMuted]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately src-only, see comment above
+  }, [src]);
 
   return (
     <Box

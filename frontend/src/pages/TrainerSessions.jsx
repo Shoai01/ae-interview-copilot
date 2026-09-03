@@ -14,7 +14,10 @@ import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined';
 import FilterListOffIcon from '@mui/icons-material/FilterListOff';
 import { useNavigate } from 'react-router-dom';
 import { vivaService, adminService } from '@/services/api';
+import { parseCsvLine } from '@/utils/csv';
 import toast from 'react-hot-toast';
+
+const MAX_BULK_UPLOAD_BYTES = 2 * 1024 * 1024; // 2MB — this is a small bulk-trainee CSV, not a file store
 
 const DEFAULT_ASSIGN_FORM = { traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15, questionCount: '', setName: '' };
 
@@ -184,10 +187,10 @@ export default function TrainerSessions() {
       const lines = bulkInputText.trim().split('\n');
       for (const line of lines) {
         if (!line.trim()) continue;
-        const parts = line.split(',');
+        const parts = parseCsvLine(line);
         if (parts.length >= 1) {
-          const identifier = parts[0].trim();
-          const fullName = parts.length > 1 ? parts.slice(1).join(',').trim() : '';
+          const identifier = parts[0];
+          const fullName = parts.length > 1 ? parts.slice(1).join(', ') : '';
           
           // Skip header row if present
           if (identifier.toLowerCase() === 'username' || identifier.toLowerCase() === 'employee id') {
@@ -236,10 +239,24 @@ export default function TrainerSessions() {
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      toast.error("Please upload a .csv file.");
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    if (file.size > MAX_BULK_UPLOAD_BYTES) {
+      toast.error("File is too large — please upload a CSV under 2MB.");
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       setBulkInputText(event.target.result);
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read the file.");
     };
     reader.readAsText(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -301,6 +318,7 @@ export default function TrainerSessions() {
     setFilterModule('');
     setFilterStatus('');
     setFilterResult('');
+    setPage(0);
   };
 
   return (
@@ -429,7 +447,7 @@ export default function TrainerSessions() {
               <Select
                 size="small"
                 value={filterModule}
-                onChange={(e) => setFilterModule(e.target.value)}
+                onChange={(e) => { setFilterModule(e.target.value); setPage(0); }}
                 displayEmpty
                 sx={{
                   minWidth: 180,
@@ -450,7 +468,7 @@ export default function TrainerSessions() {
               <Select
                 size="small"
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => { setFilterStatus(e.target.value); setPage(0); }}
                 displayEmpty
                 sx={{
                   minWidth: 140,
@@ -471,7 +489,7 @@ export default function TrainerSessions() {
               <Select
                 size="small"
                 value={filterResult}
-                onChange={(e) => setFilterResult(e.target.value)}
+                onChange={(e) => { setFilterResult(e.target.value); setPage(0); }}
                 displayEmpty
                 sx={{
                   minWidth: 140,

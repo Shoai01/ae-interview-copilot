@@ -4,6 +4,36 @@ import { globalState } from '@/store';
 
 const AuthContext = createContext(null);
 
+// Prefixes of sessionStorage keys that are written by various pages (viva
+// session state/drafts, trainer review drafts, the bulk-assign form draft)
+// but are NOT user-scoped like `viva_checks_${user.id}` is. On a shared
+// kiosk/browser, leaving these behind after logout means the next person to
+// sign in can land on the previous user's completion screen or inherit
+// their in-progress draft — so wipe them all on every logout.
+const SESSION_STORAGE_KEY_PREFIXES = [
+  'active_viva_session',
+  'last_completed_viva_session',
+  'viva_draft_',
+  'trainer_assign_form_draft',
+  'trainer_review_draft_',
+];
+
+function clearSharedSessionStorage() {
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key && SESSION_STORAGE_KEY_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((key) => sessionStorage.removeItem(key));
+  } catch {
+    // Storage access can throw in some locked-down contexts — logout must
+    // still proceed either way.
+  }
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [accessToken, setAccessToken] = useState(null);
@@ -57,6 +87,7 @@ export const AuthProvider = ({ children }) => {
             // Refresh failed, logout
             setAccessToken(null);
             setUser(null);
+            clearSharedSessionStorage();
           }
         }
         return Promise.reject(error);
@@ -118,7 +149,8 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setAccessToken(null);
       setUser(null);
-      
+      clearSharedSessionStorage();
+
       // Clean up global media stream (camera/mic) on sign out
       if (globalState.mediaStream) {
         globalState.mediaStream.getTracks().forEach(track => track.stop());

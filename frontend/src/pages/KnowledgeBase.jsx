@@ -28,7 +28,13 @@ export default function KnowledgeBase() {
     try {
       const data = await adminService.getModules();
       setModules(data);
-      if (data.length > 0) setActiveModuleId(data[0].id);
+      // Only default to the first module when nothing is selected yet, or
+      // the previously selected module no longer exists — a manual refresh
+      // must not jump the user back to module #1 while they're viewing #3.
+      setActiveModuleId(prev => {
+        if (prev && data.some(m => m.id === prev)) return prev;
+        return data.length > 0 ? data[0].id : null;
+      });
     } catch (err) {
       console.error("Failed to load modules:", err);
     }
@@ -92,7 +98,14 @@ export default function KnowledgeBase() {
     if (!deleteDialog.docId) return;
     try {
       await adminService.deleteKnowledgeDocument(deleteDialog.docId);
-      setDocuments(prev => prev.filter(d => d.id !== deleteDialog.docId));
+      setDocuments(prev => {
+        const next = prev.filter(d => d.id !== deleteDialog.docId);
+        // Deleting the last row on the current page would otherwise leave
+        // `page` pointing past the end, rendering an empty table.
+        const lastValidPage = Math.max(0, Math.ceil(next.length / rowsPerPage) - 1);
+        setPage(p => Math.min(p, lastValidPage));
+        return next;
+      });
       toast.success('Document deleted successfully.');
     } catch (err) {
       console.error("Failed to delete document:", err);

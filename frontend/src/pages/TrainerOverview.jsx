@@ -185,7 +185,7 @@ export default function TrainerOverview() {
           <Select
             value={activeModuleId}
             displayEmpty
-            onChange={(e) => setActiveModuleId(e.target.value)}
+            onChange={(e) => { setActiveModuleId(e.target.value); setPage(0); }}
             size="small"
             sx={{ 
               minWidth: 190,

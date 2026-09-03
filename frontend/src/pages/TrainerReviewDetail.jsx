@@ -665,8 +665,13 @@ export default function TrainerReviewDetail() {
   );
 }
 
+// A count-based bar (e.g. fraud flag count) isn't on the 0-10 score scale —
+// treat this many flags as a "full" bar instead of reusing the score's *10.
+const MAX_EXPECTED_FLAG_COUNT = 5;
+
 function ScoreBar({ label, score, color, isCount = false }) {
-  const percentage = Math.min(100, Math.max(0, (score || 0) * (isCount ? 10 : 10)));
+  const scaleFactor = isCount ? (100 / MAX_EXPECTED_FLAG_COUNT) : 10;
+  const percentage = Math.min(100, Math.max(0, (score || 0) * scaleFactor));
   return (
     <Stack direction="row" spacing={1.25} alignItems="center" sx={{ flex: 1 }}>
       <Typography variant="caption" sx={{ minWidth: 96, fontWeight: 600, color: '#475569', fontFamily: 'DM Sans, sans-serif', fontSize: '0.775rem' }}>
