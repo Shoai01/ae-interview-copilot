@@ -6,7 +6,7 @@ from typing import List
 
 from core.database import get_db
 from schemas import viva as viva_schemas
-from services import viva_service, user_service
+from services import viva_service, user_service, deepgram_service
 from repositories import viva_repository
 from core.deps import get_current_user, require_role
 from models.domain import User, UserRole
@@ -119,6 +119,24 @@ def get_current_session(db: Session = Depends(get_db), current_user: User = Depe
     if not session:
         raise HTTPException(status_code=404, detail="No active or pending session found")
     return session
+
+@router.get("/deepgram/token", response_model=viva_schemas.DeepgramTokenResponse)
+def get_deepgram_token(current_user: User = Depends(get_current_user)):
+    """
+    Mint a short-lived Deepgram token server-side so the permanent API key
+    never ships to the browser. The token only needs to live long enough
+    for the client to open its WebSocket handshake.
+    """
+    try:
+        token_data = deepgram_service.mint_temporary_token()
+    except deepgram_service.DeepgramConfigError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except deepgram_service.DeepgramRequestError:
+        raise HTTPException(status_code=502, detail="Failed to obtain a live-captioning token. Please try again.")
+    return viva_schemas.DeepgramTokenResponse(
+        access_token=token_data["access_token"],
+        expires_in=token_data.get("expires_in", deepgram_service.GRANT_TTL_SECONDS)
+    )
 
 @router.post("/{session_id}/next-question", response_model=viva_schemas.NextQuestionResponse)
 def get_next_question(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):

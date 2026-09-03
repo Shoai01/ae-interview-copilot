@@ -15,3 +15,4 @@ langchain-text-splitters
 faiss-cpu
 langchain-community
 langchain-google-vertexai
+requests

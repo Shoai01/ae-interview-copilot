@@ -210,6 +210,10 @@ export const vivaService = {
     const response = await api.get(`/viva/${sessionId}/summary`);
     return response.data;
   },
+  getDeepgramToken: async () => {
+    const response = await api.get('/viva/deepgram/token');
+    return response.data;
+  },
   evaluateSession: async (sessionId) => {
     const response = await api.post(`/viva/${sessionId}/evaluate`);
     return response.data;

@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { globalState } from '@/store';
 import { acquireAudioGraph, releaseAudioGraph, loadPcmWorkletModule } from '@/utils/audioGraph';
+import { vivaService } from '@/services/api';
 import toast from 'react-hot-toast';
 
 const DEEPGRAM_SAMPLE_RATE = 16000;
@@ -437,12 +438,6 @@ export function useSpeechRecognition() {
     // Prevent double execution
     if (isConnectingRef.current || isRecording) return;
 
-    const apiKey = import.meta.env.VITE_DEEPGRAM_API_KEY;
-    if (!apiKey || apiKey === 'your_deepgram_api_key_here') {
-      toast.error("Please configure VITE_DEEPGRAM_API_KEY in frontend/.env!");
-      return;
-    }
-
     if (!globalState.mediaStream || globalState.mediaStream.getAudioTracks().length === 0) {
       toast.error("Microphone is not available. Please check your camera/mic permissions and try again.");
       return;
@@ -495,9 +490,34 @@ export function useSpeechRecognition() {
     isSendingRef.current = true;
     setIsConnectingState(true);
 
+    // Fetch a short-lived Deepgram token minted by our backend right before
+    // opening the socket — it only needs to survive the handshake, so it's
+    // safe to request fresh on every cold (re)connect rather than caching it.
+    let deepgramToken = null;
+    try {
+      const tokenData = await vivaService.getDeepgramToken();
+      deepgramToken = tokenData.access_token;
+    } catch (err) {
+      console.error("[Deepgram] Failed to obtain a live-captioning token:", err);
+    }
+
+    if (!isConnectingRef.current) return;
+
+    if (!deepgramToken) {
+      isConnectingRef.current = false;
+      isSendingRef.current = false;
+      pendingFramesRef.current = [];
+      setIsConnectingState(false);
+      toast.error("Live captions are unavailable right now. Please try again.");
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.pause();
+      }
+      return;
+    }
+
     console.log("[Deepgram] Connecting to WebSocket...");
 
-    const socket = new WebSocket(buildDeepgramUrl(), ['token', apiKey]);
+    const socket = new WebSocket(buildDeepgramUrl(), ['token', deepgramToken]);
     socketRef.current = socket;
 
     socket.onopen = () => {

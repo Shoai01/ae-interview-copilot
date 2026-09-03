@@ -39,6 +39,10 @@ class TraineeResponse(BaseModel):
     id: int
     name: str
 
+class DeepgramTokenResponse(BaseModel):
+    access_token: str
+    expires_in: int
+
 class StatusResponse(BaseModel):
     status: str
     
