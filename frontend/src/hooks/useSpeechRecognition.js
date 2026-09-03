@@ -231,6 +231,14 @@ export function useSpeechRecognition() {
 
     if (graph.audioContext.state === 'suspended') {
       await graph.audioContext.resume();
+      // Re-check after this second await too — a teardown mid-resume would
+      // otherwise still construct and assign a worklet node onto a graph
+      // that's already been (or is about to be) released, leaking it since
+      // teardownAudioGraph() already ran and won't run again for it.
+      if (setupTokenRef.current !== myToken) {
+        releaseAudioGraph();
+        return false;
+      }
     }
 
     const worklet = new AudioWorkletNode(graph.audioContext, 'pcm-processor');

@@ -21,6 +21,19 @@ const MAX_BULK_UPLOAD_BYTES = 2 * 1024 * 1024; // 2MB — this is a small bulk-t
 
 const DEFAULT_ASSIGN_FORM = { traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15, questionCount: '', setName: '' };
 
+// Read once per mount, used by the three lazy useState initializers below —
+// restoring via initial state (rather than a separate mount effect calling
+// setState) avoids a render race where the very first run of the
+// draft-persist effect would see pre-restore values and immediately wipe
+// the just-restored draft back out of storage.
+function getSavedAssignDraft() {
+  try {
+    const saved = sessionStorage.getItem('trainer_assign_form_draft');
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return null;
+}
+
 export default function TrainerSessions() {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
@@ -30,16 +43,16 @@ export default function TrainerSessions() {
   const [filterResult, setFilterResult] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  
+
   // Assign Modal State
   const [openAssignModal, setOpenAssignModal] = useState(false);
-  const [assignMode, setAssignMode] = useState('single'); // 'single' or 'bulk'
-  const [bulkInputText, setBulkInputText] = useState('');
+  const [assignMode, setAssignMode] = useState(() => getSavedAssignDraft()?.assignMode || 'single'); // 'single' or 'bulk'
+  const [bulkInputText, setBulkInputText] = useState(() => getSavedAssignDraft()?.bulkInputText || '');
   const [bulkResults, setBulkResults] = useState(null);
   const fileInputRef = useRef(null);
   const [trainees, setTrainees] = useState([]);
   const [modulesList, setModulesList] = useState([]);
-  const [assignForm, setAssignForm] = useState(DEFAULT_ASSIGN_FORM);
+  const [assignForm, setAssignForm] = useState(() => getSavedAssignDraft()?.assignForm || DEFAULT_ASSIGN_FORM);
   const [assigning, setAssigning] = useState(false);
   const [moduleSets, setModuleSets] = useState([]);
 
@@ -100,30 +113,23 @@ export default function TrainerSessions() {
   useEffect(() => {
     fetchSessions();
     fetchAssignData();
-
-    // Restore any draft assignment configuration
-    try {
-      const saved = sessionStorage.getItem('trainer_assign_form_draft');
-      if (saved) {
-        const draft = JSON.parse(saved);
-        if (draft.assignForm) setAssignForm(draft.assignForm);
-        if (draft.assignMode) setAssignMode(draft.assignMode);
-        if (draft.bulkInputText) setBulkInputText(draft.bulkInputText);
-      }
-    } catch {}
   }, []);
 
-  // Persist assignment draft to storage
+  // Persist assignment draft to storage. Clearing the form back to empty
+  // must also clear the stored draft — otherwise the stale pre-clear draft
+  // silently reappears next time the modal opens.
   useEffect(() => {
-    if (openAssignModal || bulkInputText || assignForm.moduleId) {
-      try {
+    try {
+      if (openAssignModal || bulkInputText || assignForm.moduleId) {
         sessionStorage.setItem('trainer_assign_form_draft', JSON.stringify({
           assignForm,
           assignMode,
           bulkInputText
         }));
-      } catch {}
-    }
+      } else {
+        sessionStorage.removeItem('trainer_assign_form_draft');
+      }
+    } catch {}
   }, [openAssignModal, assignForm, assignMode, bulkInputText]);
 
   useEffect(() => {

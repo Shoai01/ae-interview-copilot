@@ -138,9 +138,13 @@ export default function UserManagement() {
       if (editFormData.password) {
         payload.password = editFormData.password;
       }
-      if (editFormData.employee_id && editFormData.role === 'TRAINER') {
-        payload.employee_id = editFormData.employee_id.trim();
-      }
+      // Always send employee_id explicitly (even as null) so the backend's
+      // exclude_unset update actually applies the change — a falsy-guarded
+      // conditional here previously meant clearing the field, or switching
+      // role away from TRAINER, silently left the old value in place.
+      payload.employee_id = editFormData.role === 'TRAINER' && editFormData.employee_id.trim()
+        ? editFormData.employee_id.trim()
+        : null;
       
       const updatedUser = await adminService.updateUser(selectedUser.id, payload);
       setUsers(prev => prev.map(u => u.id === selectedUser.id ? updatedUser : u));

@@ -29,8 +29,16 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     facePresent: null,              // true | false | null (unknown)
   });
 
-  // Sync refs with latest props
-  useEffect(() => { questionIdRef.current = activeQuestionId; }, [activeQuestionId]);
+  // Set when the exam starts outside fullscreen (so FULLSCREEN_EXIT
+  // detection never even engages) and no question is active yet to attach
+  // the flag to — flushed the moment a question becomes active, below.
+  // Without this, a candidate who never entered fullscreen produced no
+  // flag at all: nothing was ever surfaced to the trainer, only a local
+  // log entry in a monitor panel that isn't rendered anywhere.
+  const pendingFullscreenViolationRef = useRef(false);
+
+  // Sync sessionId ref with latest prop (questionId's sync effect lives
+  // below reportFlag's declaration — it needs to call it).
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   // ---------------------------------------------------------------
@@ -77,6 +85,17 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     vivaService.reportFraudFlag(sId, qId, flagType);
   }, [addLog]);
 
+  // Sync questionId ref with latest prop, and flush a pending
+  // fullscreen-at-start violation (see pendingFullscreenViolationRef above)
+  // the moment a question becomes active.
+  useEffect(() => {
+    questionIdRef.current = activeQuestionId;
+    if (activeQuestionId && pendingFullscreenViolationRef.current) {
+      pendingFullscreenViolationRef.current = false;
+      reportFlag('FULLSCREEN_EXIT');
+    }
+  }, [activeQuestionId, reportFlag]);
+
   // ---------------------------------------------------------------
   // 1. NO_FACE DETECTION (face-api.js)
   // ---------------------------------------------------------------
@@ -92,7 +111,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     const startFaceDetection = async () => {
       try {
         const faceapi = await import('face-api.js');
-        await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+        await faceapi.nets.tinyFaceDetector.loadFromUri(`${import.meta.env.BASE_URL}models`);
         if (!isActive) return;
         
         addLog('SYSTEM', 'Face detector model loaded', 'info');
@@ -260,6 +279,14 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
       setTimeout(() => addLog('SYSTEM', 'Fullscreen active — monitoring for exits', 'info'), 0);
     } else {
       setTimeout(() => addLog('SYSTEM', 'Not in fullscreen — FULLSCREEN_EXIT detection skipped', 'warn'), 0);
+      // Surface this to the trainer like any other integrity flag instead
+      // of only the local (unrendered) monitor log — report immediately if
+      // a question is already active, otherwise once one becomes active.
+      if (questionIdRef.current && sessionIdRef.current) {
+        reportFlag('FULLSCREEN_EXIT');
+      } else {
+        pendingFullscreenViolationRef.current = true;
+      }
     }
 
     const handleFullscreenChange = () => {

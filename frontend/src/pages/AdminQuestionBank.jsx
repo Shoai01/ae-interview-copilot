@@ -296,10 +296,12 @@ export default function AdminQuestionBank() {
   const handleToggle = async (questionId) => {
     try {
       await adminService.toggleQuestionStatus(questionId);
-      // Optimistic update
+      // Applied only after the server confirms — the Switch stays put until
+      // then, so a failure below simply leaves it as-is.
       setQuestions(prev => prev.map(q => q.id === questionId ? { ...q, is_active: !q.is_active } : q));
     } catch (err) {
       console.error("Failed to toggle status:", err);
+      toast.error(err.response?.data?.detail || "Failed to update question status.");
     }
   };
 

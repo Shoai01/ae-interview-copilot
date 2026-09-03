@@ -44,22 +44,29 @@ export default function TrainerOverview() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
+  // Modules list doesn't depend on which module is selected — fetch once,
+  // rather than every time the filter changes only to discard the result.
   useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        const [metricsData, modulesData] = await Promise.all([
-          adminService.getDashboardMetrics(activeModuleId || null),
-          adminService.getModules()
-        ]);
-        setData(metricsData);
-        if (modules.length === 0) setModules(modulesData);
-      } catch (err) {
-        console.error("Failed to load dashboard data:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInitialData();
+    let isCancelled = false;
+    adminService.getModules()
+      .then((modulesData) => { if (!isCancelled) setModules(modulesData); })
+      .catch((err) => console.error("Failed to load modules:", err));
+    return () => { isCancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+    setLoading(true);
+    adminService.getDashboardMetrics(activeModuleId || null)
+      .then((metricsData) => {
+        // Guard against an in-flight request from a module that's since
+        // been switched away from resolving after (and clobbering) a newer
+        // one — rapid switching could otherwise land an older response last.
+        if (!isCancelled) setData(metricsData);
+      })
+      .catch((err) => console.error("Failed to load dashboard data:", err))
+      .finally(() => { if (!isCancelled) setLoading(false); });
+    return () => { isCancelled = true; };
   }, [activeModuleId]);
   
   const handleChangePage = (event, newPage) => {
@@ -182,14 +189,18 @@ export default function TrainerOverview() {
             </Typography>
           </Box>
 
-          <Select
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+            {loading && data && (
+              <CircularProgress size={16} thickness={5} sx={{ color: 'primary.main' }} aria-label="Refreshing dashboard data" />
+            )}
+            <Select
             value={activeModuleId}
             displayEmpty
             onChange={(e) => { setActiveModuleId(e.target.value); setPage(0); }}
             size="small"
-            sx={{ 
+            sx={{
               minWidth: 190,
-              bgcolor: '#FFFFFF', 
+              bgcolor: '#FFFFFF',
               borderRadius: 2,
               fontFamily: 'DM Sans, sans-serif',
               fontWeight: 500,
@@ -204,7 +215,8 @@ export default function TrainerOverview() {
             {modules.map(mod => (
               <MenuItem key={mod.id} value={mod.id}>{mod.name}</MenuItem>
             ))}
-          </Select>
+            </Select>
+          </Box>
         </Box>
 
         {/* KPI Cards Row */}

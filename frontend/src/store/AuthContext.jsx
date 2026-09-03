@@ -45,6 +45,14 @@ export const AuthProvider = ({ children }) => {
     tokenRef.current = accessToken;
   }, [accessToken]);
 
+  // Shared in-flight refresh promise — concurrent requests that all hit a
+  // 401 at once previously each fired their own /auth/refresh call. Fine
+  // while refresh tokens are reusable, but breaks the moment refresh-token
+  // rotation is enabled (a second concurrent refresh would find the first
+  // one already invalidated the token). All concurrent 401 handlers now
+  // await the same in-flight call instead.
+  const refreshPromiseRef = useRef(null);
+
   // Configure axios interceptor for token injection
   useEffect(() => {
     const requestInterceptor = api.interceptors.request.use((config) => {
@@ -70,7 +78,12 @@ export const AuthProvider = ({ children }) => {
         if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/refresh') {
           originalRequest._retry = true;
           try {
-            const data = await authService.refresh();
+            if (!refreshPromiseRef.current) {
+              refreshPromiseRef.current = authService.refresh().finally(() => {
+                refreshPromiseRef.current = null;
+              });
+            }
+            const data = await refreshPromiseRef.current;
             if (data.access_token) {
               setAccessToken(data.access_token);
               setUser({

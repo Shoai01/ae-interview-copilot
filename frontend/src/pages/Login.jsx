@@ -35,11 +35,11 @@ export default function Login() {
   useEffect(() => {
     if (isAuthenticated && user) {
       if (user.must_change_password) {
-        navigate('/change-password');
+        navigate('/change-password', { replace: true });
       } else if (user.role === 'TRAINEE') {
-        navigate('/welcome');
+        navigate('/welcome', { replace: true });
       } else {
-        navigate('/hr/dashboard');
+        navigate('/hr/dashboard', { replace: true });
       }
     }
   }, [isAuthenticated, user, navigate]);
@@ -59,9 +59,9 @@ export default function Login() {
       if (from && from !== '/') {
         navigate(from, { replace: true });
       } else if (data.role === 'TRAINEE') {
-        navigate('/welcome');
+        navigate('/welcome', { replace: true });
       } else {
-        navigate('/hr/dashboard');
+        navigate('/hr/dashboard', { replace: true });
       }
     } catch (err) {
       if (err.response?.status === 429) {

@@ -188,7 +188,10 @@ export default function WelcomeCheck() {
       try {
         await document.documentElement.requestFullscreen();
       } catch {
-        // Some browsers may still block — proceed anyway
+        // Some browsers may still block — proceed anyway, but the candidate
+        // needs to know full-screen proctoring won't be active, rather than
+        // this failing completely silently.
+        toast.error("Couldn't enter full-screen mode. Full-screen proctoring will be unavailable for this session.", { duration: 6000 });
       }
 
       // Start session using the token (backend determines module and trainee)
@@ -441,7 +444,7 @@ export default function WelcomeCheck() {
             {/* Welcome Header */}
             <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
               <Chip
-                label={currentSession ? `${currentSession.module_name.toUpperCase()} ASSESSMENT` : 'VIVA ASSESSMENT'}
+                label={currentSession?.module_name ? `${currentSession.module_name.toUpperCase()} ASSESSMENT` : 'VIVA ASSESSMENT'}
                 size="small"
                 sx={{
                   bgcolor: 'rgba(242, 101, 34, 0.08)',

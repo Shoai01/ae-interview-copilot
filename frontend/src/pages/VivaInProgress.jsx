@@ -9,6 +9,7 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import SendIcon from '@mui/icons-material/Send';
 import PersonIcon from '@mui/icons-material/Person';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import api, { vivaService } from '@/services/api';
 import { globalState, AUDIO_CONSTRAINTS } from '@/store';
 import TranscriptPanel from '@/components/TranscriptPanel';
@@ -484,6 +485,19 @@ export default function VivaInProgress() {
     }
   };
 
+  // Surface the proctoring signals both detector hooks already compute
+  // (previously tracked in state but never rendered anywhere — candidates
+  // only saw a transient toast at the moment of a violation, with no
+  // passive "is this actually working" indicator in between).
+  const proctoringHasError = detectorStatus.faceDetection === 'error' || detectorStatus.facePresent === false;
+  const proctoringHasWarning = detectorStatus.fullscreen === 'inactive' || noiseLevel === 'loud';
+  const proctoringColor = proctoringHasError ? '#EF4444' : proctoringHasWarning ? '#F59E0B' : '#22C55E';
+  const proctoringSummary = [
+    `Face detection: ${detectorStatus.faceDetection}${detectorStatus.facePresent === false ? ' — no face in frame' : ''}`,
+    `Fullscreen: ${detectorStatus.fullscreen}`,
+    `Background noise: ${noiseLevel}`,
+  ].join('\n');
+
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#F8FAFC', position: 'relative' }}>
 
@@ -609,6 +623,27 @@ export default function VivaInProgress() {
           sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
           aria-label="Candidate Video stream"
         />
+        <Tooltip title={<span style={{ whiteSpace: 'pre-line' }}>{proctoringSummary}</span>} arrow placement="left">
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              bgcolor: 'rgba(15, 23, 42, 0.8)',
+              backdropFilter: 'blur(4px)',
+              px: 0.85,
+              py: 0.35,
+              borderRadius: 1,
+              cursor: 'default',
+            }}
+          >
+            <ShieldOutlinedIcon sx={{ fontSize: 13, color: proctoringColor }} />
+            <Box sx={{ width: 6, height: 6, bgcolor: proctoringColor, borderRadius: '50%', boxShadow: `0 0 6px ${proctoringColor}` }} />
+          </Box>
+        </Tooltip>
         <Box
           sx={{
             position: 'absolute',

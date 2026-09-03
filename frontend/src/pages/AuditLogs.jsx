@@ -604,17 +604,25 @@ export default function AuditLogs() {
     }
   };
 
+  // Raw single-page fetch, with no state side effects — shared by fetchLogs
+  // (below) and handleChangePage's catch-up loop, which needs to request
+  // several backend pages in sequence without each one racing ahead of
+  // React state updates.
+  const fetchLogsPage = (cursor = null) => {
+    const params = {};
+    if (cursor) params.cursor = cursor;
+    if (categoryFilter) params.category = categoryFilter;
+    if (actionFilter) params.action_type = actionFilter;
+    return adminService.getAuditLogs(params);
+  };
+
   const fetchLogs = async (cursor = null, isLoadMore = false) => {
     try {
       setLoading(true);
       if (!isLoadMore) {
         setLogs([]); // Immediately clear old logs when changing filters
       }
-      const params = {};
-      if (cursor) params.cursor = cursor;
-      if (categoryFilter) params.category = categoryFilter;
-      if (actionFilter) params.action_type = actionFilter;
-      const data = await adminService.getAuditLogs(params);
+      const data = await fetchLogsPage(cursor);
       if (isLoadMore) {
         setLogs(prev => [...prev, ...data.items]);
       } else {
@@ -639,7 +647,27 @@ export default function AuditLogs() {
 
   const handleChangePage = async (event, newPage) => {
     if (newPage > page && (newPage + 1) * rowsPerPage > logs.length && nextCursor) {
-      await fetchLogs(nextCursor, true);
+      // A single backend page can be smaller than rowsPerPage, so one
+      // extra fetch isn't always enough to fill the requested page — keep
+      // pulling pages (tracking accumulated rows locally, since React state
+      // won't reflect each fetch until after this loop) until there's
+      // enough to show, or the backend has nothing left to give.
+      let accumulated = logs;
+      let cursor = nextCursor;
+      setLoading(true);
+      try {
+        while ((newPage + 1) * rowsPerPage > accumulated.length && cursor) {
+          const data = await fetchLogsPage(cursor);
+          accumulated = [...accumulated, ...data.items];
+          cursor = data.next_cursor;
+        }
+      } catch (err) {
+        console.error('Failed to fetch audit logs', err);
+      } finally {
+        setLoading(false);
+      }
+      setLogs(accumulated);
+      setNextCursor(cursor);
     }
     setPage(newPage);
   };
@@ -726,7 +754,7 @@ export default function AuditLogs() {
                 Session Events
               </Typography>
               <Typography variant="h4" sx={{ color: '#7C3AED', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
-                {sessionEvents}
+                {nextCursor ? `${sessionEvents}+` : sessionEvents}
               </Typography>
             </Box>
             <Box sx={{ width: 46, height: 46, borderRadius: 2, bgcolor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -740,7 +768,7 @@ export default function AuditLogs() {
                 Security & Accounts
               </Typography>
               <Typography variant="h4" sx={{ color: '#059669', fontWeight: 700, fontFamily: 'Syne, sans-serif', mt: 0.5 }}>
-                {userEvents}
+                {nextCursor ? `${userEvents}+` : userEvents}
               </Typography>
             </Box>
             <Box sx={{ width: 46, height: 46, borderRadius: 2, bgcolor: 'rgba(5, 150, 105, 0.1)', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

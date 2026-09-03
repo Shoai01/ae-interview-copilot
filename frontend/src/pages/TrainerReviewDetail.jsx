@@ -101,18 +101,26 @@ export default function TrainerReviewDetail() {
     fetchReport();
   }, [sessionId]);
 
-  // 2. Persist draft whenever trainer edits notes, decision, or score
+  // 2. Persist draft whenever trainer edits notes, decision, or score.
+  // Clearing all three back to empty must also clear the stored draft —
+  // otherwise the stale pre-clear draft silently reappears on next visit.
+  // Gated on reportData (set once the initial fetch+draft-restore in effect
+  // #1 has completed) so this can't race ahead and wipe the very draft
+  // that hasn't been read into state yet.
   useEffect(() => {
-    if (sessionId && (selectedDecision || trainerNotes || finalScore)) {
-      try {
+    if (!sessionId || !reportData) return;
+    try {
+      if (selectedDecision || trainerNotes || finalScore) {
         sessionStorage.setItem(`trainer_review_draft_${sessionId}`, JSON.stringify({
           selectedDecision,
           trainerNotes,
           finalScore
         }));
-      } catch {}
-    }
-  }, [sessionId, selectedDecision, trainerNotes, finalScore]);
+      } else {
+        sessionStorage.removeItem(`trainer_review_draft_${sessionId}`);
+      }
+    } catch {}
+  }, [sessionId, reportData, selectedDecision, trainerNotes, finalScore]);
 
   // 3. Tab Closure / Refresh Guard: Warn trainer if they have unsaved notes
   useEffect(() => {
