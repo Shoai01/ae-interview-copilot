@@ -4,6 +4,7 @@ from email.mime.multipart import MIMEMultipart
 import email.utils
 import os
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -13,11 +14,13 @@ SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@viva-copilot.com")
 PLATFORM_URL = "https://ae-interview-copilot.pages.dev"
+LOGO_URL = f"{PLATFORM_URL}/ae-full-logo.png"
 
 # ─── Shared email wrapper ─────────────────────────────────────────────────────
 
-def _base_layout(content: str) -> str:
+def _base_layout(content: str, preheader: str = "") -> str:
     """Wraps email content in a premium responsive layout."""
+    year = datetime.now().year
     return f"""
     <!DOCTYPE html>
     <html lang="en">
@@ -25,6 +28,8 @@ def _base_layout(content: str) -> str:
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta name="color-scheme" content="light">
+      <meta name="supported-color-schemes" content="light">
       <style>
         @media only screen and (max-width: 600px) {{
           .outer-table {{
@@ -36,7 +41,7 @@ def _base_layout(content: str) -> str:
             box-shadow: none !important;
           }}
           .header-padding {{
-            padding: 24px 20px !important;
+            padding: 20px !important;
           }}
           .content-padding {{
             padding: 24px 20px 16px !important;
@@ -44,10 +49,18 @@ def _base_layout(content: str) -> str:
           .card-padding {{
             padding: 16px 20px !important;
           }}
+          .footer-padding {{
+            padding: 24px 20px !important;
+          }}
         }}
       </style>
     </head>
     <body style="margin:0;padding:0;background-color:#f4f6f9;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;">
+      <!-- Preheader: shows as the inbox preview snippet, hidden in the body -->
+      <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">
+        {preheader}
+      </div>
+      <div style="display:none;max-height:0;overflow:hidden;">&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
       <table class="outer-table" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f9;padding:40px 0;">
         <tr>
           <td align="center">
@@ -55,10 +68,14 @@ def _base_layout(content: str) -> str:
             <table class="email-container" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
               <!-- Header -->
               <tr>
-                <td class="header-padding" style="background-color: #F26522; background-image: linear-gradient(135deg, #F26522 0%, #e04e0a 100%);padding:32px 40px;text-align:center;">
-                  <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.5px;">Automation Edge</h1>
-                  <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px;font-weight:500;">Viva Copilot Training Platform</p>
+                <td class="header-padding" style="background-color:#ffffff;padding:28px 40px 24px;text-align:center;border-bottom:1px solid #f1f5f9;">
+                  <img src="{LOGO_URL}" alt="AutomationEdge" width="180" style="display:block;margin:0 auto;width:180px;max-width:60%;height:auto;border:0;outline:none;">
+                  <p style="margin:10px 0 0;color:#94a3b8;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Viva Copilot Training Platform</p>
                 </td>
+              </tr>
+              <!-- Accent bar -->
+              <tr>
+                <td style="height:4px;line-height:4px;font-size:0;background-color:#F26522;background-image:linear-gradient(90deg,#F26522 0%,#e04e0a 100%);">&nbsp;</td>
               </tr>
               <!-- Body -->
               <tr>
@@ -66,7 +83,18 @@ def _base_layout(content: str) -> str:
                   {content}
                 </td>
               </tr>
-              <!-- Body End -->
+              <!-- Footer -->
+              <tr>
+                <td class="footer-padding" style="padding:28px 40px 32px;border-top:1px solid #f1f5f9;">
+                  <p style="margin:0 0 6px;color:#94a3b8;font-size:12px;line-height:1.6;text-align:center;">
+                    This is an automated message from <strong style="color:#64748b;">Viva Copilot</strong>. If you weren't expecting this email, you can safely ignore it.
+                  </p>
+                  <p style="margin:0;color:#cbd5e1;font-size:12px;line-height:1.6;text-align:center;">
+                    &copy; {year} AutomationEdge. All rights reserved. &nbsp;&middot;&nbsp;
+                    <a href="mailto:{FROM_EMAIL}" style="color:#94a3b8;text-decoration:underline;">Contact Support</a>
+                  </p>
+                </td>
+              </tr>
             </table>
           </td>
         </tr>
@@ -140,10 +168,12 @@ def send_welcome_email(to_email: str, username: str, password: str, full_name: s
         f"— The Automation Edge Team"
     )
     
+    preheader = f"Your Viva Copilot training account is ready — sign in with the credentials inside."
+
     content = f"""
-    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:22px;font-weight:700;">Hi {name} 👋</h2>
+    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:22px;font-weight:700;">Hi {name},</h2>
     <p style="margin:0 0 24px;color:#6b7280;font-size:15px;line-height:1.6;">
-      Welcome aboard! Your training account on <strong>Viva Copilot</strong> has been successfully created.
+      Welcome aboard. Your training account on <strong>Viva Copilot</strong> has been created and is ready to use.
     </p>
 
     <!-- Credentials Card -->
@@ -173,12 +203,12 @@ def send_welcome_email(to_email: str, username: str, password: str, full_name: s
       </tr>
     </table>
 
-    <!-- Warning -->
+    <!-- Notice -->
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;margin-bottom:24px;">
       <tr>
         <td style="padding:14px 18px;">
           <p style="margin:0;color:#92400e;font-size:13px;line-height:1.5;">
-            ⚠️ <strong>Important:</strong> Please change your password after your first login for security.
+            <strong>Important:</strong> For security, please change your password immediately after your first login.
           </p>
         </td>
       </tr>
@@ -189,7 +219,7 @@ def send_welcome_email(to_email: str, username: str, password: str, full_name: s
       <tr>
         <td align="center">
           <a href="{PLATFORM_URL}" target="_blank" style="display:inline-block;background-color:#F26522;background-image:linear-gradient(135deg,#F26522 0%,#e04e0a 100%);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">
-            Log In to Viva Copilot →
+            Log In to Viva Copilot
           </a>
         </td>
       </tr>
@@ -199,8 +229,8 @@ def send_welcome_email(to_email: str, username: str, password: str, full_name: s
       If you have any questions, please reach out to your trainer or administrator.
     </p>
     """
-    
-    body = _base_layout(content)
+
+    body = _base_layout(content, preheader=preheader)
     return send_email(to_email, subject, body, plain_text=plain_text)
 
 
@@ -225,8 +255,10 @@ def send_session_assignment_email(to_email: str, module_name: str, duration_minu
         f"— The Automation Edge Team"
     )
     
+    preheader = f"Your {module_name} exam is ready — {duration_minutes} minutes, {questions_text.lower()}."
+
     content = f"""
-    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:22px;font-weight:700;">Hi {name} 👋</h2>
+    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:22px;font-weight:700;">Hi {name},</h2>
     <p style="margin:0 0 24px;color:#6b7280;font-size:15px;line-height:1.6;">
       A new exam session has been assigned to you. Here are the details:
     </p>
@@ -239,7 +271,7 @@ def send_session_assignment_email(to_email: str, module_name: str, duration_minu
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">
             <tr>
               <td style="padding:10px 0;border-bottom:1px solid #bae6fd;">
-                <span style="color:#6b7280;font-size:13px;">📚 Module</span>
+                <span style="color:#6b7280;font-size:13px;">Module</span>
               </td>
               <td style="padding:10px 0;border-bottom:1px solid #bae6fd;text-align:right;">
                 <strong style="color:#1a1a2e;font-size:14px;">{module_name}</strong>
@@ -247,7 +279,7 @@ def send_session_assignment_email(to_email: str, module_name: str, duration_minu
             </tr>
             <tr>
               <td style="padding:10px 0;border-bottom:1px solid #bae6fd;">
-                <span style="color:#6b7280;font-size:13px;">⏱️ Duration</span>
+                <span style="color:#6b7280;font-size:13px;">Duration</span>
               </td>
               <td style="padding:10px 0;border-bottom:1px solid #bae6fd;text-align:right;">
                 <strong style="color:#1a1a2e;font-size:14px;">{duration_minutes} minutes</strong>
@@ -255,7 +287,7 @@ def send_session_assignment_email(to_email: str, module_name: str, duration_minu
             </tr>
             <tr>
               <td style="padding:10px 0;">
-                <span style="color:#6b7280;font-size:13px;">❓ Questions</span>
+                <span style="color:#6b7280;font-size:13px;">Questions</span>
               </td>
               <td style="padding:10px 0;text-align:right;">
                 <strong style="color:#1a1a2e;font-size:14px;">{questions_text}</strong>
@@ -270,12 +302,12 @@ def send_session_assignment_email(to_email: str, module_name: str, duration_minu
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0fdf4;border-left:4px solid #22c55e;border-radius:6px;margin-bottom:24px;">
       <tr>
         <td style="padding:14px 18px;">
-          <p style="margin:0 0 6px;color:#166534;font-size:13px;font-weight:600;">💡 Quick Tips</p>
-          <p style="margin:0;color:#166534;font-size:13px;line-height:1.6;">
-            • Find a quiet place with a stable internet connection<br>
-            • Speak clearly and take your time with each answer<br>
-            • Complete the exam before it expires (24 hours)
-          </p>
+          <p style="margin:0 0 8px;color:#166534;font-size:13px;font-weight:600;">Before you begin</p>
+          <ul style="margin:0;padding-left:18px;color:#166534;font-size:13px;line-height:1.7;">
+            <li>Find a quiet place with a stable internet connection</li>
+            <li>Speak clearly and take your time with each answer</li>
+            <li>Complete the exam before it expires (24 hours)</li>
+          </ul>
         </td>
       </tr>
     </table>
@@ -284,16 +316,16 @@ def send_session_assignment_email(to_email: str, module_name: str, duration_minu
       <tr>
         <td align="center">
           <a href="{PLATFORM_URL}" target="_blank" style="display:inline-block;background-color:#F26522;background-image:linear-gradient(135deg,#F26522 0%,#e04e0a 100%);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">
-            Go to Dashboard & Start Exam →
+            Go to Dashboard &amp; Start Exam
           </a>
         </td>
       </tr>
     </table>
 
     <p style="margin:0;color:#6b7280;font-size:14px;line-height:1.6;text-align:center;">
-      Good luck! 🎯
+      Good luck!
     </p>
     """
-    
-    body = _base_layout(content)
+
+    body = _base_layout(content, preheader=preheader)
     return send_email(to_email, subject, body, plain_text=plain_text)
