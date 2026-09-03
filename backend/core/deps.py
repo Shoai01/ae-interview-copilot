@@ -6,6 +6,7 @@ from typing import List
 from core.database import get_db
 from core.security import verify_token
 from models.domain import User, UserRole
+from repositories import token_repository
 
 # Define the OAuth2 scheme (used primarily for swagger UI integration)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -20,14 +21,20 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     payload = verify_token(token)
     if payload is None:
         raise credentials_exception
-        
+
+    if payload.get("type") != "access":
+        raise credentials_exception
+
     user_id_str: str = payload.get("sub")
     if user_id_str is None:
         raise credentials_exception
-        
+
     try:
         user_id = int(user_id_str)
     except ValueError:
+        raise credentials_exception
+
+    if token_repository.is_token_blacklisted(db, token):
         raise credentials_exception
 
     user = db.query(User).filter(User.id == user_id).first()

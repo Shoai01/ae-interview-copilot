@@ -7,6 +7,7 @@ from services.auth_service import authenticate_user
 from services import user_service
 from core.security import create_access_token, create_refresh_token, verify_token
 from core.rate_limit import limiter
+from repositories import token_repository
 
 router = APIRouter(
     prefix="/auth",
@@ -57,23 +58,32 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
     payload = verify_token(token)
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
-        
+
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+    if token_repository.is_token_blacklisted(db, token):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has been revoked")
+
     user_id_str = payload.get("sub")
     if user_id_str is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token payload")
-        
+
     try:
         user_id = int(user_id_str)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user ID in token")
-        
+
     user = user_service.get_user_by_id(db, user_id)
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
 
+    # Rotate: retire the presented refresh token so it can't be replayed.
+    token_repository.blacklist_token(db, token)
+
     access_token = create_access_token(subject=user.id, role=user.role)
     new_refresh_token = create_refresh_token(subject=user.id)
-    
+
     response.set_cookie(
         key="refresh_token",
         value=new_refresh_token,
@@ -94,7 +104,15 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
     }
 
 @router.post("/logout")
-def logout(response: Response):
+def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.lower().startswith("bearer "):
+        token_repository.blacklist_token(db, auth_header[7:])
+
+    refresh_token_value = request.cookies.get("refresh_token")
+    if refresh_token_value:
+        token_repository.blacklist_token(db, refresh_token_value)
+
     response.delete_cookie(key="refresh_token", httponly=True, secure=True, samesite="none")
     return {"message": "Logged out successfully"}
 
