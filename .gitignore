@@ -250,3 +250,8 @@ frontend/*.local
 scratch/
 Automation Edge Logo/
 backend/uploads/
+
+# Local SQLite DB and generated FAISS index — never commit real data or embeddings
+*.db
+*.db-journal
+backend/faiss_index/
