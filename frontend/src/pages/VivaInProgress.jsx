@@ -208,7 +208,7 @@ export default function VivaInProgress() {
     stopAudioCapture,
   } = useSpeechRecognition();
   
-  const { speakQuestion, cancelSpeech } = useSpeechSynthesis();
+  const { speakQuestion, cancelSpeech, prefetchQuestion } = useSpeechSynthesis();
 
   // Compute the display value for the text field.
   const displayValue = finalText + (liveText ? (finalText ? ' ' : '') + liveText : '');
@@ -251,6 +251,10 @@ export default function VivaInProgress() {
     try {
       setLoading(true);
       const question = await vivaService.getNextQuestion(sessionId);
+      // Start synthesizing this question's audio immediately — before the
+      // re-render/effect cycle that would otherwise trigger it — so the
+      // Deepgram round-trip overlaps with that instead of starting after it.
+      if (question?.text) prefetchQuestion(question.text);
       setCurrentQuestion(question);
       resetTranscript();
     } catch (err) {
@@ -275,7 +279,7 @@ export default function VivaInProgress() {
     } finally {
       setLoading(false);
     }
-  }, [sessionId, resetTranscript, navigate]);
+  }, [sessionId, resetTranscript, navigate, prefetchQuestion]);
 
   useEffect(() => {
     if (!sessionId) return;

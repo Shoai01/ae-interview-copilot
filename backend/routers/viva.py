@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
@@ -138,6 +138,23 @@ def get_deepgram_token(current_user: User = Depends(get_current_user)):
         expires_in=token_data.get("expires_in", deepgram_service.GRANT_TTL_SECONDS)
     )
 
+@router.post("/tts")
+def synthesize_speech(payload: viva_schemas.TTSRequest, current_user: User = Depends(get_current_user)):
+    """
+    Synthesize question text to speech via Deepgram, proxied through the
+    backend so the permanent API key never reaches the browser. The frontend
+    falls back to the browser's built-in speech synthesis if this fails.
+    """
+    try:
+        audio_bytes, content_type = deepgram_service.synthesize_speech(payload.text)
+    except deepgram_service.DeepgramConfigError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except deepgram_service.DeepgramRequestError:
+        raise HTTPException(status_code=502, detail="Failed to synthesize speech. Please try again.")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return Response(content=audio_bytes, media_type=content_type)
+
 @router.post("/{session_id}/next-question", response_model=viva_schemas.NextQuestionResponse)
 def get_next_question(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
     _verify_session_ownership(db, session_id, current_user)
@@ -273,7 +290,19 @@ def get_session_report_route(session_id: int, db: Session = Depends(get_db), cur
 
 @router.put("/{session_id}/decision")
 def submit_decision(session_id: int, decision_data: viva_schemas.TrainerDecisionRequest, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
-    result = viva_service.submit_trainer_decision(db, session_id, decision_data, current_user.id)
+    try:
+        result = viva_service.submit_trainer_decision(db, session_id, decision_data, current_user.id, current_user.role)
+    except viva_service.ReviewConflictError as e:
+        report = e.report
+        reviewer = db.query(domain.User).filter(domain.User.id == report.reviewed_by).first()
+        raise HTTPException(status_code=409, detail={
+            "message": "This session was already reviewed by another trainer. Only they or an admin can change it.",
+            "reviewed_by_name": (reviewer.full_name or reviewer.username) if reviewer else None,
+            "reviewed_at": report.reviewed_at.isoformat() if report.reviewed_at else None,
+            "trainer_decision": report.trainer_decision.value if report.trainer_decision else None,
+            "final_score": report.final_score,
+            "trainer_notes": report.trainer_notes,
+        })
     if not result:
         raise HTTPException(status_code=404, detail="Session or report not found")
     return {"status": "ok", "decision": result.trainer_decision.value if result.trainer_decision else None}

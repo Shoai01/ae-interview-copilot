@@ -214,6 +214,10 @@ export const vivaService = {
     const response = await api.get('/viva/deepgram/token');
     return response.data;
   },
+  synthesizeSpeech: async (text) => {
+    const response = await api.post('/viva/tts', { text }, { responseType: 'blob' });
+    return response.data;
+  },
   evaluateSession: async (sessionId) => {
     const response = await api.post(`/viva/${sessionId}/evaluate`);
     return response.data;
