@@ -3,11 +3,36 @@ from typing import Any, Union
 from jose import jwt, JWTError
 import os
 import bcrypt
+import secrets
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-do-not-use-in-production")
+SECRET_KEY = os.environ.get("SECRET_KEY")
+_DEV_SECRET_KEY = None
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+def is_development_mode() -> bool:
+    dev_mode = os.environ.get("DEV_MODE", "").lower()
+    env = os.environ.get("ENV", "").lower()
+    return dev_mode in {"1", "true", "yes", "on"} or env == "development"
+
+def validate_security_config() -> None:
+    if SECRET_KEY or is_development_mode():
+        return
+    raise RuntimeError(
+        "SECRET_KEY environment variable is required unless DEV_MODE is enabled "
+        "or ENV=development is set."
+    )
+
+def get_jwt_secret_key() -> str:
+    global _DEV_SECRET_KEY
+    if SECRET_KEY:
+        return SECRET_KEY
+    if is_development_mode():
+        if _DEV_SECRET_KEY is None:
+            _DEV_SECRET_KEY = secrets.token_urlsafe(32)
+        return _DEV_SECRET_KEY
+    validate_security_config()
 
 def get_password_hash(password: str) -> str:
     pwd_bytes = password.encode('utf-8')
@@ -27,7 +52,7 @@ def create_access_token(subject: Union[str, Any], role: str, expires_delta: time
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode = {"exp": expire, "sub": str(subject), "role": role}
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, get_jwt_secret_key(), algorithm=ALGORITHM)
     return encoded_jwt
 
 def create_refresh_token(subject: Union[str, Any], expires_delta: timedelta = None) -> str:
@@ -37,12 +62,12 @@ def create_refresh_token(subject: Union[str, Any], expires_delta: timedelta = No
         expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
     
     to_encode = {"exp": expire, "sub": str(subject)}
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, get_jwt_secret_key(), algorithm=ALGORITHM)
     return encoded_jwt
 
 def verify_token(token: str) -> dict:
     try:
-        decoded_data = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        decoded_data = jwt.decode(token, get_jwt_secret_key(), algorithms=[ALGORITHM])
         return decoded_data
     except JWTError:
         return None

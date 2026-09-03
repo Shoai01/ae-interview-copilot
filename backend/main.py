@@ -7,7 +7,10 @@ from core.database import engine, get_db
 from models import domain
 from routers import admin, viva, auth
 from core.rate_limit import limiter
+from core.security import validate_security_config
 from services.admin_seed_service import seed_admin
+
+validate_security_config()
 
 # This line ensures all database tables defined in models/domain.py
 # are automatically created in the database when the server starts up.
