@@ -5,8 +5,6 @@ import { vivaService } from '@/services/api';
 import toast from 'react-hot-toast';
 
 const DEEPGRAM_SAMPLE_RATE = 16000;
-const LIVE_TEXT_FRAME_MS = 28;
-const LIVE_TEXT_CHARS_PER_FRAME = 8;
 // Deepgram closes a streaming connection after ~10-12s of no audio/KeepAlive.
 // Ping well under that while the mic is paused between/within questions.
 const DEEPGRAM_KEEPALIVE_INTERVAL_MS = 5000;
@@ -131,19 +129,9 @@ export function useSpeechRecognition() {
 
   // Refs mirror state to avoid stale closures in async/event-driven code paths
   const liveTextRef = useRef('');
-  const renderedLiveTextRef = useRef('');
   const finalTextRef = useRef('');
-  const liveAnimationTimerRef = useRef(null);
 
-  useEffect(() => { renderedLiveTextRef.current = liveText; }, [liveText]);
   useEffect(() => { finalTextRef.current = finalText; }, [finalText]);
-
-  const cancelLiveAnimation = useCallback(() => {
-    if (liveAnimationTimerRef.current) {
-      clearTimeout(liveAnimationTimerRef.current);
-      liveAnimationTimerRef.current = null;
-    }
-  }, []);
 
   const setFinalText = useCallback((valueOrUpdater) => {
     setFinalTextState((prev) => {
@@ -154,52 +142,16 @@ export function useSpeechRecognition() {
   }, []);
 
   const setLiveText = useCallback((valueOrUpdater) => {
-    cancelLiveAnimation();
     setLiveTextState((prev) => {
       const next = typeof valueOrUpdater === 'function' ? valueOrUpdater(prev) : valueOrUpdater;
       liveTextRef.current = next;
-      renderedLiveTextRef.current = next;
       return next;
     });
-  }, [cancelLiveAnimation]);
+  }, []);
 
-  const queueLiveText = useCallback((transcript) => {
-    liveTextRef.current = transcript;
-
-    if (!transcript) {
-      setLiveText('');
-      return;
-    }
-
-    const tick = () => {
-      const target = liveTextRef.current;
-      const current = renderedLiveTextRef.current;
-
-      if (!target) {
-        renderedLiveTextRef.current = '';
-        setLiveTextState('');
-        liveAnimationTimerRef.current = null;
-        return;
-      }
-
-      const next = target.startsWith(current)
-        ? current + target.slice(current.length, current.length + LIVE_TEXT_CHARS_PER_FRAME)
-        : target;
-
-      renderedLiveTextRef.current = next;
-      setLiveTextState(next);
-
-      if (next !== target) {
-        liveAnimationTimerRef.current = setTimeout(tick, LIVE_TEXT_FRAME_MS);
-      } else {
-        liveAnimationTimerRef.current = null;
-      }
-    };
-
-    if (!liveAnimationTimerRef.current) {
-      liveAnimationTimerRef.current = setTimeout(tick, LIVE_TEXT_FRAME_MS);
-    }
-  }, [setLiveText]);
+  // Interim transcripts are shown as soon as Deepgram sends them — no
+  // artificial typing animation, which was adding pure display latency.
+  const queueLiveText = setLiveText;
 
   const teardownAudioGraph = useCallback(() => {
     setupTokenRef.current += 1; // invalidate any in-flight setupAudioGraph() call
@@ -227,9 +179,8 @@ export function useSpeechRecognition() {
         try { socketRef.current.close(); } catch { /* ignore */ }
       }
       teardownAudioGraph();
-      cancelLiveAnimation();
     };
-  }, [teardownAudioGraph, cancelLiveAnimation]);
+  }, [teardownAudioGraph]);
 
   // ====================================
   // LIVE PCM TAP
