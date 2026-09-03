@@ -14,7 +14,7 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import CustomAudioPlayer from '@/components/CustomAudioPlayer';
-import { vivaService, API_BASE_URL } from '@/services/api';
+import { vivaService } from '@/services/api';
 import toast from 'react-hot-toast';
 
 export default function TrainerReviewDetail() {
@@ -130,13 +130,10 @@ export default function TrainerReviewDetail() {
     return `${m}m ${s}s`;
   };
 
-  const getAudioSrc = (url) => {
-    if (!url) return '';
-    if (url.startsWith('http')) return url;
-    const base = (API_BASE_URL || '').replace(/\/+$/, '');
-    const path = url.startsWith('/') ? url : `/${url}`;
-    return `${base}${path}`;
-  };
+  // Recordings are only reachable through the authenticated per-question audio
+  // route (no public static path), so CustomAudioPlayer fetches this via the
+  // shared axios instance rather than treating it as a plain <audio src>.
+  const getAudioSrc = (vivaQuestionId) => `/viva/${sessionId}/answer/${vivaQuestionId}/audio`;
 
   const getRecChipProps = (rec) => {
     if (rec === 'PASS') return { icon: <CheckCircleIcon sx={{ fontSize: 14 }} />, color: 'success', label: 'Pass' };
@@ -388,9 +385,9 @@ export default function TrainerReviewDetail() {
                   {/* Candidate Audio Recording */}
                   {q.audio_url && (
                     <Box sx={{ mx: { xs: 2, md: 2.5 }, mt: 1.5 }}>
-                      <CustomAudioPlayer 
-                        src={getAudioSrc(q.audio_url)} 
-                        title={`Candidate Voice Recording (Q${index + 1})`} 
+                      <CustomAudioPlayer
+                        src={getAudioSrc(q.viva_question_id)}
+                        title={`Candidate Voice Recording (Q${index + 1})`}
                       />
                     </Box>
                   )}

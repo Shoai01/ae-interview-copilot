@@ -196,10 +196,11 @@ export default function VivaInProgress() {
     setLiveText, 
     finalText, 
     setFinalText, 
-    toggleRecording, 
-    stopRecording, 
+    toggleRecording,
+    stopRecording,
     startRecording,
     cancelConnecting,
+    closeConnection,
     resetTranscript,
     getAudioBlob,
     getTranscriptText,
@@ -229,14 +230,21 @@ export default function VivaInProgress() {
     }
   }, [sessionId, currentQuestion?.viva_question_id, setFinalText]);
 
-  // 6. In-flight Transcript Draft Preservation: Save draft on every change
+  // 6. In-flight Transcript Draft Preservation: Save only confirmed text.
   useEffect(() => {
-    if (sessionId && currentQuestion?.viva_question_id && displayValue) {
-      try {
-        sessionStorage.setItem(`viva_draft_${sessionId}_${currentQuestion.viva_question_id}`, displayValue);
-      } catch {}
+    if (!sessionId || !currentQuestion?.viva_question_id) return;
+
+    const draftKey = `viva_draft_${sessionId}_${currentQuestion.viva_question_id}`;
+    try {
+      if (finalText.trim()) {
+        sessionStorage.setItem(draftKey, finalText);
+      } else {
+        sessionStorage.removeItem(draftKey);
+      }
+    } catch {
+      // Ignore storage errors; transcript submission still uses in-memory state.
     }
-  }, [sessionId, currentQuestion?.viva_question_id, displayValue]);
+  }, [sessionId, currentQuestion?.viva_question_id, finalText]);
 
   const fetchQuestion = useCallback(async () => {
     if (!sessionId) return;
@@ -308,6 +316,7 @@ export default function VivaInProgress() {
       if (isConnecting) {
         cancelConnecting();
       }
+      await closeConnection();
       await stopAudioCapture();
 
       if (currentQuestion) {
@@ -345,7 +354,7 @@ export default function VivaInProgress() {
 
       navigate('/complete', { state: { sessionId, timeExpired: true } });
     }
-  }, [submitting, cancelSpeech, isRecording, isConnecting, stopRecording, cancelConnecting, stopAudioCapture, currentQuestion, getTranscriptText, sessionId, getAudioBlob, accessToken, navigate]);
+  }, [submitting, cancelSpeech, isRecording, isConnecting, stopRecording, cancelConnecting, closeConnection, stopAudioCapture, currentQuestion, getTranscriptText, sessionId, getAudioBlob, accessToken, navigate]);
 
   // Enforce automated submission immediately when time expires
   useEffect(() => {
@@ -397,6 +406,10 @@ export default function VivaInProgress() {
       }
       
       if (currentQuestion.is_last_question) {
+        // Session is truly ending — now it's safe to actually close the
+        // Deepgram connection (kept warm across questions until this point).
+        await closeConnection();
+
         if (globalState.mediaStream) {
           globalState.mediaStream.getTracks().forEach(track => track.stop());
           globalState.mediaStream = null;

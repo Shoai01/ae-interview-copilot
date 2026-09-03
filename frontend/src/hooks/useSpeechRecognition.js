@@ -6,7 +6,10 @@ import toast from 'react-hot-toast';
 const DEEPGRAM_SAMPLE_RATE = 16000;
 const LIVE_TEXT_FRAME_MS = 28;
 const LIVE_TEXT_CHARS_PER_FRAME = 8;
-const MIN_FINAL_CONFIDENCE = 0.45;
+// Deepgram closes a streaming connection after ~10-12s of no audio/KeepAlive.
+// Ping well under that while the mic is paused between/within questions.
+const DEEPGRAM_KEEPALIVE_INTERVAL_MS = 5000;
+const DEFAULT_MIN_FINAL_CONFIDENCE = 0.45;
 const DEFAULT_DEEPGRAM_MODEL = 'nova-3';
 const DEFAULT_DEEPGRAM_LANGUAGE = 'en-IN';
 const DEFAULT_DEEPGRAM_KEYTERMS = [
@@ -73,10 +76,17 @@ function getTranscriptConfidence(alt) {
   return scoredWords.reduce((sum, word) => sum + word.confidence, 0) / scoredWords.length;
 }
 
+function getMinFinalConfidence() {
+  const raw = import.meta.env.VITE_DEEPGRAM_MIN_FINAL_CONFIDENCE;
+  const parsed = Number.parseFloat(raw);
+  if (!Number.isFinite(parsed)) return DEFAULT_MIN_FINAL_CONFIDENCE;
+  return Math.min(1, Math.max(0, parsed));
+}
+
 function shouldAcceptFinalTranscript(alt, transcript) {
   if (!transcript.trim()) return false;
   const confidence = getTranscriptConfidence(alt);
-  return confidence === null || confidence >= MIN_FINAL_CONFIDENCE;
+  return confidence === null || confidence >= getMinFinalConfidence();
 }
 
 export function useSpeechRecognition() {
@@ -105,6 +115,7 @@ export function useSpeechRecognition() {
   const isSendingRef = useRef(false); // gate: forward/buffer PCM frames vs. drop them
   const pendingFramesRef = useRef([]); // frames captured while a (re)connect is in flight
   const stopResolveRef = useRef(null);
+  const keepAliveTimerRef = useRef(null); // pings Deepgram while paused so the connection survives between questions
 
   // Refs mirror state to avoid stale closures in async/event-driven code paths
   const liveTextRef = useRef('');
@@ -196,6 +207,10 @@ export function useSpeechRecognition() {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try { mediaRecorderRef.current.stop(); } catch { /* ignore */ }
       }
+      if (keepAliveTimerRef.current) {
+        clearInterval(keepAliveTimerRef.current);
+        keepAliveTimerRef.current = null;
+      }
       if (socketRef.current) {
         try { socketRef.current.close(); } catch { /* ignore */ }
       }
@@ -240,7 +255,7 @@ export function useSpeechRecognition() {
       releaseAudioGraph();
       if (!pcmWarnedRef.current) {
         pcmWarnedRef.current = true;
-        toast.error("Live captions are unavailable right now — your answer is still being recorded, please type it manually.");
+        toast.error("Live captions are unavailable right now. Please check microphone access and try again.");
       }
       return false;
     }
@@ -249,6 +264,10 @@ export function useSpeechRecognition() {
     if (setupTokenRef.current !== myToken) {
       releaseAudioGraph();
       return false;
+    }
+
+    if (graph.audioContext.state === 'suspended') {
+      await graph.audioContext.resume();
     }
 
     const worklet = new AudioWorkletNode(graph.audioContext, 'pcm-processor');
@@ -267,29 +286,29 @@ export function useSpeechRecognition() {
   // mid-question never touches this.
   // ====================================
 
-  const startAudioCapture = useCallback(() => {
+  const startAudioCapture = useCallback(async () => {
     if (!globalState.mediaStream) {
       console.error("[Audio] No mediaStream available in globalState");
-      return;
+      return false;
     }
 
-    setupAudioGraph();
+    const graphReady = await setupAudioGraph();
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
       console.log("[Audio] Resuming audio capture");
       mediaRecorderRef.current.resume();
       isCapturingRef.current = true;
-      return;
+      return graphReady;
     }
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      return; // Already recording
+      return graphReady; // Already recording
     }
 
     const audioTracks = globalState.mediaStream.getAudioTracks();
     if (audioTracks.length === 0) {
       console.error("[Audio] mediaStream has no audio tracks");
-      return;
+      return false;
     }
 
     console.log("[Audio] Starting fresh audio capture");
@@ -335,6 +354,7 @@ export function useSpeechRecognition() {
     };
 
     mediaRecorder.start(250);
+    return graphReady;
   }, [setupAudioGraph]);
 
   /**
@@ -383,6 +403,28 @@ export function useSpeechRecognition() {
   // ever carried between connections.
   // ====================================
 
+  const stopKeepAlive = useCallback(() => {
+    if (keepAliveTimerRef.current) {
+      clearInterval(keepAliveTimerRef.current);
+      keepAliveTimerRef.current = null;
+    }
+  }, []);
+
+  // Keeps the Deepgram connection warm between questions / mid-question pauses
+  // so we never pay full reconnect (TLS + auth + model warm-up) latency again.
+  const startKeepAlive = useCallback(() => {
+    stopKeepAlive();
+    keepAliveTimerRef.current = setInterval(() => {
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        try {
+          socketRef.current.send(JSON.stringify({ type: 'KeepAlive' }));
+        } catch { /* ignore */ }
+      } else {
+        stopKeepAlive();
+      }
+    }, DEEPGRAM_KEEPALIVE_INTERVAL_MS);
+  }, [stopKeepAlive]);
+
   const flushPendingFrames = useCallback((socket) => {
     const frames = pendingFramesRef.current;
     pendingFramesRef.current = [];
@@ -391,7 +433,7 @@ export function useSpeechRecognition() {
     }
   }, []);
 
-  const startRecording = useCallback(() => {
+  const startRecording = useCallback(async () => {
     // Prevent double execution
     if (isConnectingRef.current || isRecording) return;
 
@@ -406,13 +448,8 @@ export function useSpeechRecognition() {
       return;
     }
 
-    // Ensure the archival recorder + PCM tap are running first
-    startAudioCapture();
-
     isConnectingRef.current = true;
-    isSendingRef.current = true;
     pendingFramesRef.current = []; // fresh pre-connect buffer for this (re)connect
-    setIsConnectingState(true);
 
     // Only clear transcription text on the FIRST mic activation per question.
     // On resume (chunks already exist), preserve the previously transcribed text.
@@ -422,6 +459,41 @@ export function useSpeechRecognition() {
       liveTextRef.current = '';
       finalTextRef.current = '';
     }
+
+    // Ensure the archival recorder + PCM tap are running before Deepgram opens.
+    let audioReady = false;
+    try {
+      audioReady = await startAudioCapture();
+    } catch (err) {
+      console.error("[Audio] Failed to start audio capture:", err);
+    }
+
+    if (!isConnectingRef.current) return;
+
+    if (!audioReady) {
+      isConnectingRef.current = false;
+      isSendingRef.current = false;
+      pendingFramesRef.current = [];
+      setIsConnectingState(false);
+      toast.error("Live captions could not start. Please check microphone access and try again.");
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.pause();
+      }
+      return;
+    }
+
+    // Reuse the existing Deepgram connection (kept warm via KeepAlive across
+    // questions/pauses) instead of paying full reconnect latency every time.
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      stopKeepAlive();
+      isConnectingRef.current = false;
+      isSendingRef.current = true;
+      setIsRecording(true);
+      return;
+    }
+
+    isSendingRef.current = true;
+    setIsConnectingState(true);
 
     console.log("[Deepgram] Connecting to WebSocket...");
 
@@ -491,6 +563,8 @@ export function useSpeechRecognition() {
       pendingFramesRef.current = [];
       setIsConnectingState(false);
       setIsRecording(false);
+      stopKeepAlive();
+      if (socketRef.current === socket) socketRef.current = null;
 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.pause();
@@ -509,6 +583,11 @@ export function useSpeechRecognition() {
       pendingFramesRef.current = [];
       setIsConnectingState(false);
       setIsRecording(false);
+      stopKeepAlive();
+      // Null the ref (unless a newer socket already replaced it) so the next
+      // startRecording() knows to open a fresh connection instead of reusing
+      // this dead one.
+      if (socketRef.current === socket) socketRef.current = null;
 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.pause();
@@ -525,40 +604,78 @@ export function useSpeechRecognition() {
         stopResolveRef.current = null;
       }
     };
-  }, [isRecording, startAudioCapture, flushPendingFrames, setFinalText, setLiveText, queueLiveText]);
+  }, [isRecording, startAudioCapture, flushPendingFrames, setFinalText, setLiveText, queueLiveText, stopKeepAlive]);
 
   /**
-   * Stops forwarding PCM to Deepgram, closes the socket, and pauses the
-   * archival recorder. Returns a Promise that resolves once the WebSocket
-   * has fully closed.
+   * Pauses transcription: stops forwarding PCM and pauses the archival
+   * recorder, but deliberately leaves the Deepgram socket OPEN — kept warm
+   * with KeepAlive pings — so the next startRecording() (next question, or
+   * resuming mid-question) reuses it instead of paying full reconnect
+   * latency. Resolves immediately; kept as a Promise so existing awaiters
+   * don't need to change.
    */
   const stopRecording = useCallback(() => {
+    console.log("[Deepgram] Pausing transcription, keeping connection warm...");
+
+    isSendingRef.current = false;
+    pendingFramesRef.current = [];
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.pause();
+    }
+
+    setIsRecording(false);
+    setLiveText('');
+    liveTextRef.current = '';
+
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      startKeepAlive();
+    }
+
+    return Promise.resolve();
+  }, [setLiveText, startKeepAlive]);
+
+  /**
+   * True end-of-session teardown: sends CloseStream and closes the Deepgram
+   * socket for good. Call this only when the interview is actually ending
+   * (last question submitted, auto-submit, or unmount) — never between
+   * questions, since stopRecording() already pauses without closing.
+   * Returns a Promise that resolves once the WebSocket has fully closed.
+   */
+  const closeConnection = useCallback(() => {
     return new Promise((resolve) => {
-      console.log("[Deepgram] Stopping transcription and pausing recorder...");
-
+      stopKeepAlive();
       isSendingRef.current = false;
+      isConnectingRef.current = false;
+      pendingFramesRef.current = [];
+      setIsConnectingState(false);
+      setIsRecording(false);
 
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.pause();
-      }
-
-      // Send CloseStream to Deepgram and wait for the socket to close
-      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        stopResolveRef.current = resolve;
-        socketRef.current.send(JSON.stringify({ type: 'CloseStream' }));
-        // Safety timeout — if Deepgram doesn't close in 2s, force-close
-        setTimeout(() => {
-          if (socketRef.current && socketRef.current.readyState !== WebSocket.CLOSED) {
-            console.warn("[Deepgram] Force-closing socket after timeout");
-            socketRef.current.close();
-          }
-        }, 2000);
-      } else {
-        setIsRecording(false);
+      const socket = socketRef.current;
+      if (!socket || socket.readyState === WebSocket.CLOSED) {
+        socketRef.current = null;
         resolve();
+        return;
       }
+
+      stopResolveRef.current = resolve;
+
+      if (socket.readyState === WebSocket.OPEN) {
+        console.log("[Deepgram] Closing connection (session end)...");
+        try { socket.send(JSON.stringify({ type: 'CloseStream' })); } catch { /* ignore */ }
+      }
+      try { socket.close(); } catch { /* ignore */ }
+
+      // Safety timeout in case onclose never fires
+      setTimeout(() => {
+        if (stopResolveRef.current === resolve) {
+          stopResolveRef.current = null;
+          if (socketRef.current === socket) socketRef.current = null;
+          resolve();
+        }
+      }, 2000);
     });
-  }, []); // No deps needed — uses refs for everything
+  }, [stopKeepAlive]);
 
   const toggleRecording = useCallback(() => {
     if (isRecording) {
@@ -638,6 +755,7 @@ export function useSpeechRecognition() {
     stopRecording,
     startRecording,
     cancelConnecting,
+    closeConnection,
     resetTranscript,
     getAudioBlob,
     getTranscriptText,

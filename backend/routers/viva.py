@@ -16,6 +16,24 @@ router = APIRouter(
     tags=["viva"]
 )
 
+def _verify_session_ownership(db: Session, session_id: int, current_user: User) -> None:
+    """Ensure the calling trainee owns this session before touching its data."""
+    session = db.query(domain.VivaSession).filter(
+        domain.VivaSession.id == session_id,
+        domain.VivaSession.trainee_id == current_user.id
+    ).first()
+    if not session:
+        raise HTTPException(status_code=403, detail="You are not authorized to access this session")
+
+def _verify_session_access(db: Session, session_id: int, current_user: User) -> None:
+    """Trainees may only access their own session; trainers/admins may review any session."""
+    if current_user.role == UserRole.TRAINEE:
+        _verify_session_ownership(db, session_id, current_user)
+        return
+    session = db.query(domain.VivaSession).filter(domain.VivaSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
 @router.post("/sessions/assign", response_model=viva_schemas.SessionResponse, status_code=status.HTTP_201_CREATED)
 def assign_session(session_data: viva_schemas.SessionCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
     try:
@@ -103,6 +121,7 @@ def get_current_session(db: Session = Depends(get_db), current_user: User = Depe
 
 @router.post("/{session_id}/next-question", response_model=viva_schemas.NextQuestionResponse)
 def get_next_question(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
+    _verify_session_ownership(db, session_id, current_user)
     question = viva_service.get_next_question(db, session_id)
     if not question:
         raise HTTPException(status_code=404, detail="No more questions available")
@@ -110,6 +129,7 @@ def get_next_question(session_id: int, db: Session = Depends(get_db), current_us
 
 @router.post("/{session_id}/answer", response_model=viva_schemas.StatusResponse, status_code=status.HTTP_200_OK)
 def submit_answer(session_id: int, answer_data: viva_schemas.AnswerSubmit, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
+    _verify_session_ownership(db, session_id, current_user)
     success = viva_service.submit_answer(db, session_id, answer_data)
     if not success:
         raise HTTPException(status_code=404, detail="Question not found in session")
@@ -131,13 +151,7 @@ async def upload_audio(
     db: Session = Depends(get_db), 
     current_user: User = Depends(require_role([UserRole.TRAINEE]))
 ):
-    # Fix 5: Verify session ownership — only the assigned trainee can upload
-    session = db.query(domain.VivaSession).filter(
-        domain.VivaSession.id == session_id,
-        domain.VivaSession.trainee_id == current_user.id
-    ).first()
-    if not session:
-        raise HTTPException(status_code=403, detail="You are not authorized to upload audio for this session")
+    _verify_session_ownership(db, session_id, current_user)
 
     # Fix 3: Validate content type with null safety
     content_type = file.content_type or ""
@@ -174,53 +188,37 @@ async def upload_audio(
 
 @router.get("/{session_id}/answer/{viva_question_id}/audio")
 def stream_answer_audio(
-    session_id: int, 
-    viva_question_id: int, 
-    db: Session = Depends(get_db)
+    session_id: int,
+    viva_question_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Stream candidate audio recording with byte-range and CORS headers.
+    Requires the calling trainee to own the session, or a trainer/admin reviewing it.
     """
+    _verify_session_access(db, session_id, current_user)
+
     vq = viva_repository.get_viva_question(db, viva_question_id, session_id)
     if not vq or not vq.audio_url:
         raise HTTPException(status_code=404, detail="Audio recording not found")
-        
+
     rel_path = vq.audio_url.lstrip('/')
     if not os.path.exists(rel_path):
         raise HTTPException(status_code=404, detail="Audio file missing on server disk")
-        
+
     return FileResponse(
         rel_path,
         media_type="audio/webm",
         headers={
             "Accept-Ranges": "bytes",
-            "Cache-Control": "public, max-age=86400",
-            "Access-Control-Allow-Origin": "*"
-        }
-    )
-
-@router.get("/audio/{filename}")
-def stream_audio_file(filename: str):
-    """
-    Direct audio file stream endpoint for recorded answers.
-    """
-    safe_filename = os.path.basename(filename)
-    file_path = os.path.join("uploads", "audio", safe_filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Audio file not found")
-        
-    return FileResponse(
-        file_path,
-        media_type="audio/webm",
-        headers={
-            "Accept-Ranges": "bytes",
-            "Cache-Control": "public, max-age=86400",
-            "Access-Control-Allow-Origin": "*"
+            "Cache-Control": "private, max-age=86400",
         }
     )
 
 @router.get("/{session_id}/summary", response_model=viva_schemas.SessionSummaryResponse)
 def get_session_summary_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _verify_session_access(db, session_id, current_user)
     summary = viva_service.get_session_summary(db, session_id)
     if not summary:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -232,6 +230,7 @@ def list_sessions(db: Session = Depends(get_db), current_user: User = Depends(re
 
 @router.post("/{session_id}/fraud-flag", response_model=viva_schemas.StatusResponse, status_code=status.HTTP_201_CREATED)
 def report_fraud_flag(session_id: int, flag_data: viva_schemas.FraudFlagCreate, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
+    _verify_session_ownership(db, session_id, current_user)
     result = viva_service.create_fraud_flag(db, session_id, flag_data)
     if not result:
         raise HTTPException(status_code=404, detail="Session or question not found")
@@ -246,6 +245,7 @@ def evaluate_session_route(session_id: int, db: Session = Depends(get_db), curre
 
 @router.get("/{session_id}/report", response_model=viva_schemas.SessionFullReportResponse)
 def get_session_report_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    _verify_session_access(db, session_id, current_user)
     report = viva_service.get_session_report(db, session_id)
     if not report:
         raise HTTPException(status_code=404, detail="Session not found")

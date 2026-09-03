@@ -36,8 +36,8 @@ const TranscriptPanel = React.memo(function TranscriptPanel({ value, isRecording
         id="transcript-field"
         fullWidth
         multiline
-        minRows={3}
-        maxRows={7}
+        minRows={5}
+        maxRows={5}
         variant="outlined"
         placeholder="Your spoken answer will appear here in real time..."
         value={value}
@@ -54,6 +54,9 @@ const TranscriptPanel = React.memo(function TranscriptPanel({ value, isRecording
             lineHeight: 1.7,
             '& fieldset': { border: 'none' },
             p: 0.5,
+            '& textarea': {
+              scrollBehavior: 'smooth',
+            },
           },
         }}
       />

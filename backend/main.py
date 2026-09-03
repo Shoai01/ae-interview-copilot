@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import os
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -41,7 +40,8 @@ app.add_middleware(
 )
 
 os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+# Recordings are served through the authenticated /viva/{session_id}/answer/{viva_question_id}/audio
+# route instead of a public static mount, so access can be scoped to the owning trainee or a reviewer.
 
 # Seed initial admin on startup
 with engine.connect() as connection:

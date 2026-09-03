@@ -8,7 +8,8 @@ import {
   Button,
   Stack,
   Menu,
-  MenuItem
+  MenuItem,
+  CircularProgress
 } from '@mui/material';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
@@ -18,12 +19,14 @@ import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
 import VolumeOffRoundedIcon from '@mui/icons-material/VolumeOffRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import SpeedRoundedIcon from '@mui/icons-material/SpeedRounded';
+import api from '@/services/api';
 
 const PLAYBACK_RATES = [1.0, 1.25, 1.5, 1.75, 2.0];
 
 export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answer" }) {
   const audioRef = useRef(null);
-  
+  const blobUrlRef = useRef(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -32,22 +35,31 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
   const [speedAnchorEl, setSpeedAnchorEl] = useState(null);
+  const [audioBlobUrl, setAudioBlobUrl] = useState('');
+  const [loadError, setLoadError] = useState(false);
 
-  // Exact audio duration calculation via Web Audio API (decodes actual audio frames)
+  // The recording route requires the Authorization header (no public static
+  // URL), so <audio>/<a download> can't hit it directly — fetch it once via
+  // the authenticated axios instance and play/download from a local blob URL.
+  // Also decodes exact duration via the Web Audio API from the same bytes.
   useEffect(() => {
     if (!src) return;
     let isCancelled = false;
 
-    fetch(src)
+    api.get(src, { responseType: 'blob' })
       .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.arrayBuffer();
-      })
-      .then((arrayBuffer) => {
+        if (isCancelled) return;
+        setLoadError(false);
+        const blob = res.data;
+        const url = URL.createObjectURL(blob);
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = url;
+        setAudioBlobUrl(url);
+
         const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtxClass) return;
         const ctx = new AudioCtxClass();
-        return ctx.decodeAudioData(
+        return blob.arrayBuffer().then((arrayBuffer) => ctx.decodeAudioData(
           arrayBuffer,
           (decodedBuffer) => {
             if (!isCancelled && decodedBuffer) {
@@ -61,16 +73,26 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
           () => {
             ctx.close().catch(() => {});
           }
-        );
+        ));
       })
       .catch(() => {
-        // Fallback handled by HTML5 audio metadata events
+        if (!isCancelled) setLoadError(true);
       });
 
     return () => {
       isCancelled = true;
     };
   }, [src]);
+
+  // Release the blob URL when the src changes again or the player unmounts
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, []);
 
   // Sync duration on metadata load
   const handleLoadedMetadata = () => {
@@ -111,7 +133,7 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
   };
 
   const togglePlayPause = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || !audioBlobUrl) return;
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
@@ -222,9 +244,8 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
     >
       <audio
         ref={audioRef}
-        src={src}
+        src={audioBlobUrl || undefined}
         preload="metadata"
-        crossOrigin="anonymous"
         onLoadedMetadata={handleLoadedMetadata}
         onDurationChange={handleDurationChange}
         onTimeUpdate={handleTimeUpdate}
@@ -260,6 +281,11 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
           <Typography variant="caption" sx={{ color: '#0F172A', fontWeight: 700, fontFamily: 'DM Sans, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             {title}
           </Typography>
+          {loadError && (
+            <Typography variant="caption" sx={{ color: '#EF4444', fontWeight: 600, fontFamily: 'DM Sans, sans-serif' }}>
+              — recording unavailable
+            </Typography>
+          )}
         </Stack>
 
         <Stack direction="row" spacing={0.5} alignItems="center">
@@ -340,22 +366,23 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
 
           {/* Direct Download Button */}
           <Tooltip title="Download recording (.webm/.wav)" arrow>
-            <IconButton
-              size="small"
-              component="a"
-              href={src}
-              download="candidate_answer"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{
-                width: 28,
-                height: 28,
-                color: '#64748B',
-                '&:hover': { color: 'primary.main', bgcolor: 'rgba(242, 101, 34, 0.06)' }
-              }}
-            >
-              <DownloadRoundedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
+            <span>
+              <IconButton
+                size="small"
+                component="a"
+                href={audioBlobUrl || undefined}
+                download="candidate_answer.webm"
+                disabled={!audioBlobUrl}
+                sx={{
+                  width: 28,
+                  height: 28,
+                  color: '#64748B',
+                  '&:hover': { color: 'primary.main', bgcolor: 'rgba(242, 101, 34, 0.06)' }
+                }}
+              >
+                <DownloadRoundedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </span>
           </Tooltip>
         </Stack>
       </Box>
@@ -365,6 +392,7 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
         {/* Play/Pause Button */}
         <IconButton
           onClick={togglePlayPause}
+          disabled={!audioBlobUrl}
           aria-label={isPlaying ? "Pause" : "Play"}
           sx={{
             width: 44,
@@ -377,10 +405,17 @@ export default function CustomAudioPlayer({ src, title = "Candidate Spoken Answe
             '&:hover': {
               transform: 'scale(1.05)',
               boxShadow: '0 6px 16px rgba(242, 101, 34, 0.4)',
+            },
+            '&.Mui-disabled': {
+              background: '#CBD5E1',
+              color: '#FFFFFF',
+              boxShadow: 'none',
             }
           }}
         >
-          {isPlaying ? (
+          {!audioBlobUrl && !loadError ? (
+            <CircularProgress size={20} sx={{ color: '#FFFFFF' }} />
+          ) : isPlaying ? (
             <PauseRoundedIcon sx={{ fontSize: 24 }} />
           ) : (
             <PlayArrowRoundedIcon sx={{ fontSize: 26, ml: '2px' }} />

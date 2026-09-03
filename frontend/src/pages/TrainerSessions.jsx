@@ -16,6 +16,8 @@ import { useNavigate } from 'react-router-dom';
 import { vivaService, adminService } from '@/services/api';
 import toast from 'react-hot-toast';
 
+const DEFAULT_ASSIGN_FORM = { traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15, questionCount: '', setName: '' };
+
 export default function TrainerSessions() {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
@@ -34,9 +36,37 @@ export default function TrainerSessions() {
   const fileInputRef = useRef(null);
   const [trainees, setTrainees] = useState([]);
   const [modulesList, setModulesList] = useState([]);
-  const [assignForm, setAssignForm] = useState({ traineeId: '', traineeIdentifier: '', traineeFullName: '', moduleId: '', durationMinutes: 15, questionCount: '', setName: '' });
+  const [assignForm, setAssignForm] = useState(DEFAULT_ASSIGN_FORM);
   const [assigning, setAssigning] = useState(false);
   const [moduleSets, setModuleSets] = useState([]);
+
+  const clearAssignDraft = () => {
+    try {
+      sessionStorage.removeItem('trainer_assign_form_draft');
+    } catch (err) {
+      // Ignore storage cleanup errors
+    }
+  };
+
+  const resetAssignForm = () => {
+    setAssignMode('single');
+    setBulkInputText('');
+    setAssignForm(DEFAULT_ASSIGN_FORM);
+    setModuleSets([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    clearAssignDraft();
+  };
+
+  const openFreshAssignModal = () => {
+    resetAssignForm();
+    setOpenAssignModal(true);
+  };
+
+  const closeAssignModal = () => {
+    setOpenAssignModal(false);
+    resetAssignForm();
+  };
+
 
   const fetchSessions = async () => {
     setLoading(true);
@@ -107,6 +137,11 @@ export default function TrainerSessions() {
   }, [assignForm.moduleId]);
 
   const handleAssignSubmit = async () => {
+    if (!assignForm.moduleId) {
+      toast.error("Please select a module before assigning");
+      return;
+    }
+
     if (assignMode === 'single') {
       if (!assignForm.traineeIdentifier) {
         toast.error("Please provide a trainee username");
@@ -114,7 +149,7 @@ export default function TrainerSessions() {
       }
       setAssigning(true);
       try {
-        const result = await vivaService.assignSession(
+        await vivaService.assignSession(
           assignForm.traineeId,
           assignForm.traineeIdentifier,
           assignForm.traineeFullName,
@@ -125,13 +160,16 @@ export default function TrainerSessions() {
         );
         try {
           sessionStorage.removeItem('trainer_assign_form_draft');
-        } catch {}
+        } catch (e) {}
         toast.success('Session assigned successfully! Email notification is being sent.');
         setOpenAssignModal(false);
+        resetAssignForm();
         fetchSessions();
       } catch (err) {
         console.error('Failed to assign session:', err);
-        toast.error('Failed to assign session. ' + (err.response?.data?.detail || err.message));
+        const detail = err.response?.data?.detail;
+        const errMsg = Array.isArray(detail) ? detail.map(d => `${d.loc.join('.')}: ${d.msg}`).join(', ') : (detail || err.message);
+        toast.error('Failed to assign session. ' + errMsg);
       } finally {
         setAssigning(false);
       }
@@ -178,14 +216,17 @@ export default function TrainerSessions() {
         );
         try {
           sessionStorage.removeItem('trainer_assign_form_draft');
-        } catch {}
+        } catch (e) {}
         toast.success(`Successfully assigned ${result.success_count} sessions. Email notifications are being sent.`);
         setBulkResults(result.results);
         setOpenAssignModal(false);
+        resetAssignForm();
         fetchSessions();
       } catch (err) {
         console.error('Failed to assign bulk sessions:', err);
-        toast.error('Failed to assign bulk sessions. ' + (err.response?.data?.detail || err.message));
+        const detail = err.response?.data?.detail;
+        const errMsg = Array.isArray(detail) ? detail.map(d => `${d.loc.join('.')}: ${d.msg}`).join(', ') : (detail || err.message);
+        toast.error('Failed to assign bulk sessions. ' + errMsg);
       } finally {
         setAssigning(false);
       }
@@ -298,7 +339,7 @@ export default function TrainerSessions() {
           <Button
             variant="contained"
             startIcon={<AddIcon sx={{ fontSize: 18 }} />}
-            onClick={() => setOpenAssignModal(true)}
+            onClick={openFreshAssignModal}
             sx={{
               background: 'linear-gradient(90deg, #e8581a 0%, #F26522 50%, #ff8c42 100%)',
               color: '#FFFFFF !important',
@@ -645,7 +686,7 @@ export default function TrainerSessions() {
       {/* Assign Session Modal */}
       <Dialog
         open={openAssignModal}
-        onClose={() => setOpenAssignModal(false)}
+        onClose={closeAssignModal}
         maxWidth="sm"
         fullWidth
         PaperProps={{
@@ -701,22 +742,25 @@ export default function TrainerSessions() {
                 <FormControl fullWidth>
                   <Autocomplete
                     freeSolo
+                    value={trainees.find(t => t.id === assignForm.traineeId) || null}
+                    inputValue={assignForm.traineeIdentifier}
                     options={trainees}
                     getOptionLabel={(option) => typeof option === 'string' ? option : `${option.username} (${option.full_name || 'No name'})`}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
                     onChange={(event, newValue) => {
                       if (typeof newValue === 'string') {
-                        setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newValue, traineeFullName: '' });
+                        setAssignForm(prev => ({ ...prev, traineeId: '', traineeIdentifier: newValue, traineeFullName: '' }));
                       } else if (newValue && newValue.id) {
-                        setAssignForm({ ...assignForm, traineeId: newValue.id, traineeIdentifier: newValue.username, traineeFullName: newValue.full_name || '' });
+                        setAssignForm(prev => ({ ...prev, traineeId: newValue.id, traineeIdentifier: newValue.username, traineeFullName: newValue.full_name || '' }));
                       } else {
-                        setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: '', traineeFullName: '' });
+                        setAssignForm(prev => ({ ...prev, traineeId: '', traineeIdentifier: '', traineeFullName: '' }));
                       }
                     }}
-                    onInputChange={(event, newInputValue) => {
-                      if (event && event.type === 'change') {
-                        setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newInputValue, traineeFullName: '' });
-                      } else {
-                        setAssignForm({ ...assignForm, traineeId: '', traineeIdentifier: newInputValue });
+                    onInputChange={(event, newInputValue, reason) => {
+                      if (reason === 'input') {
+                        setAssignForm(prev => ({ ...prev, traineeId: '', traineeIdentifier: newInputValue, traineeFullName: '' }));
+                      } else if (reason === 'clear') {
+                        setAssignForm(prev => ({ ...prev, traineeId: '', traineeIdentifier: '', traineeFullName: '' }));
                       }
                     }}
                     renderInput={(params) => (
@@ -854,7 +898,7 @@ export default function TrainerSessions() {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2.5, bgcolor: '#F8FAFC', borderTop: '1px solid #E2E8F0' }}>
-          <Button onClick={() => setOpenAssignModal(false)} sx={{ color: '#64748B', fontWeight: 600, fontFamily: 'DM Sans, sans-serif', textTransform: 'none' }}>
+          <Button onClick={closeAssignModal} sx={{ color: '#64748B', fontWeight: 600, fontFamily: 'DM Sans, sans-serif', textTransform: 'none' }}>
             Cancel
           </Button>
           <Button 
