@@ -7,6 +7,7 @@ from typing import List
 from core.database import get_db
 from schemas import viva as viva_schemas
 from services import viva_service, user_service
+from repositories import viva_repository
 from core.deps import get_current_user, require_role
 from models.domain import User, UserRole
 from models import domain
