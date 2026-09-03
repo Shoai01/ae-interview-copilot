@@ -262,6 +262,8 @@ def submit_decision(session_id: int, decision_data: viva_schemas.TrainerDecision
 
 @router.get("/trainee/{user_id}", response_model=viva_schemas.TraineeResponse)
 def get_trainee(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role == UserRole.TRAINEE and current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="You are not authorized to access this trainee's data")
     user = user_service.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

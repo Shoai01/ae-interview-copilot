@@ -356,23 +356,22 @@ def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSum
     questions_answered = len(answered_questions)
     
     last_answer_time = max([q.answered_at for q in answered_questions], default=session.start_time) if answered_questions else session.start_time
-    
-    if session.end_time is None:
+
+    # Read-only: whether the session is actually marked COMPLETED is decided by
+    # evaluate_session() (POST /viva/{id}/evaluate) or session-resume logic, never here.
+    if session.end_time is not None:
+        end_time_to_use = session.end_time
+    elif session.status == domain.SessionStatus.IN_PROGRESS and session.start_time:
         now = datetime.datetime.utcnow()
-        should_end = False
-        
-        if questions_answered > 0 and questions_answered == total_questions:
-            should_end = True
-        elif session.status == domain.SessionStatus.IN_PROGRESS and session.start_time:
-            # Once backend time exceeds session duration, it is definitively over.
-            max_duration = session.duration_minutes * 60
-            if (now - session.start_time).total_seconds() >= max_duration:
-                should_end = True
-                
-        if should_end:
-            viva_repository.end_session(db, session, last_answer_time)
-        
-    end_time_to_use = session.end_time if session.end_time else last_answer_time
+        max_duration = session.duration_minutes * 60
+        elapsed = (now - session.start_time).total_seconds()
+        if elapsed >= max_duration:
+            end_time_to_use = session.start_time + datetime.timedelta(seconds=max_duration)
+        else:
+            end_time_to_use = last_answer_time
+    else:
+        end_time_to_use = last_answer_time
+
     duration_seconds = int((end_time_to_use - session.start_time).total_seconds())
 
     return viva_schemas.SessionSummaryResponse(
