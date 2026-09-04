@@ -131,3 +131,65 @@ class AuditLogResponse(BaseModel):
 class AuditLogCursorPage(BaseModel):
     items: List[AuditLogResponse]
     next_cursor: Optional[str] = None
+
+class LLMUsageLogResponse(BaseModel):
+    id: int
+    call_site: str
+    model_name: str
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    total_tokens: Optional[int] = None
+    latency_ms: Optional[int] = None
+    status: str
+    error_message: Optional[str] = None
+    session_id: Optional[int] = None
+    module_id: Optional[int] = None
+    user_id: Optional[int] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class LLMUsageLogCursorPage(BaseModel):
+    items: List[LLMUsageLogResponse]
+    next_cursor: Optional[str] = None
+
+class LLMUsageCallSiteBreakdown(BaseModel):
+    call_site: str
+    calls: int
+    input_tokens: int
+    output_tokens: int
+
+class LLMUsageModelBreakdown(BaseModel):
+    model_name: str
+    calls: int
+    input_tokens: int
+    output_tokens: int
+
+class LLMUsageDailyPoint(BaseModel):
+    date: str
+    calls: int
+    input_tokens: int
+    output_tokens: int
+
+class LLMUsageUserBreakdown(BaseModel):
+    user_id: Optional[int] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    calls: int
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+
+class LLMUsageSummaryResponse(BaseModel):
+    total_calls: int
+    total_input_tokens: int
+    total_output_tokens: int
+    total_tokens: int
+    avg_latency_ms: float
+    error_count: int
+    by_call_site: List[LLMUsageCallSiteBreakdown]
+    by_model: List[LLMUsageModelBreakdown]
+    daily: List[LLMUsageDailyPoint]
+    by_user: List[LLMUsageUserBreakdown] = []
+    by_user_total_users: int = 0

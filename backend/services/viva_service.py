@@ -147,7 +147,7 @@ def resolve_or_create_session(db: Session, trainee: domain.User) -> viva_schemas
             # If the session got stuck without questions, generate them now
             if total_questions == 0:
                 from ai.question_gen import generate_dynamic_questions_for_session
-                dynamic_questions = generate_dynamic_questions_for_session(db, db_session.module_id, count=5)
+                dynamic_questions = generate_dynamic_questions_for_session(db, db_session.module_id, count=5, session_id=db_session.id, triggered_by_user_id=trainee.id)
                 
                 if len(dynamic_questions) < 5:
                     print(f"Partial generation: Requested 5, generated {len(dynamic_questions)}. Falling back to predefined to fill gap.")
@@ -431,7 +431,7 @@ def evaluate_session(db: Session, session_id: int):
     if session.status != domain.SessionStatus.COMPLETED:
         viva_repository.end_session(db, session, datetime.datetime.utcnow())
         
-    eval_result = ai_service.evaluate_interview_session(questions_data)
+    eval_result = ai_service.evaluate_interview_session(questions_data, db=db, session_id=session.id, triggered_by_user_id=session.trainee_id)
     
     for q_eval in eval_result.question_evaluations:
         db_eval = domain.Evaluation(

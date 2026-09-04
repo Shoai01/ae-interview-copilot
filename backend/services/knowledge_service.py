@@ -72,7 +72,7 @@ def delete_knowledge_document(db, doc: domain.KnowledgeDocument):
     db.delete(doc)
     db.commit()
 
-def process_and_store_pdf(db=None, module_id=None, file_content: bytes = None, source_filename: str = ""):
+def process_and_store_pdf(db=None, module_id=None, file_content: bytes = None, source_filename: str = "", triggered_by_user_id=None):
     # 1. Extract Text from PDF using PyMuPDF from memory stream
     doc = fitz.open(stream=file_content, filetype="pdf")
     full_text = ""
@@ -103,7 +103,7 @@ def process_and_store_pdf(db=None, module_id=None, file_content: bytes = None, s
     raw_metadatas = [{"module_id": module_id, "source": source_filename} for _ in raw_chunks]
 
     # 3. Generate embeddings and save to FAISS local vector store
-    embeddings_model = get_embeddings_model()
+    embeddings_model = get_embeddings_model(db=db, module_id=module_id, user_id=triggered_by_user_id)
 
     # Check if index already exists
     if os.path.exists(FAISS_INDEX_PATH):
@@ -122,11 +122,11 @@ def process_and_store_pdf(db=None, module_id=None, file_content: bytes = None, s
         except AssertionError:
             # The dimension of the existing index does not match the new embeddings
             print("FAISS dimension mismatch detected, rebuilding entire index...")
-            rebuild_faiss_index(db)
+            rebuild_faiss_index(db, triggered_by_user_id=triggered_by_user_id)
             chunks = raw_chunks
         except Exception as e:
             print("Failed to append to existing FAISS index, rebuilding:", e)
-            rebuild_faiss_index(db)
+            rebuild_faiss_index(db, triggered_by_user_id=triggered_by_user_id)
             chunks = raw_chunks
     else:
         # Create new index
@@ -138,7 +138,7 @@ def process_and_store_pdf(db=None, module_id=None, file_content: bytes = None, s
 
     return len(chunks)
 
-def rebuild_faiss_index(db):
+def rebuild_faiss_index(db, triggered_by_user_id=None):
     """
     Rebuilds the entire FAISS index from the remaining KnowledgeDocument entries in the database.
     """
@@ -171,7 +171,8 @@ def rebuild_faiss_index(db):
         all_metadatas.extend(metadatas)
 
     if all_chunks:
-        embeddings_model = get_embeddings_model()
+        # Spans documents from multiple modules, so module_id is left unset here.
+        embeddings_model = get_embeddings_model(db=db, user_id=triggered_by_user_id)
         vector_store = FAISS.from_texts(texts=all_chunks, embedding=embeddings_model, metadatas=all_metadatas)
         vector_store.save_local(FAISS_INDEX_PATH)
 

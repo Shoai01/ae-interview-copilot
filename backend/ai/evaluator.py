@@ -1,8 +1,9 @@
 import os
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 from google import genai
-from models.domain import AIRecommendationType
+from models.domain import AIRecommendationType, LLMCallSite
+from services.llm_usage_service import track_llm_call
 
 # Initialize Gemini Client using Vertex AI
 # Requires GOOGLE_APPLICATION_CREDENTIALS in env
@@ -34,7 +35,7 @@ class SessionEvaluationResult(BaseModel):
     # LLM evaluation. Callers must not treat these scores as genuine.
     is_fallback: bool = False
 
-def evaluate_interview_session(questions_data: list) -> SessionEvaluationResult:
+def evaluate_interview_session(questions_data: list, db=None, session_id: Optional[int] = None, triggered_by_user_id: Optional[int] = None) -> SessionEvaluationResult:
     """
     Evaluates a full interview session using Gemini.
     questions_data is a list of dicts:
@@ -46,6 +47,10 @@ def evaluate_interview_session(questions_data: list) -> SessionEvaluationResult:
         },
         ...
     ]
+
+    `db`/`session_id`/`triggered_by_user_id` are optional and, when provided,
+    record per-call token usage to llm_usage_logs for the admin analytics
+    dashboard. Passing db=None (e.g. in tests) simply skips usage logging.
     """
     if not questions_data:
         # Return empty/default result if no questions were answered
@@ -102,16 +107,20 @@ def evaluate_interview_session(questions_data: list) -> SessionEvaluationResult:
         before_sleep=log_retry
     )
     def _call_gemini_api():
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=user_prompt,
-            config={
-                'system_instruction': system_instruction,
-                'response_mime_type': 'application/json',
-                'response_schema': LLMSessionEvaluationResult,
-            },
-        )
-        return response.parsed
+        with track_llm_call(db, LLMCallSite.EVALUATOR, 'gemini-2.5-flash', session_id=session_id, user_id=triggered_by_user_id) as usage:
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=user_prompt,
+                config={
+                    'system_instruction': system_instruction,
+                    'response_mime_type': 'application/json',
+                    'response_schema': LLMSessionEvaluationResult,
+                },
+            )
+            if response.usage_metadata:
+                usage['input_tokens'] = response.usage_metadata.prompt_token_count
+                usage['output_tokens'] = response.usage_metadata.candidates_token_count
+            return response.parsed
 
     try:
         llm_result = _call_gemini_api()

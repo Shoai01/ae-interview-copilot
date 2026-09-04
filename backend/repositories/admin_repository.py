@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
+from datetime import datetime
+from typing import List, Optional
 from models import domain
 from schemas import admin as admin_schemas
-from typing import List
 
 def get_modules(db: Session) -> List[domain.TrainingModule]:
     return db.query(domain.TrainingModule).all()
@@ -145,13 +146,26 @@ def delete_set_questions(db: Session, module_id: int, set_name: str) -> None:
 
 from sqlalchemy import func, desc, case
 
-def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
+def get_dashboard_metrics(db: Session, module_id: int = None, date_from: datetime = None, date_to: datetime = None) -> dict:
+    if date_from is not None and getattr(date_from, 'tzinfo', None) is not None:
+        date_from = date_from.replace(tzinfo=None)
+    if date_to is not None and getattr(date_to, 'tzinfo', None) is not None:
+        date_to = date_to.replace(tzinfo=None)
+
     session_query = db.query(domain.VivaSession)
     report_query = db.query(domain.VivaReport).join(domain.VivaSession, domain.VivaSession.id == domain.VivaReport.session_id)
     
     if module_id is not None:
         session_query = session_query.filter(domain.VivaSession.module_id == module_id)
         report_query = report_query.filter(domain.VivaSession.module_id == module_id)
+
+    if date_from is not None:
+        session_query = session_query.filter(domain.VivaSession.start_time >= date_from)
+        report_query = report_query.filter(domain.VivaSession.start_time >= date_from)
+
+    if date_to is not None:
+        session_query = session_query.filter(domain.VivaSession.start_time <= date_to)
+        report_query = report_query.filter(domain.VivaSession.start_time <= date_to)
         
     total_interviews = session_query.count()
 
@@ -197,6 +211,10 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
         
     if module_id is not None:
         completed_reports_query = completed_reports_query.filter(domain.VivaSession.module_id == module_id)
+    if date_from is not None:
+        completed_reports_query = completed_reports_query.filter(domain.VivaSession.start_time >= date_from)
+    if date_to is not None:
+        completed_reports_query = completed_reports_query.filter(domain.VivaSession.start_time <= date_to)
         
     completed_reports = completed_reports_query.all()
         
@@ -226,6 +244,10 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
 
     if module_id is not None:
         module_scores_query = module_scores_query.filter(domain.VivaSession.module_id == module_id)
+    if date_from is not None:
+        module_scores_query = module_scores_query.filter(domain.VivaSession.start_time >= date_from)
+    if date_to is not None:
+        module_scores_query = module_scores_query.filter(domain.VivaSession.start_time <= date_to)
         
     module_scores = module_scores_query\
     .group_by(domain.TrainingModule.name)\
@@ -258,6 +280,10 @@ def get_dashboard_metrics(db: Session, module_id: int = None) -> dict:
     
     if module_id is not None:
         recent_sessions_query = recent_sessions_query.filter(domain.VivaSession.module_id == module_id)
+    if date_from is not None:
+        recent_sessions_query = recent_sessions_query.filter(domain.VivaSession.start_time >= date_from)
+    if date_to is not None:
+        recent_sessions_query = recent_sessions_query.filter(domain.VivaSession.start_time <= date_to)
         
     recent_sessions = recent_sessions_query\
     .order_by(domain.VivaSession.start_time.desc())\

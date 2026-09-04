@@ -17,8 +17,14 @@ router = APIRouter(
 )
 
 @router.get("/dashboard", response_model=admin_schemas.DashboardResponse)
-def get_dashboard_metrics(module_id: Optional[int] = None, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
-    return admin_service.get_dashboard_metrics(db, module_id=module_id)
+def get_dashboard_metrics(
+    module_id: Optional[int] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))
+):
+    return admin_service.get_dashboard_metrics(db, module_id=module_id, date_from=date_from, date_to=date_to)
 
 @router.post("/users", response_model=user_schemas.UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: user_schemas.UserCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
@@ -98,7 +104,7 @@ def generate_ai_set(module_id: int, set_name: str, count: int = 15, db: Session 
     from models.domain import AuditActionType
     
     with log_action(db, AuditActionType.AI_QUESTION_GENERATED, current_user.id, current_user.full_name or current_user.username) as log:
-        questions = generate_dynamic_questions_for_session(db, module_id, count=count, set_name=set_name)
+        questions = generate_dynamic_questions_for_session(db, module_id, count=count, set_name=set_name, triggered_by_user_id=current_user.id)
         if not questions:
             raise HTTPException(status_code=400, detail="Could not generate questions. Make sure you have uploaded PDFs for this module.")
         
@@ -167,10 +173,11 @@ async def upload_knowledge_document(
     try:
         with log_action(db, AuditActionType.DOCUMENT_UPLOADED, current_user.id, current_user.full_name or current_user.username) as log:
             chunks_created = knowledge_service.process_and_store_pdf(
-                db=db, 
-                module_id=module_id, 
-                file_content=file_content, 
-                source_filename=file.filename
+                db=db,
+                module_id=module_id,
+                file_content=file_content,
+                source_filename=file.filename,
+                triggered_by_user_id=current_user.id
             )
             log['target'] = f"Document: {file.filename}"
             log['details'] = {"module_id": module_id, "chunks": chunks_created}
@@ -223,7 +230,7 @@ def delete_knowledge_document(
     
     # Rebuild the FAISS index to reflect the deletion
     try:
-        knowledge_service.rebuild_faiss_index(db)
+        knowledge_service.rebuild_faiss_index(db, triggered_by_user_id=current_user.id)
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -245,7 +252,58 @@ def get_audit_logs(
 ):
     from services.audit_service import get_audit_logs
     return get_audit_logs(
-        db, actor_id=actor_id, category=category, action_type=action_type, 
-        date_from=date_from, date_to=date_to, 
+        db, actor_id=actor_id, category=category, action_type=action_type,
+        date_from=date_from, date_to=date_to,
         cursor=cursor, limit=limit
     )
+
+@router.get("/llm-usage/summary", response_model=admin_schemas.LLMUsageSummaryResponse)
+def get_llm_usage_summary(
+    date_from: Optional[datetime] = Query(None),
+    date_to: Optional[datetime] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.ADMIN]))
+):
+    from repositories import llm_usage_repository
+    return llm_usage_repository.get_summary(db, date_from=date_from, date_to=date_to)
+
+@router.get("/llm-usage/logs", response_model=admin_schemas.LLMUsageLogCursorPage)
+def get_llm_usage_logs(
+    call_site: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    model_name: Optional[str] = Query(None),
+    session_id: Optional[int] = Query(None),
+    user_id: Optional[int] = Query(None),
+    date_from: Optional[datetime] = Query(None),
+    date_to: Optional[datetime] = Query(None),
+    cursor: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.ADMIN]))
+):
+    from repositories import llm_usage_repository
+    items, next_cursor = llm_usage_repository.get_logs(
+        db, call_site=call_site, status=status, model_name=model_name,
+        session_id=session_id, user_id=user_id,
+        date_from=date_from, date_to=date_to,
+        cursor=cursor, limit=limit
+    )
+    response_items = [
+        admin_schemas.LLMUsageLogResponse(
+            id=item.id,
+            call_site=item.call_site.value if hasattr(item.call_site, 'value') else item.call_site,
+            model_name=item.model_name,
+            input_tokens=item.input_tokens,
+            output_tokens=item.output_tokens,
+            total_tokens=item.total_tokens,
+            latency_ms=item.latency_ms,
+            status=item.status.value if hasattr(item.status, 'value') else item.status,
+            error_message=item.error_message,
+            session_id=item.session_id,
+            module_id=item.module_id,
+            user_id=item.user_id,
+            created_at=item.created_at
+        )
+        for item in items
+    ]
+    return admin_schemas.LLMUsageLogCursorPage(items=response_items, next_cursor=next_cursor)

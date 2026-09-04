@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from datetime import datetime
 from models import domain
 from schemas import admin as admin_schemas
 from typing import List, Optional
@@ -36,7 +37,7 @@ def get_questions_by_module(db: Session, module_id: int) -> List[domain.Question
 from services.audit_service import log_action
 from models.domain import AuditActionType
 
-def _with_kb_grounded_ideal_answer(question: admin_schemas.QuestionCreate) -> admin_schemas.QuestionCreate:
+def _with_kb_grounded_ideal_answer(db: Session, question: admin_schemas.QuestionCreate, actor_id: int = None) -> admin_schemas.QuestionCreate:
     """
     Manually-authored questions often skip the ideal answer field, which
     otherwise leaves the evaluator scoring that question with no reference
@@ -46,14 +47,14 @@ def _with_kb_grounded_ideal_answer(question: admin_schemas.QuestionCreate) -> ad
     if question.ideal_answer and question.ideal_answer.strip():
         return question
     from ai.ideal_answer import generate_ideal_answer_from_kb
-    generated = generate_ideal_answer_from_kb(question.module_id, question.text)
+    generated = generate_ideal_answer_from_kb(question.module_id, question.text, db=db, triggered_by_user_id=actor_id)
     if not generated:
         return question
     return question.model_copy(update={"ideal_answer": generated})
 
 def create_question(db: Session, question: admin_schemas.QuestionCreate, actor_id: int = None, actor_name: str = None) -> domain.QuestionBank:
     with log_action(db, AuditActionType.QUESTION_CREATED, actor_id, actor_name) as log:
-        question = _with_kb_grounded_ideal_answer(question)
+        question = _with_kb_grounded_ideal_answer(db, question, actor_id)
         new_q = admin_repository.create_question(db, question)
         log['target'] = f"Question: {new_q.id} (Set: {new_q.set_name})"
         log['details'] = {"module_id": new_q.module_id, "difficulty": new_q.difficulty.value}
@@ -70,7 +71,7 @@ def create_questions_bulk(db: Session, bulk_data: admin_schemas.BulkQuestionCrea
                 difficulty=q.difficulty,
                 set_name=q.set_name
             )
-            q_create = _with_kb_grounded_ideal_answer(q_create)
+            q_create = _with_kb_grounded_ideal_answer(db, q_create, actor_id)
             admin_repository.create_question(db, q_create)
             count += 1
 
@@ -99,8 +100,8 @@ def delete_question(db: Session, question_id: int, actor_id: int = None, actor_n
             return True
         return False
 
-def get_dashboard_metrics(db: Session, module_id: Optional[int] = None) -> dict:
-    return admin_repository.get_dashboard_metrics(db, module_id)
+def get_dashboard_metrics(db: Session, module_id: Optional[int] = None, date_from: Optional[datetime] = None, date_to: Optional[datetime] = None) -> dict:
+    return admin_repository.get_dashboard_metrics(db, module_id=module_id, date_from=date_from, date_to=date_to)
 
 def update_question(db: Session, question_id: int, update_data: admin_schemas.QuestionUpdate, actor_id: int = None, actor_name: str = None) -> domain.QuestionBank:
     with log_action(db, AuditActionType.QUESTION_UPDATED, actor_id, actor_name) as log:

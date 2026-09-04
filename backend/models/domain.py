@@ -224,3 +224,39 @@ class TokenBlacklist(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     token = Column(String, unique=True, index=True, nullable=False)
     blacklisted_at = Column(DateTime, default=datetime.utcnow)
+
+class LLMCallSite(str, enum.Enum):
+    EVALUATOR = "EVALUATOR"               # evaluate_interview_session (per-session grading)
+    QUESTION_GEN = "QUESTION_GEN"         # generate_dynamic_questions_for_session (per-question)
+    IDEAL_ANSWER = "IDEAL_ANSWER"         # generate_ideal_answer_from_kb (RAG draft)
+    EMBEDDING = "EMBEDDING"               # VertexAIEmbeddings calls (KB ingestion, question dedup, RAG retrieval)
+
+class LLMCallStatus(str, enum.Enum):
+    SUCCESS = "SUCCESS"
+    ERROR = "ERROR"
+
+class LLMUsageLog(Base):
+    __tablename__ = "llm_usage_logs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    call_site = Column(SQLEnum(LLMCallSite), nullable=False)
+    model_name = Column(String, nullable=False)
+    input_tokens = Column(Integer, nullable=True)
+    output_tokens = Column(Integer, nullable=True)
+    total_tokens = Column(Integer, nullable=True)
+    latency_ms = Column(Integer, nullable=True)
+    status = Column(SQLEnum(LLMCallStatus), nullable=False, default=LLMCallStatus.SUCCESS)
+    error_message = Column(Text, nullable=True)
+    session_id = Column(Integer, ForeignKey("viva_sessions.id", ondelete="SET NULL"), nullable=True)
+    module_id = Column(Integer, ForeignKey("training_modules.id", ondelete="SET NULL"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True) # who triggered the call, if known
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    session = relationship("VivaSession")
+    module = relationship("TrainingModule")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index('ix_llm_usage_logs_call_site', 'call_site'),
+        Index('ix_llm_usage_logs_created_at_call_site', 'created_at', 'call_site'),
+    )

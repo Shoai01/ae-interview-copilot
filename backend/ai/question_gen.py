@@ -1,14 +1,17 @@
 import os
 import random
 import re
+from typing import Optional
 import numpy as np
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field
 from models import domain
+from models.domain import LLMCallSite
 from ai.base import get_embeddings_model, get_chat_model
 from ai.text_quality import is_good_chunk
 from services.knowledge_service import FAISS_INDEX_PATH
+from services.llm_usage_service import track_llm_call
 
 SEMANTIC_DUPLICATE_THRESHOLD = 0.85
 DIVERSITY_TOLERANCE = 0.02  # how close to the "most diverse" candidate still counts as a tie
@@ -39,7 +42,7 @@ def _get_docs_for_module(vector_store: FAISS, module_id: int):
             docs.append((doc, _reconstruct_vector(vector_store, index_pos)))
     return docs
 
-def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, set_name: str = "AI Generated Set"):
+def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, set_name: str = "AI Generated Set", session_id: Optional[int] = None, triggered_by_user_id: Optional[int] = None):
     """
     Dynamically generates questions using the FAISS index for a specific module.
     Saves them to QuestionBank and returns the list of generated QuestionBank objects.
@@ -49,7 +52,7 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
         return []
 
     try:
-        embeddings_model = get_embeddings_model()
+        embeddings_model = get_embeddings_model(db=db, module_id=module_id, user_id=triggered_by_user_id)
         vector_store = FAISS.load_local(FAISS_INDEX_PATH, embeddings_model, allow_dangerous_deserialization=True)
     except Exception as e:
         print("Failed to initialize embeddings or load FAISS index:", e)
@@ -175,7 +178,9 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
     )
 
     # Built once and reused across all attempts — neither depends on loop state.
-    structured_llm = llm.with_structured_output(GeneratedQuestion)
+    # include_raw=True so each call's usage_metadata (token counts) is available
+    # for the usage analytics dashboard, alongside the parsed question.
+    structured_llm = llm.with_structured_output(GeneratedQuestion, include_raw=True)
     chain = prompt | structured_llm
 
     generated_questions = []
@@ -307,13 +312,22 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
 
         target_style = question_styles[attempt_index % len(question_styles)]
         prev_q_str = "\n".join([f"- {q}" for q in previous_questions_list]) if previous_questions_list else "None"
-        response = chain.invoke({
-            "context": doc.page_content,
-            "module_name": module_name,
-            "previous_questions": prev_q_str,
-            "target_difficulty": target_diff.value,
-            "target_style": target_style
-        })
+
+        with track_llm_call(db, LLMCallSite.QUESTION_GEN, 'gemini-2.5-flash', session_id=session_id, module_id=module_id, user_id=triggered_by_user_id) as usage:
+            raw_result = chain.invoke({
+                "context": doc.page_content,
+                "module_name": module_name,
+                "previous_questions": prev_q_str,
+                "target_difficulty": target_diff.value,
+                "target_style": target_style
+            })
+            raw_message = raw_result.get("raw")
+            if raw_message is not None and getattr(raw_message, "usage_metadata", None):
+                usage["input_tokens"] = raw_message.usage_metadata.get("input_tokens")
+                usage["output_tokens"] = raw_message.usage_metadata.get("output_tokens")
+            response = raw_result.get("parsed")
+            if response is None:
+                raise ValueError(f"Structured output parsing failed: {raw_result.get('parsing_error')}")
 
         q_text = response.question.strip()
         q_topic = response.topic.strip()
