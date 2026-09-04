@@ -12,7 +12,7 @@ import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined';
 import FilterListOffIcon from '@mui/icons-material/FilterListOff';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { vivaService, adminService } from '@/services/api';
 import { parseCsvLine } from '@/utils/csv';
 import toast from 'react-hot-toast';
@@ -36,11 +36,15 @@ function getSavedAssignDraft() {
 
 export default function TrainerSessions() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterModule, setFilterModule] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterResult, setFilterResult] = useState('');
+  // A dashboard KPI card (e.g. "Passed") can deep-link here pre-filtered —
+  // seed the filter state from navigation state so the table matches the
+  // number the trainer just clicked.
+  const [filterModule, setFilterModule] = useState(location.state?.filterModule || '');
+  const [filterStatus, setFilterStatus] = useState(location.state?.filterStatus || '');
+  const [filterResult, setFilterResult] = useState(location.state?.filterResult || '');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -384,9 +388,18 @@ export default function TrainerSessions() {
           </Button>
         </Box>
 
-        {/* KPI Metric Summary Strip */}
+        {/* KPI Metric Summary Strip — each card filters the table below it */}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 2 }}>
-          <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
+          <Card
+            elevation={0}
+            onClick={handleResetFilters}
+            sx={{
+              p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)', cursor: 'pointer', transition: 'all 0.2s ease',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 20px -4px rgba(0, 0, 0, 0.08)', borderColor: '#CBD5E1' },
+            }}
+          >
             <Box>
               <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 Total Sessions
@@ -400,7 +413,16 @@ export default function TrainerSessions() {
             </Box>
           </Card>
 
-          <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
+          <Card
+            elevation={0}
+            onClick={() => { setFilterStatus('In Progress'); setPage(0); }}
+            sx={{
+              p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)', cursor: 'pointer', transition: 'all 0.2s ease',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 20px -4px rgba(0, 0, 0, 0.08)', borderColor: '#F26522' },
+            }}
+          >
             <Box>
               <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 In Progress
@@ -414,7 +436,16 @@ export default function TrainerSessions() {
             </Box>
           </Card>
 
-          <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
+          <Card
+            elevation={0}
+            onClick={() => { setFilterStatus('Pending Review'); setPage(0); }}
+            sx={{
+              p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)', cursor: 'pointer', transition: 'all 0.2s ease',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 20px -4px rgba(0, 0, 0, 0.08)', borderColor: '#D97706' },
+            }}
+          >
             <Box>
               <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 Pending Review
@@ -428,7 +459,16 @@ export default function TrainerSessions() {
             </Box>
           </Card>
 
-          <Card elevation={0} sx={{ p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
+          <Card
+            elevation={0}
+            onClick={() => { setFilterResult('PASS'); setPage(0); }}
+            sx={{
+              p: 2.5, bgcolor: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 2.5,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)', cursor: 'pointer', transition: 'all 0.2s ease',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 20px -4px rgba(0, 0, 0, 0.08)', borderColor: '#16A34A' },
+            }}
+          >
             <Box>
               <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em'}}>
                 Certified (Pass)
