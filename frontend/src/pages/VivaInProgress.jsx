@@ -1,18 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Box, Typography, IconButton, Button, CircularProgress, Tooltip } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
-import CodeIcon from '@mui/icons-material/Code';
-import TimerIcon from '@mui/icons-material/Timer';
 import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import SendIcon from '@mui/icons-material/Send';
-import PersonIcon from '@mui/icons-material/Person';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import api, { vivaService } from '@/services/api';
 import { globalState, AUDIO_CONSTRAINTS } from '@/store';
 import TranscriptPanel from '@/components/TranscriptPanel';
+import ExamSidebar from '@/components/ExamSidebar';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis';
 import { useFraudDetection } from '@/hooks/useFraudDetection';
@@ -70,6 +68,7 @@ export default function VivaInProgress() {
   const [clockOffset, setClockOffset] = useState(0);
   const isAutoSubmittingRef = useRef(false);
   const isEndingRef = useRef(false);
+  const hasWarnedTimeRef = useRef(false);
 
   const syncServerClock = useCallback(async () => {
     const requestSentAt = Date.now();
@@ -401,6 +400,20 @@ export default function VivaInProgress() {
     }
   }, [timerExpired, loading, currentQuestion, handleAutoSubmit]);
 
+  // One-time alert when the session enters its final stretch — the sidebar
+  // timer already turns amber, but a toast makes the low-time warning
+  // impossible to miss even if the trainee isn't looking at it.
+  useEffect(() => {
+    if (timerWarning && !hasWarnedTimeRef.current) {
+      hasWarnedTimeRef.current = true;
+      toast('Only 2 minutes left! Please wrap up your answer.', {
+        icon: '⏳',
+        duration: 6000,
+        id: 'session-time-warning',
+      });
+    }
+  }, [timerWarning]);
+
   const handleNextAction = async () => {
     if (!currentQuestion || submitting) return;
     
@@ -498,106 +511,33 @@ export default function VivaInProgress() {
     `Background noise: ${noiseLevel}`,
   ].join('\n');
 
+  const timerAccentColor = timerExpired ? '#EF4444' : timerWarning ? '#F59E0B' : '#F26522';
+  const timerTrackColor = timerExpired ? 'rgba(239, 68, 68, 0.15)' : timerWarning ? 'rgba(245, 158, 11, 0.15)' : '#E2E8F0';
+  const timeRatio = totalSeconds > 0 ? Math.max(0, Math.min(1, remainingSeconds / totalSeconds)) : 0;
+
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#F8FAFC', position: 'relative' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#F8FAFC', position: 'relative' }}>
 
-      {/* Fixed Enterprise Top App Bar */}
-      <Box
-        component="header"
-        sx={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          zIndex: 40,
-          height: 64,
-          px: { xs: 2, md: 3.5 },
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          bgcolor: '#FFFFFF',
-          borderBottom: '1px solid #E2E8F0',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-        }}
-      >
-        {/* Left: Branding & Candidate Badge */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexShrink: 0 }}>
-          <Box
-            component="img"
-            src="/ae-icon.png"
-            alt="AutomationEdge"
-            sx={{ height: 26, width: 'auto', objectFit: 'contain', flexShrink: 0 }}
-          />
-          <Typography
-            sx={{
-              display: { xs: 'none', sm: 'block' },
-              fontWeight: 700,
-              fontSize: '1rem',
-              color: '#0F172A',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-            }}
-          >
-            Viva Copilot
-          </Typography>
-
-          <Box sx={{ display: { xs: 'none', sm: 'block' }, width: '1px', height: 20, bgcolor: '#E2E8F0', mx: 0.5, flexShrink: 0 }} />
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', px: 1.5, py: 0.5, borderRadius: 1.5, flexShrink: 0 }}>
-            <PersonIcon sx={{ fontSize: 16, color: '#64748B' }} />
-            <Typography sx={{ fontSize: '0.825rem', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
-              {traineeName}
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.75, bgcolor: 'rgba(242, 101, 34, 0.08)', border: '1px solid rgba(242, 101, 34, 0.2)', px: 1.5, py: 0.5, borderRadius: 1.5, flexShrink: 0 }}>
-            <CodeIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-            <Typography sx={{ fontSize: '0.825rem', fontWeight: 600, color: 'primary.main', whiteSpace: 'nowrap' }}>
-              {moduleName}
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Right: Question Counter & Live Timer */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569'}}>
-            {currentQuestion ? `Question ${currentQuestion.current_question_index} of ${currentQuestion.total_questions}` : 'Loading...'}
-          </Typography>
-
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.85,
-              px: 1.75,
-              py: 0.6,
-              borderRadius: 2,
-              bgcolor: timerExpired ? 'rgba(239, 68, 68, 0.1)' : timerWarning ? 'rgba(245, 158, 11, 0.1)' : '#F8FAFC',
-              border: `1px solid ${timerExpired ? 'rgba(239, 68, 68, 0.3)' : timerWarning ? 'rgba(245, 158, 11, 0.3)' : '#E2E8F0'}`,
-              color: timerExpired ? '#DC2626' : timerWarning ? '#D97706' : '#0F172A',
-              transition: 'all 0.3s ease',
-            }}
-          >
-            <TimerIcon sx={{ fontSize: 18 }} />
-            <Typography
-              sx={{
-                fontWeight: 700,
-                fontSize: '1rem',
-                letterSpacing: '0.02em',
-                lineHeight: 1,
-              }}
-            >
-              {timerMinutes}:{timerSecs}
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
+      <ExamSidebar
+        traineeName={traineeName}
+        moduleName={moduleName}
+        durationMinutes={sessionDuration}
+        currentIndex={currentQuestion?.current_question_index}
+        total={currentQuestion?.total_questions}
+        timerMinutes={timerMinutes}
+        timerSecs={timerSecs}
+        timerAccentColor={timerAccentColor}
+        timerTrackColor={timerTrackColor}
+        timeRatio={timeRatio}
+        timerExpired={timerExpired}
+        timerWarning={timerWarning}
+      />
 
       {/* Floating Picture-In-Picture Webcam Viewfinder */}
       <Box
         sx={{
           position: 'fixed',
-          top: 76,
+          top: { xs: 24, md: 32 },
           right: { xs: 16, md: 28 },
           width: { xs: 130, sm: 180, md: 210 },
           aspectRatio: '4/3',
@@ -664,25 +604,24 @@ export default function VivaInProgress() {
         </Box>
       </Box>
 
-      {/* Central Exam Workspace */}
+      {/* Central Exam Workspace — offset by the fixed sidebar's width; the
+          inner box centers itself within that remaining space via flex,
+          rather than fighting the offset with an auto margin. */}
       <Box
         component="main"
         sx={{
-          flexGrow: 1,
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
+          ml: { xs: 0, md: '296px' },
           px: 3,
-          pt: { xs: 14, sm: 12, md: 10 },
+          pt: { xs: 6, sm: 6, md: 7 },
           pb: 6,
-          maxWidth: 820,
-          mx: 'auto',
-          width: '100%',
           minHeight: '100vh',
           zIndex: 10,
         }}
       >
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 820 }}>
         {/* Question Statement Section */}
         <Box sx={{ width: '100%', textAlign: 'center', mb: 4 }}>
           <Tooltip title="Replay question audio" arrow placement="top">
@@ -838,6 +777,7 @@ export default function VivaInProgress() {
             </Button>
           </Box>
         </Box>
+      </Box>
       </Box>
 
     </Box>
