@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Typography, Paper, Button, Table, TableBody, TableCell, TableHead, TableRow, TablePagination, Avatar, Chip, keyframes, CircularProgress, Select, MenuItem, LinearProgress, Tooltip } from '@mui/material';
+import {
+  Box, Typography, Paper, Button, Table, TableBody, TableCell, TableHead, TableRow, TablePagination,
+  Avatar, Chip, keyframes, CircularProgress, Select, MenuItem, LinearProgress, Tooltip,
+  ToggleButtonGroup, ToggleButton
+} from '@mui/material';
 import Layout from '@/components/Layout';
+import MiniCalendarPicker from '@/components/MiniCalendarPicker';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import GroupIcon from '@mui/icons-material/Group';
 import GradeIcon from '@mui/icons-material/Grade';
@@ -35,11 +40,48 @@ const shimmer = keyframes`
   100% { background-position: 200% 0; }
 `;
 
+const toggleGroupSx = {
+  bgcolor: '#FFFFFF',
+  border: '1px solid #E2E8F0',
+  borderRadius: 2,
+  '& .MuiToggleButton-root': {
+    border: 'none',
+    px: 1.5,
+    py: 0.5,
+    fontSize: '0.8rem',
+    fontWeight: 600,
+    color: '#64748B',
+    textTransform: 'none',
+    '&.Mui-selected': { bgcolor: 'rgba(242, 101, 34, 0.1)', color: '#F26522' },
+    '&.Mui-selected:hover': { bgcolor: 'rgba(242, 101, 34, 0.15)' },
+  },
+};
+
+function getRangeParams(preset, customFrom, customTo) {
+  if (preset === 'ALL') return {};
+  if (preset === 'CUSTOM') {
+    if (!customFrom || !customTo) return null;
+    const from = new Date(`${customFrom}T00:00:00`);
+    const to = new Date(`${customTo}T23:59:59.999`);
+    return { date_from: from.toISOString(), date_to: to.toISOString() };
+  }
+  const days = { '7D': 7, '30D': 30, '90D': 90 }[preset] || 30;
+  const to = new Date();
+  to.setHours(23, 59, 59, 999);
+  const from = new Date();
+  from.setDate(from.getDate() - (days - 1));
+  from.setHours(0, 0, 0, 0);
+  return { date_from: from.toISOString(), date_to: to.toISOString() };
+}
+
 export default function TrainerOverview() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [modules, setModules] = useState([]);
   const [activeModuleId, setActiveModuleId] = useState('');
+  const [rangePreset, setRangePreset] = useState('ALL');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
@@ -55,11 +97,17 @@ export default function TrainerOverview() {
   }, []);
 
   useEffect(() => {
+    const dateParams = getRangeParams(rangePreset, customFrom, customTo);
+    if (dateParams === null) return; // custom range not fully selected yet
+
     let isCancelled = false;
     setLoading(true);
-    adminService.getDashboardMetrics(activeModuleId || null)
+    adminService.getDashboardMetrics({
+      module_id: activeModuleId || undefined,
+      ...dateParams
+    })
       .then((metricsData) => {
-        // Guard against an in-flight request from a module that's since
+        // Guard against an in-flight request from a module/date range that's since
         // been switched away from resolving after (and clobbering) a newer
         // one — rapid switching could otherwise land an older response last.
         if (!isCancelled) setData(metricsData);
@@ -67,7 +115,7 @@ export default function TrainerOverview() {
       .catch((err) => console.error("Failed to load dashboard data:", err))
       .finally(() => { if (!isCancelled) setLoading(false); });
     return () => { isCancelled = true; };
-  }, [activeModuleId]);
+  }, [activeModuleId, rangePreset, customFrom, customTo]);
   
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -108,47 +156,62 @@ export default function TrainerOverview() {
   // Donut chart colors aligned with enterprise brand palette
   const CHART_COLORS = ["#F26522", "#0EA5E9", "#10B981", "#6366F1", "#F59E0B", "#64748B"];
 
-  // KPI card definitions with semantic enterprise palette
+  // The dashboard's Passed/Failed/etc. counts are scoped to activeModuleId,
+  // but the Sessions list filters by module *name* (it has no module id on
+  // its rows) — resolve the name once here so a card click can carry the
+  // same module scope across to /hr/sessions.
+  const activeModuleName = modules.find(m => m.id === activeModuleId)?.name || '';
+
+  // KPI card definitions with semantic enterprise palette.
+  // `sessionFilter` (when present) makes the card clickable: it navigates to
+  // the Sessions list pre-filtered to match what this number represents.
+  // Cards without it (Average Score, Completion) are rates, not a list of
+  // sessions, so they stay non-interactive rather than linking to a
+  // misleading "unfiltered list".
   const kpiCards = [
-    { 
-      label: 'Total Interviews', 
-      value: metrics.total_interviews, 
+    {
+      label: 'Total Interviews',
+      value: metrics.total_interviews,
       icon: <GroupIcon sx={{ fontSize: 20 }} />,
       lightBg: 'rgba(15, 23, 42, 0.05)',
-      color: '#0F172A'
+      color: '#0F172A',
+      sessionFilter: {}
     },
-    { 
-      label: 'Average Score', 
+    {
+      label: 'Average Score',
       value: metrics.avg_performance_score != null ? `${Number(metrics.avg_performance_score).toFixed(1)}` : '—',
       suffix: '',
       icon: <GradeIcon sx={{ fontSize: 20 }} />,
       lightBg: 'rgba(242, 101, 34, 0.08)',
       color: '#F26522'
     },
-    { 
-      label: 'Passed', 
+    {
+      label: 'Passed',
       value: metrics.total_passed,
       icon: <ThumbUpIcon sx={{ fontSize: 20 }} />,
       lightBg: 'rgba(34, 197, 94, 0.08)',
-      color: '#16A34A'
+      color: '#16A34A',
+      sessionFilter: { filterResult: 'PASS' }
     },
-    { 
-      label: 'Failed', 
+    {
+      label: 'Failed',
       value: metrics.total_failed,
       icon: <ThumbDownIcon sx={{ fontSize: 20 }} />,
       lightBg: 'rgba(239, 68, 68, 0.08)',
-      color: '#DC2626'
+      color: '#DC2626',
+      sessionFilter: { filterResult: 'FAIL' }
     },
-    { 
-      label: 'Active Now', 
+    {
+      label: 'Active Now',
       value: metrics.active_sessions,
       icon: <RecordVoiceOverIcon sx={{ fontSize: 20 }} />,
       lightBg: 'rgba(242, 101, 34, 0.1)',
       color: '#F26522',
-      isPulsing: metrics.active_sessions > 0
+      isPulsing: metrics.active_sessions > 0,
+      sessionFilter: { filterStatus: 'In Progress' }
     },
-    { 
-      label: 'Completion', 
+    {
+      label: 'Completion',
       value: `${metrics.completion_rate}%`,
       icon: <CheckCircleIcon sx={{ fontSize: 20 }} />,
       lightBg: 'rgba(14, 165, 233, 0.08)',
@@ -187,46 +250,79 @@ export default function TrainerOverview() {
             </Typography>
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
             {loading && data && (
               <CircularProgress size={16} thickness={5} sx={{ color: 'primary.main' }} aria-label="Refreshing dashboard data" />
             )}
+            <ToggleButtonGroup
+              value={rangePreset}
+              exclusive
+              size="small"
+              onChange={(e, val) => { if (val) { setRangePreset(val); setPage(0); } }}
+              sx={toggleGroupSx}
+            >
+              <ToggleButton value="7D">7D</ToggleButton>
+              <ToggleButton value="30D">30D</ToggleButton>
+              <ToggleButton value="90D">90D</ToggleButton>
+              <ToggleButton value="ALL">All</ToggleButton>
+              <ToggleButton value="CUSTOM">Custom</ToggleButton>
+            </ToggleButtonGroup>
+
+            {rangePreset === 'CUSTOM' && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <MiniCalendarPicker label="From" value={customFrom} onChange={setCustomFrom} maxDate={customTo || undefined} />
+                <Typography sx={{ color: '#94A3B8', fontSize: '0.8rem' }}>to</Typography>
+                <MiniCalendarPicker label="To" value={customTo} onChange={setCustomTo} minDate={customFrom || undefined} />
+              </Box>
+            )}
+
             <Select
-            value={activeModuleId}
-            displayEmpty
-            onChange={(e) => { setActiveModuleId(e.target.value); setPage(0); }}
-            size="small"
-            sx={{
-              minWidth: 190,
-              bgcolor: '#FFFFFF',
-              borderRadius: 2,
-              fontWeight: 500,
-              fontSize: '0.875rem',
-              color: '#0F172A',
-              '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E2E8F0' },
-              '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
-              '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main', borderWidth: 1.5 },
-            }}
-          >
-            <MenuItem value="">All Modules</MenuItem>
-            {modules.map(mod => (
-              <MenuItem key={mod.id} value={mod.id}>{mod.name}</MenuItem>
-            ))}
+              value={activeModuleId}
+              displayEmpty
+              onChange={(e) => { setActiveModuleId(e.target.value); setPage(0); }}
+              size="small"
+              sx={{
+                minWidth: 170,
+                bgcolor: '#FFFFFF',
+                borderRadius: 2,
+                fontWeight: 500,
+                fontSize: '0.875rem',
+                color: '#0F172A',
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: '#E2E8F0' },
+                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#CBD5E1' },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main', borderWidth: 1.5 },
+              }}
+            >
+              <MenuItem value="">All Modules</MenuItem>
+              {modules.map(mod => (
+                <MenuItem key={mod.id} value={mod.id}>{mod.name}</MenuItem>
+              ))}
             </Select>
           </Box>
         </Box>
 
-        {/* KPI Cards Row */}
-        <Box sx={{ 
-          display: 'grid', 
-          gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', lg: 'repeat(6, 1fr)' }, 
-          gap: 2
-        }}>
-          {kpiCards.map((kpi, index) => (
-            <Paper 
-              key={kpi.label} 
-              elevation={0} 
-              sx={{ 
+        {/* Animated Dashboard Content (replays entry animation on date/module filter change) */}
+        <Box
+          key={`${rangePreset}-${customFrom}-${customTo}-${activeModuleId}`}
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+            animation: `${fadeInUp} 0.35s cubic-bezier(0.16, 1, 0.3, 1)`
+          }}
+        >
+          {/* KPI Cards Row */}
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', lg: 'repeat(6, 1fr)' }, 
+            gap: 2
+          }}>
+            {kpiCards.map((kpi, index) => (
+            <Paper
+              key={kpi.label}
+              elevation={0}
+              onClick={kpi.sessionFilter ? () => navigate('/hr/sessions', { state: { ...kpi.sessionFilter, filterModule: activeModuleName } }) : undefined}
+              sx={{
                 p: 2.25,
                 borderRadius: 2.5,
                 border: '1px solid #E2E8F0',
@@ -235,11 +331,12 @@ export default function TrainerOverview() {
                 position: 'relative',
                 overflow: 'hidden',
                 transition: 'all 0.2s ease',
+                cursor: kpi.sessionFilter ? 'pointer' : 'default',
                 animation: `${fadeInUp} 0.4s ease-out ${index * 0.04}s both`,
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   boxShadow: '0 8px 20px -4px rgba(0, 0, 0, 0.08)',
-                  borderColor: '#CBD5E1',
+                  borderColor: kpi.sessionFilter ? kpi.color : '#CBD5E1',
                 }
               }}
             >
@@ -278,16 +375,28 @@ export default function TrainerOverview() {
                   </Typography>
                 )}
                 {kpi.isPulsing && (
-                  <Box sx={{ 
-                    width: 7, height: 7, 
-                    borderRadius: '50%', 
-                    bgcolor: '#22C55E', 
+                  <Box sx={{
+                    width: 7, height: 7,
+                    borderRadius: '50%',
+                    bgcolor: '#22C55E',
                     boxShadow: '0 0 6px rgba(34, 197, 94, 0.5)',
                     ml: 0.75,
                     alignSelf: 'center'
                   }} />
                 )}
               </Box>
+              {kpi.sessionFilter && (
+                <Box sx={{
+                  display: 'flex', alignItems: 'center', gap: 0.4, mt: 1,
+                  color: kpi.color, fontSize: '0.7rem', fontWeight: 600,
+                  opacity: 0, transform: 'translateX(-4px)',
+                  transition: 'opacity 0.2s ease, transform 0.2s ease',
+                  '.MuiPaper-root:hover &': { opacity: 1, transform: 'translateX(0)' },
+                }}>
+                  View sessions
+                  <ArrowForwardIcon sx={{ fontSize: 12 }} />
+                </Box>
+              )}
             </Paper>
           ))}
         </Box>
@@ -634,6 +743,7 @@ export default function TrainerOverview() {
           )}
         </Paper>
 
+        </Box>
       </Box>
     </Layout>
   );

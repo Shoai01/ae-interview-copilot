@@ -24,6 +24,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import PeopleIcon from '@mui/icons-material/People';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import HistoryIcon from '@mui/icons-material/History';
+import InsightsIcon from '@mui/icons-material/Insights';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import { useAuth } from '@/store/AuthContext';
 import api from '@/services/api';
@@ -37,6 +38,7 @@ const ROUTE_LABEL_TO_PATH = {
   'Knowledge Base': '/hr/knowledge',
   'Users & Access': '/hr/users',
   'Activity Log': '/hr/logs',
+  'Usage Analytics': '/hr/usage',
 };
 
 const getDefaultBreadcrumbs = (pathname) => {
@@ -74,6 +76,11 @@ const getDefaultBreadcrumbs = (pathname) => {
 
   if (pathname === '/hr/logs') {
     crumbs.push({ label: 'Activity Log' });
+    return crumbs;
+  }
+
+  if (pathname === '/hr/usage') {
+    crumbs.push({ label: 'Usage Analytics' });
     return crumbs;
   }
 
@@ -172,7 +179,8 @@ export default function Layout({ children, breadcrumbs }) {
     { text: 'Knowledge Base', icon: <MenuBookIcon />, path: '/hr/knowledge' },
     { text: 'Users & Access', icon: <PeopleIcon />, path: '/hr/users' },
     { text: 'Activity Log', icon: <HistoryIcon />, path: '/hr/logs' },
-  ];
+    { text: 'Usage Analytics', icon: <InsightsIcon />, path: '/hr/usage', adminOnly: true },
+  ].filter((item) => !item.adminOnly || user?.role === 'ADMIN');
 
   const userInitial = user?.username ? user.username.charAt(0).toUpperCase() : 'U';
   const roleLabel = user?.role === 'ADMIN' ? 'Admin' : 'Trainer';

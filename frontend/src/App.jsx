@@ -9,6 +9,7 @@ import AdminQuestionBank from './pages/AdminQuestionBank';
 import UserManagement from './pages/UserManagement';
 import KnowledgeBase from './pages/KnowledgeBase';
 import AuditLogs from './pages/AuditLogs';
+import UsageAnalytics from './pages/UsageAnalytics';
 import Login from './pages/Login';
 import ForcePasswordChange from './pages/ForcePasswordChange';
 import { AuthProvider } from './store/AuthContext';
@@ -43,6 +44,11 @@ function App() {
             <Route path="/hr/knowledge" element={<KnowledgeBase />} />
             <Route path="/hr/users" element={<UserManagement />} />
             <Route path="/hr/logs" element={<AuditLogs />} />
+          </Route>
+
+          {/* Admin-only */}
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
+            <Route path="/hr/usage" element={<UsageAnalytics />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -43,8 +43,11 @@ export const adminService = {
     const response = await api.get('/admin/modules');
     return response.data;
   },
-  getDashboardMetrics: async (moduleId = null) => {
-    const response = await api.get('/admin/dashboard', { params: moduleId ? { module_id: moduleId } : {} });
+  getDashboardMetrics: async (params = {}) => {
+    const queryParams = typeof params === 'object' && params !== null
+      ? params
+      : (params ? { module_id: params } : {});
+    const response = await api.get('/admin/dashboard', { params: queryParams });
     return response.data;
   },
   getQuestions: async (moduleId) => {
@@ -121,6 +124,10 @@ export const adminService = {
   },
   getAuditLogs: async (params) => {
     const response = await api.get('/admin/audit-logs', { params });
+    return response.data;
+  },
+  getLLMUsageSummary: async (params) => {
+    const response = await api.get('/admin/llm-usage/summary', { params });
     return response.data;
   }
 };
