@@ -19,6 +19,18 @@ import { useAuth } from '@/store/AuthContext';
 import toast from 'react-hot-toast';
 
 
+// Persists across remounts (including a browser back-navigation that
+// restores this route with its original location.state) so a candidate who
+// already finished the exam can never re-answer or re-submit it by going
+// back — the page immediately bounces to /complete instead.
+const SUBMITTED_KEY_PREFIX = 'viva_submitted_';
+function markSessionSubmitted(sessionId) {
+  try { sessionStorage.setItem(SUBMITTED_KEY_PREFIX + sessionId, '1'); } catch {}
+}
+function hasSessionBeenSubmitted(sessionId) {
+  try { return sessionStorage.getItem(SUBMITTED_KEY_PREFIX + sessionId) === '1'; } catch { return false; }
+}
+
 export default function VivaInProgress() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -281,6 +293,10 @@ export default function VivaInProgress() {
 
   const fetchQuestion = useCallback(async () => {
     if (!sessionId) return;
+    if (hasSessionBeenSubmitted(sessionId)) {
+      navigate('/complete', { state: { sessionId }, replace: true });
+      return;
+    }
     try {
       setLoading(true);
       const question = await vivaService.getNextQuestion(sessionId);
@@ -302,10 +318,11 @@ export default function VivaInProgress() {
         try {
           sessionStorage.removeItem('active_viva_session');
         } catch {}
+        markSessionSubmitted(sessionId);
         if (document.fullscreenElement) {
           document.exitFullscreen().catch(() => {});
         }
-        navigate('/complete', { state: { sessionId } });
+        navigate('/complete', { state: { sessionId }, replace: true });
         return;
       }
       toast.error("Failed to load the next question. Please refresh.", { id: 'next-question-error' });
@@ -335,7 +352,7 @@ export default function VivaInProgress() {
   }, [currentQuestion, loading, speakQuestion]);
 
   const handleAutoSubmit = useCallback(async () => {
-    if (isAutoSubmittingRef.current || submitting) return;
+    if (isAutoSubmittingRef.current || submitting || hasSessionBeenSubmitted(sessionId)) return;
     isAutoSubmittingRef.current = true;
     setSubmitting(true);
     cancelSpeech();
@@ -383,13 +400,14 @@ export default function VivaInProgress() {
       try {
         sessionStorage.removeItem('active_viva_session');
       } catch {}
+      markSessionSubmitted(sessionId);
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
       }
 
       vivaService.evaluateSession(sessionId).catch(e => console.error("Evaluation error on timeout:", e));
 
-      navigate('/complete', { state: { sessionId, timeExpired: true } });
+      navigate('/complete', { state: { sessionId, timeExpired: true }, replace: true });
     }
   }, [submitting, cancelSpeech, isRecording, isConnecting, stopRecording, cancelConnecting, closeConnection, stopAudioCapture, currentQuestion, getTranscriptText, sessionId, getAudioBlob, accessToken, navigate]);
 
@@ -415,7 +433,7 @@ export default function VivaInProgress() {
   }, [timerWarning]);
 
   const handleNextAction = async () => {
-    if (!currentQuestion || submitting) return;
+    if (!currentQuestion || submitting || hasSessionBeenSubmitted(sessionId)) return;
     
     setSubmitting(true);
     cancelSpeech();
@@ -477,6 +495,7 @@ export default function VivaInProgress() {
         try {
           sessionStorage.removeItem('active_viva_session');
         } catch {}
+        markSessionSubmitted(sessionId);
         if (document.fullscreenElement) {
           document.exitFullscreen().catch(() => {});
         }
@@ -486,7 +505,7 @@ export default function VivaInProgress() {
           console.error("Evaluation failed", e);
           toast.error(e.response?.data?.detail || "Failed to submit evaluation.");
         });
-        navigate('/complete', { state: { sessionId } });
+        navigate('/complete', { state: { sessionId }, replace: true });
       } else {
         fetchQuestion();
       }
@@ -503,13 +522,28 @@ export default function VivaInProgress() {
   // only saw a transient toast at the moment of a violation, with no
   // passive "is this actually working" indicator in between).
   const proctoringHasError = detectorStatus.faceDetection === 'error' || detectorStatus.facePresent === false;
-  const proctoringHasWarning = detectorStatus.fullscreen === 'inactive' || noiseLevel === 'loud';
+  const isFullscreenInactive = detectorStatus.fullscreen === 'inactive';
+  const proctoringHasWarning = isFullscreenInactive || noiseLevel === 'loud';
   const proctoringColor = proctoringHasError ? '#EF4444' : proctoringHasWarning ? '#F59E0B' : '#22C55E';
   const proctoringSummary = [
     `Face detection: ${detectorStatus.faceDetection}${detectorStatus.facePresent === false ? ' — no face in frame' : ''}`,
-    `Fullscreen: ${detectorStatus.fullscreen}`,
+    `Fullscreen: ${detectorStatus.fullscreen}${isFullscreenInactive ? ' — click to re-enter' : ''}`,
     `Background noise: ${noiseLevel}`,
   ].join('\n');
+
+  // The only path back into monitored fullscreen: the browser's own F11
+  // "kiosk" toggle never fires the Fullscreen API's fullscreenchange event,
+  // so once a candidate exits (Escape, taskbar, etc.) the proctoring status
+  // is stuck on 'inactive' forever unless something calls requestFullscreen()
+  // again — nothing else in this page does that mid-exam.
+  const handleReenterFullscreen = () => {
+    if (!isFullscreenInactive) return;
+    const el = document.documentElement;
+    const request = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (request) {
+      request.call(el).catch(() => {});
+    }
+  };
 
   const timerAccentColor = timerExpired ? '#EF4444' : timerWarning ? '#F59E0B' : '#F26522';
   const timerTrackColor = timerExpired ? 'rgba(239, 68, 68, 0.15)' : timerWarning ? 'rgba(245, 158, 11, 0.15)' : '#E2E8F0';
@@ -563,6 +597,7 @@ export default function VivaInProgress() {
         />
         <Tooltip title={<span style={{ whiteSpace: 'pre-line' }}>{proctoringSummary}</span>} arrow placement="left">
           <Box
+            onClick={handleReenterFullscreen}
             sx={{
               position: 'absolute',
               top: 8,
@@ -575,7 +610,7 @@ export default function VivaInProgress() {
               px: 0.85,
               py: 0.35,
               borderRadius: 1,
-              cursor: 'default',
+              cursor: isFullscreenInactive ? 'pointer' : 'default',
             }}
           >
             <ShieldOutlinedIcon sx={{ fontSize: 13, color: proctoringColor }} />
