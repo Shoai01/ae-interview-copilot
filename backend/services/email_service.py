@@ -1,6 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
 import email.utils
 import os
 import logging
@@ -14,7 +15,14 @@ SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@viva-copilot.com")
 PLATFORM_URL = "https://ae-interview-copilot.pages.dev"
-LOGO_URL = f"{PLATFORM_URL}/ae-full-logo.png"
+
+# Outlook (and many corporate mail policies) block remotely-hosted images by
+# default, so a plain https:// <img src> silently fails to render there even
+# though it loads fine in Gmail. Embedding the logo as a CID attachment makes
+# it part of the message itself, so it displays regardless of that setting.
+LOGO_CID = "ae-full-logo"
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "assets", "ae-full-logo.png")
+LOGO_URL = f"cid:{LOGO_CID}"
 
 # ─── Shared email wrapper ─────────────────────────────────────────────────────
 
@@ -69,7 +77,7 @@ def _base_layout(content: str, preheader: str = "") -> str:
               <!-- Header -->
               <tr>
                 <td class="header-padding" style="background-color:#ffffff;padding:28px 40px 24px;text-align:center;border-bottom:1px solid #f1f5f9;">
-                  <img src="{LOGO_URL}" alt="AutomationEdge" width="180" style="display:block;margin:0 auto;width:180px;max-width:60%;height:auto;border:0;outline:none;">
+                  <img src="{LOGO_URL}" alt="AutomationEdge" width="180" height="22" style="display:block;margin:0 auto;width:180px;max-width:60%;height:auto;border:0;outline:none;-ms-interpolation-mode:bicubic;">
                   <p style="margin:10px 0 0;color:#94a3b8;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;">Viva Copilot Training Platform</p>
                 </td>
               </tr>
@@ -120,18 +128,31 @@ def send_email(to_email: str, subject: str, body: str, plain_text: str = None):
         print("="*50 + "\n")
         return True
 
-    msg = MIMEMultipart('alternative')
+    msg = MIMEMultipart('related')
     msg['From'] = FROM_EMAIL
     msg['To'] = to_email
     msg['Subject'] = subject
     msg['Date'] = email.utils.formatdate(localtime=True)
     msg['Message-ID'] = email.utils.make_msgid(domain=FROM_EMAIL.split('@')[-1] if '@' in FROM_EMAIL else 'viva-copilot.com')
-    
+
     if not plain_text:
         plain_text = f"{subject}. Please view this email in an HTML-compatible client for full details."
-    msg.attach(MIMEText(plain_text, 'plain'))
-    msg.attach(MIMEText(body, 'html'))
-    
+
+    alt_part = MIMEMultipart('alternative')
+    alt_part.attach(MIMEText(plain_text, 'plain'))
+    alt_part.attach(MIMEText(body, 'html'))
+    msg.attach(alt_part)
+
+    if f"cid:{LOGO_CID}" in body:
+        try:
+            with open(LOGO_PATH, 'rb') as f:
+                logo_part = MIMEImage(f.read())
+            logo_part.add_header('Content-ID', f'<{LOGO_CID}>')
+            logo_part.add_header('Content-Disposition', 'inline', filename='ae-full-logo.png')
+            msg.attach(logo_part)
+        except OSError as e:
+            logger.warning(f"Could not attach inline logo: {e}")
+
     try:
         if SMTP_PORT == 465:
             server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT)
