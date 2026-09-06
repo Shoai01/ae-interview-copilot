@@ -6,7 +6,7 @@ import {
 import Layout from '@/components/Layout';
 import MiniCalendarPicker from '@/components/MiniCalendarPicker';
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Tooltip as RechartsTooltip, Legend, Cell, LabelList
 } from 'recharts';
 import BoltIcon from '@mui/icons-material/Bolt';
@@ -14,6 +14,7 @@ import DataUsageIcon from '@mui/icons-material/DataUsage';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import InsightsIcon from '@mui/icons-material/Insights';
+import GroupIcon from '@mui/icons-material/Group';
 import { adminService } from '@/services/api';
 import { formatCompact, formatFull, formatDayLabel } from '@/utils/format';
 
@@ -24,11 +25,24 @@ const fadeInUp = keyframes`
 
 const CHART_COLORS = ["#F26522", "#0EA5E9", "#10B981", "#6366F1", "#F59E0B", "#64748B"];
 
-const CALL_SITE_LABELS = {
-  EVALUATOR: 'Session Evaluation',
+const MAJOR_CATEGORY_MAP = {
+  EVALUATOR: 'Evaluation',
   QUESTION_GEN: 'Question Generation',
-  IDEAL_ANSWER: 'Ideal Answer (RAG)',
-  EMBEDDING: 'Knowledge Base Embeddings',
+  IDEAL_ANSWER: 'Question Generation',
+  EMBEDDING: 'KB',
+};
+
+const getGroupedSites = (sites) => {
+  if (!sites) return [];
+  const grouped = {};
+  sites.forEach(s => {
+    let major = MAJOR_CATEGORY_MAP[s.call_site] || s.call_site;
+    if (major === 'Evaluation') major = 'Ev';
+    if (major === 'Question Generation') major = 'QGen';
+    if (!grouped[major]) grouped[major] = 0;
+    grouped[major] += s.total_tokens;
+  });
+  return Object.entries(grouped).map(([label, tokens]) => ({ label, tokens }));
 };
 
 const cardSx = {
@@ -130,15 +144,22 @@ export default function UsageAnalytics() {
   const usage = summary || {
     total_calls: 0, total_input_tokens: 0, total_output_tokens: 0, total_tokens: 0,
     avg_latency_ms: 0, error_count: 0, by_call_site: [], by_model: [], daily: [],
-    by_user: [], by_user_total_users: 0,
+    by_user: [], by_user_total_users: 0, total_system_users: 0
   };
 
   const byCallSiteData = useMemo(() => {
-    return usage.by_call_site.map((item) => ({
-      ...item,
-      label: CALL_SITE_LABELS[item.call_site] || item.call_site,
-      total: item.input_tokens + item.output_tokens,
-    }));
+    const grouped = {};
+    usage.by_call_site.forEach((item) => {
+      const major = MAJOR_CATEGORY_MAP[item.call_site] || item.call_site;
+      if (!grouped[major]) {
+        grouped[major] = { label: major, calls: 0, input_tokens: 0, output_tokens: 0, total: 0 };
+      }
+      grouped[major].calls += item.calls;
+      grouped[major].input_tokens += item.input_tokens;
+      grouped[major].output_tokens += item.output_tokens;
+      grouped[major].total += (item.input_tokens + item.output_tokens);
+    });
+    return Object.values(grouped).sort((a, b) => b.total - a.total);
   }, [usage.by_call_site]);
 
   const totalCallSiteTokens = byCallSiteData.reduce((sum, item) => sum + item.total, 0);
@@ -178,7 +199,7 @@ export default function UsageAnalytics() {
   }
 
   const kpiCards = [
-    { label: 'Total Calls', value: formatCompact(usage.total_calls), icon: <BoltIcon sx={{ fontSize: 20 }} />, lightBg: 'rgba(15, 23, 42, 0.05)', color: '#0F172A' },
+    { label: 'Total Users', value: formatCompact(usage.total_system_users || 0), icon: <GroupIcon sx={{ fontSize: 20 }} />, lightBg: 'rgba(15, 23, 42, 0.05)', color: '#0F172A' },
     { label: 'Total Tokens', value: formatCompact(usage.total_tokens), icon: <DataUsageIcon sx={{ fontSize: 20 }} />, lightBg: 'rgba(242, 101, 34, 0.08)', color: '#F26522' },
     { label: 'Input Tokens', value: formatCompact(usage.total_input_tokens), icon: <ArrowDownwardIcon sx={{ fontSize: 20 }} />, lightBg: 'rgba(14, 165, 233, 0.08)', color: '#0284C7' },
     { label: 'Output Tokens', value: formatCompact(usage.total_output_tokens), icon: <ArrowUpwardIcon sx={{ fontSize: 20 }} />, lightBg: 'rgba(16, 185, 129, 0.08)', color: '#059669' },
@@ -334,29 +355,34 @@ export default function UsageAnalytics() {
               ) : (
                 <>
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={byCallSiteData} layout="vertical" margin={{ top: 8, right: 48, left: 4, bottom: 8 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
-                      <XAxis type="number" tickFormatter={formatCompact} tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} />
-                      <YAxis type="category" dataKey="label" width={150} tick={{ fontSize: 11, fill: '#0F172A', fontWeight: 600 }} axisLine={false} tickLine={false} />
+                    <PieChart>
+                      <Pie
+                        data={byCallSiteData}
+                        dataKey="total"
+                        nameKey="label"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={55}
+                        outerRadius={85}
+                        paddingAngle={3}
+                      >
+                        {byCallSiteData.map((entry, index) => (
+                          <Cell key={entry.label} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
+                        ))}
+                      </Pie>
                       <RechartsTooltip
-                        formatter={(value) => [
+                        formatter={(value, name) => [
                           `${formatFull(value)} tokens${totalCallSiteTokens > 0 ? ` (${((value / totalCallSiteTokens) * 100).toFixed(1)}%)` : ''}`,
-                          'Tokens'
+                          name
                         ]}
                         contentStyle={tooltipContentStyle}
                       />
-                      <Bar dataKey="total" radius={[0, 6, 6, 0]} barSize={22}>
-                        {byCallSiteData.map((entry, index) => (
-                          <Cell key={entry.call_site} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                        <LabelList dataKey="total" position="right" formatter={formatCompact} style={{ fill: '#0F172A', fontSize: 11, fontWeight: 700 }} />
-                      </Bar>
-                    </BarChart>
+                    </PieChart>
                   </ResponsiveContainer>
 
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mt: 2, pt: 2, borderTop: '1px solid #F1F5F9' }}>
                     {byCallSiteData.map((item, index) => (
-                      <Box key={item.call_site} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                         <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: CHART_COLORS[index % CHART_COLORS.length], flexShrink: 0 }} />
                         <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.75rem' }}>
                           {item.label}: <b style={{ color: '#0F172A' }}>{totalCallSiteTokens > 0 ? ((item.total / totalCallSiteTokens) * 100).toFixed(1) : '0'}%</b>
@@ -392,16 +418,14 @@ export default function UsageAnalytics() {
                 <TableRow sx={{ '& th': headerCellSx }}>
                   <TableCell sx={{ width: 56 }}>#</TableCell>
                   <TableCell>User</TableCell>
-                  <TableCell align="right" onClick={() => handleSort('calls')} sx={{ cursor: 'pointer', userSelect: 'none' }}>
-                    Calls<SortIndicator field="calls" sortField={sortField} sortDir={sortDir} />
-                  </TableCell>
+
                   <TableCell align="right" onClick={() => handleSort('input_tokens')} sx={{ cursor: 'pointer', userSelect: 'none' }}>
                     Input<SortIndicator field="input_tokens" sortField={sortField} sortDir={sortDir} />
                   </TableCell>
                   <TableCell align="right" onClick={() => handleSort('output_tokens')} sx={{ cursor: 'pointer', userSelect: 'none' }}>
                     Output<SortIndicator field="output_tokens" sortField={sortField} sortDir={sortDir} />
                   </TableCell>
-                  <TableCell align="right" onClick={() => handleSort('total_tokens')} sx={{ cursor: 'pointer', userSelect: 'none', minWidth: 200 }}>
+                  <TableCell align="left" onClick={() => handleSort('total_tokens')} sx={{ cursor: 'pointer', userSelect: 'none', minWidth: 200 }}>
                     Total Tokens<SortIndicator field="total_tokens" sortField={sortField} sortDir={sortDir} />
                   </TableCell>
                 </TableRow>
@@ -409,7 +433,7 @@ export default function UsageAnalytics() {
               <TableBody>
                 {paginatedUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 8, borderBottom: 'none' }}>
+                    <TableCell colSpan={5} align="center" sx={{ py: 8, borderBottom: 'none' }}>
                       <Typography sx={{ color: '#64748B' }}>No usage recorded for any user in this range.</Typography>
                     </TableCell>
                   </TableRow>
@@ -438,22 +462,38 @@ export default function UsageAnalytics() {
                                 color: u.role === 'ADMIN' ? '#F26522' : '#0284C7',
                               }} />
                             )}
+                            
+                            {u.sites && u.sites.length > 0 && (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, ml: 1 }}>
+                                {getGroupedSites(u.sites).map(site => {
+                                  let bg = '#F8FAFC';
+                                  let color = '#64748B';
+                                  let border = '1px solid #E2E8F0';
+                                  if (site.label === 'KB') { bg = 'rgba(16, 185, 129, 0.08)'; color = '#059669'; border = '1px solid rgba(16, 185, 129, 0.2)'; }
+                                  if (site.label === 'Ev') { bg = 'rgba(245, 158, 11, 0.08)'; color = '#D97706'; border = '1px solid rgba(245, 158, 11, 0.2)'; }
+                                  if (site.label === 'QGen') { bg = 'rgba(139, 92, 246, 0.08)'; color = '#7C3AED'; border = '1px solid rgba(139, 92, 246, 0.2)'; }
+                                  return (
+                                    <Chip key={site.label} size="small" label={`${site.label} ${formatCompact(site.tokens)}`} sx={{
+                                      height: 18, fontSize: '0.65rem', fontWeight: 600, bgcolor: bg, color: color, border: border
+                                    }} />
+                                  );
+                                })}
+                              </Box>
+                            )}
                           </Box>
                         </TableCell>
-                        <TableCell align="right">{formatFull(u.calls)}</TableCell>
+
                         <TableCell align="right">{formatCompact(u.input_tokens)}</TableCell>
                         <TableCell align="right">{formatCompact(u.output_tokens)}</TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Box sx={{ flex: 1 }}>
-                              <LinearProgress variant="determinate" value={pct} sx={{
-                                height: 6, borderRadius: 3, bgcolor: '#F1F5F9',
-                                '& .MuiLinearProgress-bar': { bgcolor: '#F26522', borderRadius: 3 },
-                              }} />
-                            </Box>
-                            <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: '#0F172A', minWidth: 56, textAlign: 'right' }}>
+                        <TableCell align="left">
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, maxWidth: 160 }}>
+                            <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#0F172A' }}>
                               {formatCompact(u.total_tokens)}
                             </Typography>
+                            <LinearProgress variant="determinate" value={pct} sx={{
+                              height: 6, borderRadius: 3, bgcolor: '#F1F5F9',
+                              '& .MuiLinearProgress-bar': { bgcolor: '#F26522', borderRadius: 3 },
+                            }} />
                           </Box>
                         </TableCell>
                       </TableRow>

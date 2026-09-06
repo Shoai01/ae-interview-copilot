@@ -171,6 +171,10 @@ class LLMUsageDailyPoint(BaseModel):
     input_tokens: int
     output_tokens: int
 
+class UserSiteBreakdown(BaseModel):
+    call_site: str
+    total_tokens: int
+
 class LLMUsageUserBreakdown(BaseModel):
     user_id: Optional[int] = None
     username: Optional[str] = None
@@ -180,6 +184,7 @@ class LLMUsageUserBreakdown(BaseModel):
     input_tokens: int
     output_tokens: int
     total_tokens: int
+    sites: List[UserSiteBreakdown] = []
 
 class LLMUsageSummaryResponse(BaseModel):
     total_calls: int
@@ -193,3 +198,4 @@ class LLMUsageSummaryResponse(BaseModel):
     daily: List[LLMUsageDailyPoint]
     by_user: List[LLMUsageUserBreakdown] = []
     by_user_total_users: int = 0
+    total_system_users: int = 0

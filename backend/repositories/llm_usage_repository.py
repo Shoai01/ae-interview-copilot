@@ -158,6 +158,22 @@ def get_summary(
         func.count(func.distinct(LLMUsageLog.user_id))
     ).scalar() or 0
 
+    total_system_users = db.query(User).count()
+
+    top_uids = [u[0] for u in by_user if u[0] is not None]
+    sites_by_user = {}
+    if top_uids:
+        user_sites = base_query.filter(LLMUsageLog.user_id.in_(top_uids)).with_entities(
+            LLMUsageLog.user_id,
+            LLMUsageLog.call_site,
+            func.coalesce(func.sum(LLMUsageLog.input_tokens + LLMUsageLog.output_tokens), 0)
+        ).group_by(LLMUsageLog.user_id, LLMUsageLog.call_site).all()
+        
+        for uid, cs, tokens in user_sites:
+            if uid not in sites_by_user:
+                sites_by_user[uid] = []
+            sites_by_user[uid].append({"call_site": cs.value if hasattr(cs, 'value') else cs, "total_tokens": int(tokens)})
+
     return {
         "total_calls": total_calls or 0,
         "total_input_tokens": int(total_input or 0),
@@ -187,8 +203,10 @@ def get_summary(
                 "input_tokens": int(i),
                 "output_tokens": int(o),
                 "total_tokens": int(t),
+                "sites": sites_by_user.get(uid, [])
             }
             for uid, username, full_name, role, c, i, o, t in by_user
         ],
         "by_user_total_users": int(by_user_total_users),
+        "total_system_users": total_system_users,
     }
