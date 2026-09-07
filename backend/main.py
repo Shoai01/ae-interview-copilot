@@ -38,7 +38,7 @@ app.add_middleware(
         "http://localhost:3000",
         "https://ae-interview-copilot.pages.dev"
     ],
-    allow_origin_regex=r"https://.*\.pages\.dev|https://.*\.workers\.dev|https://.*\.cloudflare\.com|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?",
+    allow_origin_regex=r"https://.*\.pages\.dev|https://.*\.workers\.dev|https://.*\.cloudflare\.com|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?|http://10\.\d+\.\d+\.\d+(:\d+)?|http://192\.168\.\d+\.\d+(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

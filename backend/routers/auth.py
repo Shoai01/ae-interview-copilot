@@ -30,12 +30,15 @@ def login(request: Request, response: Response, login_data: LoginRequest, db: Se
     access_token = create_access_token(subject=user.id, role=user.role)
     refresh_token = create_refresh_token(subject=user.id)
     
+    is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto", "http") == "https"
+    samesite_policy = "none" if is_secure else "lax"
+
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True, # Should be True in production (HTTPS), might need False for local dev if not localhost, but generally modern browsers accept Secure on localhost.
-        samesite="none",
+        secure=is_secure,
+        samesite=samesite_policy,
         max_age=7 * 24 * 60 * 60 # 7 days
     )
     
@@ -84,12 +87,15 @@ def refresh_token(request: Request, response: Response, db: Session = Depends(ge
     access_token = create_access_token(subject=user.id, role=user.role)
     new_refresh_token = create_refresh_token(subject=user.id)
 
+    is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto", "http") == "https"
+    samesite_policy = "none" if is_secure else "lax"
+
     response.set_cookie(
         key="refresh_token",
         value=new_refresh_token,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=is_secure,
+        samesite=samesite_policy,
         max_age=7 * 24 * 60 * 60
     )
     
@@ -113,7 +119,10 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     if refresh_token_value:
         token_repository.blacklist_token(db, refresh_token_value)
 
-    response.delete_cookie(key="refresh_token", httponly=True, secure=True, samesite="none")
+    is_secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto", "http") == "https"
+    samesite_policy = "none" if is_secure else "lax"
+
+    response.delete_cookie(key="refresh_token", httponly=True, secure=is_secure, samesite=samesite_policy)
     return {"message": "Logged out successfully"}
 
 from schemas.auth import ChangePasswordRequest
