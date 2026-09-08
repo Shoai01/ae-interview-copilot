@@ -9,6 +9,7 @@ import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Tooltip as RechartsTooltip, Legend, Cell, LabelList
 } from 'recharts';
+import SchoolIcon from '@mui/icons-material/School';
 import BoltIcon from '@mui/icons-material/Bolt';
 import DataUsageIcon from '@mui/icons-material/DataUsage';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
@@ -101,6 +102,45 @@ function SortIndicator({ field, sortField, sortDir }) {
   return <Icon sx={{ fontSize: 13, ml: 0.4, verticalAlign: 'middle' }} />;
 }
 
+function ModuleBarTooltip({ active, payload }) {
+  if (!active || !payload || !payload.length) return null;
+  const row = payload[0].payload;
+  return (
+    <Box
+      sx={{
+        minWidth: 180,
+        borderRadius: 2.5,
+        border: '1px solid #E2E8F0',
+        boxShadow: '0 12px 28px -6px rgba(15, 23, 42, 0.16)',
+        bgcolor: '#FFFFFF',
+        overflow: 'hidden',
+      }}
+    >
+      <Box sx={{ px: 1.75, pt: 1.25, pb: 1 }}>
+        <Typography sx={{ fontWeight: 700, fontSize: '0.8rem', color: '#0F172A', mb: 0.75, lineHeight: 1.3 }}>
+          {row.module_name}
+        </Typography>
+        {[
+          { label: 'Input', value: row.input_tokens, color: '#F26522' },
+          { label: 'Output', value: row.output_tokens, color: '#0EA5E9' },
+        ].map((r) => (
+          <Box key={r.label} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, py: 0.3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+              <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: r.color, flexShrink: 0 }} />
+              <Typography sx={{ fontSize: '0.72rem', color: '#64748B' }}>{r.label}</Typography>
+            </Box>
+            <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, color: '#0F172A' }}>{formatFull(r.value)}</Typography>
+          </Box>
+        ))}
+      </Box>
+      <Box sx={{ px: 1.75, py: 0.9, bgcolor: '#F8FAFC', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+        <Typography sx={{ fontSize: '0.72rem', color: '#64748B' }}>Total ({formatCompact(row.calls)} calls)</Typography>
+        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#0F172A' }}>{formatFull(row.total_tokens)}</Typography>
+      </Box>
+    </Box>
+  );
+}
+
 function EmptyChartState({ label, sublabel }) {
   return (
     <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -128,6 +168,8 @@ export default function UsageAnalytics() {
   const [userPage, setUserPage] = useState(0);
   const [userRowsPerPage, setUserRowsPerPage] = useState(10);
 
+  const [moduleView, setModuleView] = useState('all');
+
   useEffect(() => {
     const params = getRangeParams(rangePreset, customFrom, customTo);
     if (params === null) return; // custom range not fully selected yet
@@ -144,7 +186,7 @@ export default function UsageAnalytics() {
   const usage = summary || {
     total_calls: 0, total_input_tokens: 0, total_output_tokens: 0, total_tokens: 0,
     avg_latency_ms: 0, error_count: 0, by_call_site: [], by_model: [], daily: [],
-    by_user: [], by_user_total_users: 0, total_system_users: 0
+    by_module: [], by_user: [], by_user_total_users: 0, total_system_users: 0
   };
 
   const byCallSiteData = useMemo(() => {
@@ -187,6 +229,24 @@ export default function UsageAnalytics() {
   };
 
   const paginatedUsers = sortedUsers.slice(userPage * userRowsPerPage, userPage * userRowsPerPage + userRowsPerPage);
+
+  const sortedModules = useMemo(() => {
+    const arr = [...(usage.by_module || [])];
+    arr.sort((a, b) => b.total_tokens - a.total_tokens);
+    return arr;
+  }, [usage.by_module]);
+
+  const moduleChartData = useMemo(() => {
+    const arr = moduleView === 'top10' ? sortedModules.slice(0, 10) : sortedModules;
+    // Recharts renders category bars top-to-bottom in array order; reverse so the
+    // biggest consumer ends up at the top of the chart, matching the ranked tables.
+    return [...arr].reverse().map((m) => ({
+      ...m,
+      shortName: m.module_name.length > 22 ? `${m.module_name.slice(0, 21)}…` : m.module_name,
+    }));
+  }, [sortedModules, moduleView]);
+
+  const totalModuleTokens = sortedModules.reduce((sum, m) => sum + m.total_tokens, 0);
 
   if (loading && !summary) {
     return (
@@ -396,13 +456,103 @@ export default function UsageAnalytics() {
           </Paper>
         </Box>
 
+        {/* Consumption by Module */}
+        <Paper elevation={0} sx={{ ...cardSx, p: 3, animation: `${fadeInUp} 0.4s ease-out 0.18s both` }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1.5, mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
+              <Box sx={{
+                width: 36, height: 36, borderRadius: 1.5, flexShrink: 0, mt: 0.25,
+                background: 'rgba(242, 101, 34, 0.08)', color: '#F26522',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <SchoolIcon sx={{ fontSize: 19 }} />
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>Consumption by Module</Typography>
+                <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.8rem' }}>
+                  Tokens consumed by trainees for module exams, grouped by training module
+                </Typography>
+              </Box>
+            </Box>
+
+            {sortedModules.length > 10 && (
+              <ToggleButtonGroup value={moduleView} exclusive size="small" onChange={(e, val) => { if (val) setModuleView(val); }} sx={toggleGroupSx}>
+                <ToggleButton value="top10">Top 10</ToggleButton>
+                <ToggleButton value="all">All ({sortedModules.length})</ToggleButton>
+              </ToggleButtonGroup>
+            )}
+          </Box>
+
+          {sortedModules.length === 0 ? (
+            <EmptyChartState label="No module usage recorded in this range" sublabel="Exam evaluations will appear here once trainees complete sessions" />
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={Math.max(120, moduleChartData.length * 46 + 30)}>
+                <BarChart data={moduleChartData} layout="vertical" margin={{ top: 4, right: 48, left: 0, bottom: 4 }} barCategoryGap="28%">
+                  <defs>
+                    <linearGradient id="moduleInputGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#F26522" stopOpacity={0.85} />
+                      <stop offset="100%" stopColor="#F26522" stopOpacity={1} />
+                    </linearGradient>
+                    <linearGradient id="moduleOutputGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#0EA5E9" stopOpacity={0.85} />
+                      <stop offset="100%" stopColor="#0EA5E9" stopOpacity={1} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" horizontal={false} />
+                  <XAxis type="number" tickFormatter={formatCompact} tick={{ fontSize: 11, fill: '#64748B' }} axisLine={{ stroke: '#E2E8F0' }} tickLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="shortName"
+                    width={140}
+                    tick={{ fontSize: 12, fill: '#334155', fontWeight: 600 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <RechartsTooltip
+                    content={<ModuleBarTooltip />}
+                    cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }}
+                    isAnimationActive={false}
+                    offset={16}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    wrapperStyle={{ zIndex: 20, pointerEvents: 'none' }}
+                  />
+                  <Bar dataKey="input_tokens" name="Input Tokens" stackId="tokens" fill="url(#moduleInputGradient)" radius={[0, 0, 0, 0]} maxBarSize={22} />
+                  <Bar dataKey="output_tokens" name="Output Tokens" stackId="tokens" fill="url(#moduleOutputGradient)" radius={[0, 6, 6, 0]} maxBarSize={22}>
+                    <LabelList
+                      dataKey="total_tokens"
+                      position="right"
+                      formatter={formatCompact}
+                      style={{ fontSize: 11, fontWeight: 700, fill: '#0F172A' }}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, mt: 1.5, pt: 2, borderTop: '1px solid #F1F5F9' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#F26522' }} />
+                  <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.75rem' }}>Input Tokens</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#0EA5E9' }} />
+                  <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.75rem' }}>Output Tokens</Typography>
+                </Box>
+                <Typography variant="caption" sx={{ color: '#94A3B8', fontSize: '0.75rem', ml: 'auto' }}>
+                  {formatFull(totalModuleTokens)} tokens across {sortedModules.length} module{sortedModules.length === 1 ? '' : 's'}
+                </Typography>
+              </Box>
+            </>
+          )}
+        </Paper>
+
         {/* Consumption by User */}
         <Paper elevation={0} sx={{ ...cardSx, animation: `${fadeInUp} 0.4s ease-out 0.2s both` }}>
           <Box sx={{ p: 3, pb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1 }}>
             <Box>
               <Typography sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>Consumption by User</Typography>
               <Typography variant="caption" sx={{ color: '#64748B', fontSize: '0.8rem' }}>
-                Who is triggering LLM calls, ranked by total tokens
+                Trainers and admins triggering LLM calls, ranked by total tokens
               </Typography>
             </Box>
             {usage.by_user_total_users > usage.by_user.length && (

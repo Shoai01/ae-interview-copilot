@@ -35,7 +35,7 @@ class SessionEvaluationResult(BaseModel):
     # LLM evaluation. Callers must not treat these scores as genuine.
     is_fallback: bool = False
 
-def evaluate_interview_session(questions_data: list, db=None, session_id: Optional[int] = None, triggered_by_user_id: Optional[int] = None) -> SessionEvaluationResult:
+def evaluate_interview_session(questions_data: list, db=None, session_id: Optional[int] = None, triggered_by_user_id: Optional[int] = None, module_id: Optional[int] = None) -> SessionEvaluationResult:
     """
     Evaluates a full interview session using Gemini.
     questions_data is a list of dicts:
@@ -107,7 +107,7 @@ def evaluate_interview_session(questions_data: list, db=None, session_id: Option
         before_sleep=log_retry
     )
     def _call_gemini_api():
-        with track_llm_call(db, LLMCallSite.EVALUATOR, 'gemini-2.5-flash', session_id=session_id, user_id=triggered_by_user_id) as usage:
+        with track_llm_call(db, LLMCallSite.EVALUATOR, 'gemini-2.5-flash', session_id=session_id, module_id=module_id, user_id=triggered_by_user_id) as usage:
             response = client.models.generate_content(
                 model='gemini-2.5-flash',
                 contents=user_prompt,

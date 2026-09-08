@@ -431,7 +431,7 @@ def evaluate_session(db: Session, session_id: int):
     if session.status != domain.SessionStatus.COMPLETED:
         viva_repository.end_session(db, session, datetime.datetime.utcnow())
         
-    eval_result = ai_service.evaluate_interview_session(questions_data, db=db, session_id=session.id, triggered_by_user_id=session.trainee_id)
+    eval_result = ai_service.evaluate_interview_session(questions_data, db=db, session_id=session.id, triggered_by_user_id=session.trainee_id, module_id=session.module_id)
     
     for q_eval in eval_result.question_evaluations:
         db_eval = domain.Evaluation(

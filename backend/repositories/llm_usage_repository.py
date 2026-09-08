@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case
+from sqlalchemy import func, case, or_
 import base64
 from typing import List, Tuple, Optional
 from datetime import datetime
-from models.domain import LLMUsageLog, LLMCallSite, LLMCallStatus, User
+from models.domain import LLMUsageLog, LLMCallSite, LLMCallStatus, User, UserRole, TrainingModule
 
 def create_log(
     db: Session,
@@ -139,9 +139,28 @@ def get_summary(
         func.coalesce(func.sum(LLMUsageLog.output_tokens), 0),
     ).group_by(day_expr).order_by(day_expr).all()
 
+    # Module-wise breakdown: trainee-triggered EVALUATOR calls are attributed
+    # to the module rather than the individual trainee (too many trainees to
+    # track per-account meaningfully) — see by_user filter below.
+    by_module_query = base_query.join(TrainingModule, LLMUsageLog.module_id == TrainingModule.id).join(
+        User, LLMUsageLog.user_id == User.id
+    ).filter(User.role == UserRole.TRAINEE)
+    by_module = by_module_query.with_entities(
+        TrainingModule.id,
+        TrainingModule.name,
+        func.count(LLMUsageLog.id),
+        func.coalesce(func.sum(LLMUsageLog.input_tokens), 0),
+        func.coalesce(func.sum(LLMUsageLog.output_tokens), 0),
+        func.coalesce(func.sum(LLMUsageLog.total_tokens), 0),
+    ).group_by(TrainingModule.id, TrainingModule.name).order_by(func.coalesce(func.sum(LLMUsageLog.total_tokens), 0).desc()).all()
+
     # Outer join since user_id is nullable — those rows collapse into one
-    # "System" group instead of being dropped.
-    by_user_query = base_query.outerjoin(User, LLMUsageLog.user_id == User.id)
+    # "System" group instead of being dropped. TRAINEE-role users are excluded
+    # here since their usage (exam evaluation) is tracked module-wise above
+    # instead of per-account — trainer/admin usage is unaffected.
+    by_user_query = base_query.outerjoin(User, LLMUsageLog.user_id == User.id).filter(
+        or_(User.role != UserRole.TRAINEE, User.id.is_(None))
+    )
     total_tokens_expr = func.coalesce(func.sum(LLMUsageLog.total_tokens), 0)
     by_user = by_user_query.with_entities(
         User.id,
@@ -192,6 +211,10 @@ def get_summary(
         "daily": [
             {"date": str(d), "calls": c, "input_tokens": int(i), "output_tokens": int(o)}
             for d, c, i, o in daily
+        ],
+        "by_module": [
+            {"module_id": mid, "module_name": name, "calls": c, "input_tokens": int(i), "output_tokens": int(o), "total_tokens": int(t)}
+            for mid, name, c, i, o, t in by_module
         ],
         "by_user": [
             {
