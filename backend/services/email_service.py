@@ -14,7 +14,7 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
 FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@viva-copilot.com")
-PLATFORM_URL = "https://ae-interview-copilot.pages.dev"
+PLATFORM_URL = "https://dui-executives-blacks-alexander.trycloudflare.com/"
 
 # Outlook (and many corporate mail policies) block remotely-hosted images by
 # default, so a plain https:// <img src> silently fails to render there even
