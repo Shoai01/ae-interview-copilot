@@ -114,9 +114,8 @@ export default function VivaInProgress() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fraud and noise detection hooks
+  // Fraud detection hook (noise detection is wired up below, once isRecording is available)
   const { detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
-  const { noiseLevel } = useNoiseDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
 
   // 2. Active Session Recovery: Fallback to server query if storage is missing on reload
   useEffect(() => {
@@ -252,7 +251,12 @@ export default function VivaInProgress() {
     startAudioCapture,
     stopAudioCapture,
   } = useSpeechRecognition();
-  
+
+  // Noise detection — skips flagging while the candidate is actively
+  // recording their own answer, so their own speaking voice isn't
+  // mistaken for background noise.
+  const { noiseLevel } = useNoiseDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef, isRecording);
+
   const { speakQuestion, cancelSpeech, prefetchQuestion } = useSpeechSynthesis();
 
   // Compute the display value for the text field.

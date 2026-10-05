@@ -29,13 +29,13 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     facePresent: null,              // true | false | null (unknown)
   });
 
-  // Set when the exam starts outside fullscreen (so FULLSCREEN_EXIT
-  // detection never even engages) and no question is active yet to attach
-  // the flag to — flushed the moment a question becomes active, below.
-  // Without this, a candidate who never entered fullscreen produced no
-  // flag at all: nothing was ever surfaced to the trainer, only a local
-  // log entry in a monitor panel that isn't rendered anywhere.
-  const pendingFullscreenViolationRef = useRef(false);
+  // Flags raised before any question is active yet (e.g. the candidate
+  // switches tabs or exits fullscreen during the welcome/instructions
+  // screen) have no viva_question_id to attach to. Queue them here and
+  // flush once a question becomes active, instead of dropping them —
+  // previously these were only logged to the local (unrendered) monitor
+  // panel and never reached the trainer at all.
+  const pendingFlagsRef = useRef([]);
 
   // Sync sessionId ref with latest prop (questionId's sync effect lives
   // below reportFlag's declaration — it needs to call it).
@@ -66,10 +66,11 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     const qId = questionIdRef.current;
     const sId = sessionIdRef.current;
     if (!sId || !qId) {
-      addLog(flagType, `Skipped — no active question yet`, 'warn');
+      pendingFlagsRef.current.push(flagType);
+      addLog(flagType, `Queued — no active question yet, will record once one starts`, 'warn');
       return;
     }
-    
+
     // User Warning Toast
     if (flagType === 'TAB_SWITCH') {
       toast.error('⚠️ Warning: Tab switching is not allowed and has been recorded.', { duration: 5000 });
@@ -85,14 +86,15 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     vivaService.reportFraudFlag(sId, qId, flagType);
   }, [addLog]);
 
-  // Sync questionId ref with latest prop, and flush a pending
-  // fullscreen-at-start violation (see pendingFullscreenViolationRef above)
-  // the moment a question becomes active.
+  // Sync questionId ref with latest prop, and flush any flags queued
+  // before a question was active (see pendingFlagsRef above) the moment
+  // one becomes active.
   useEffect(() => {
     questionIdRef.current = activeQuestionId;
-    if (activeQuestionId && pendingFullscreenViolationRef.current) {
-      pendingFullscreenViolationRef.current = false;
-      reportFlag('FULLSCREEN_EXIT');
+    if (activeQuestionId && pendingFlagsRef.current.length > 0) {
+      const queued = pendingFlagsRef.current;
+      pendingFlagsRef.current = [];
+      queued.forEach(reportFlag);
     }
   }, [activeQuestionId, reportFlag]);
 
@@ -140,7 +142,10 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
           return;
         }
 
-        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+        // inputSize raised and scoreThreshold lowered from the original
+        // 224/0.4 so partially-visible/angled faces at frame edges still
+        // score above threshold instead of going uncounted.
+        const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 });
 
         intervalId = setInterval(async () => {
           if (!isMountedRef.current || !isActive) return;
@@ -187,7 +192,9 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
           } catch (e) {
             console.log(e);
           }
-        }, 4000);
+        // Lowered from 4000ms so a second person's brief entry/exit from
+        // frame falls within a poll window instead of between two of them.
+        }, 1500);
       } catch (err) {
         if (!isActive) return;
         addLog('SYSTEM', `Face detection init failed: ${err.message}`, 'error');
@@ -280,13 +287,9 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     } else {
       setTimeout(() => addLog('SYSTEM', 'Not in fullscreen — FULLSCREEN_EXIT detection skipped', 'warn'), 0);
       // Surface this to the trainer like any other integrity flag instead
-      // of only the local (unrendered) monitor log — report immediately if
-      // a question is already active, otherwise once one becomes active.
-      if (questionIdRef.current && sessionIdRef.current) {
-        reportFlag('FULLSCREEN_EXIT');
-      } else {
-        pendingFullscreenViolationRef.current = true;
-      }
+      // of only the local (unrendered) monitor log. reportFlag queues it
+      // itself via pendingFlagsRef if no question is active yet.
+      reportFlag('FULLSCREEN_EXIT');
     }
 
     const handleFullscreenChange = () => {

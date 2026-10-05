@@ -3,16 +3,18 @@ import { acquireAudioGraph, releaseAudioGraph, waitForMediaStream, ANALYSER_FFT_
 import { vivaService } from '@/services/api';
 import toast from 'react-hot-toast';
 
-const NOISE_THRESHOLD = 0.03; // ~ -30 dBFS
-const SUSTAINED_CHECKS_REQUIRED = 5; // 5 * 500ms = 2.5 seconds
-const COOLDOWN_MS = 30000; // 30 seconds
+const NOISE_THRESHOLD = 0.02; // ~ -34 dBFS (lowered from 0.03/-30dBFS to catch moderate voices/noise)
+const SUSTAINED_CHECKS_REQUIRED = 3; // 3 * 500ms = 1.5 seconds (lowered from 2.5s so shorter bursts still trigger)
+const COOLDOWN_MS = 15000; // 15 seconds (lowered from 30s so repeated short bursts are each caught)
 
-export function useNoiseDetection(sessionId, activeQuestionId, isEndingRef) {
+export function useNoiseDetection(sessionId, activeQuestionId, isEndingRef, isRecording = false) {
   const [noiseLevel, setNoiseLevel] = useState('quiet'); // 'quiet', 'moderate', 'loud'
   const consecutiveLoudRef = useRef(0);
   const lastTriggeredRef = useRef(0);
   const analyserRef = useRef(null);
   const dataArrayRef = useRef(new Uint8Array(ANALYSER_FFT_SIZE));
+  const isRecordingRef = useRef(isRecording);
+  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
 
   // Acquire the shared analyser once for the whole session (component lifetime).
   // On a mid-exam page refresh, globalState.mediaStream isn't available yet on
@@ -54,6 +56,10 @@ export function useNoiseDetection(sessionId, activeQuestionId, isEndingRef) {
       if (isEndingRef?.current || !activeQuestionId) return;
       const analyser = analyserRef.current;
       if (!analyser) return;
+      // Skip flagging while the candidate is actively recording their
+      // answer — their own speaking voice isn't background noise, but
+      // still update the UI noise-level indicator for feedback.
+      const skipFlagging = isRecordingRef.current;
 
       const dataArray = dataArrayRef.current;
       analyser.getByteTimeDomainData(dataArray);
@@ -69,6 +75,11 @@ export function useNoiseDetection(sessionId, activeQuestionId, isEndingRef) {
       if (rms > NOISE_THRESHOLD) setNoiseLevel('loud');
       else if (rms > NOISE_THRESHOLD / 2) setNoiseLevel('moderate');
       else setNoiseLevel('quiet');
+
+      if (skipFlagging) {
+        consecutiveLoudRef.current = 0;
+        return;
+      }
 
       // Check for sustained loud noise
       if (rms > NOISE_THRESHOLD) {

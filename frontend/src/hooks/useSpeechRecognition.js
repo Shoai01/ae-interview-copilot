@@ -10,17 +10,55 @@ const DEEPGRAM_SAMPLE_RATE = 16000;
 const DEEPGRAM_KEEPALIVE_INTERVAL_MS = 5000;
 const DEFAULT_MIN_FINAL_CONFIDENCE = 0.45;
 const DEFAULT_DEEPGRAM_MODEL = 'nova-3';
+// Reverted from 'hi' (Deepgram's Hindi/code-switch model) back to 'en-IN':
+// in testing it rendered output in Hindi script/language rather than just
+// improving recognition of occasional Hindi words in English speech, which
+// isn't what's needed here — candidates answer in English.
 const DEFAULT_DEEPGRAM_LANGUAGE = 'en-IN';
+// Pulled from the actual viva question_bank content (text + ideal_answer
+// columns) rather than guessed — these are the real product/feature nouns
+// candidates are asked about. Re-extract from the DB whenever the question
+// bank grows so this list keeps tracking real exam content.
 const DEFAULT_DEEPGRAM_KEYTERMS = [
   'RPA',
   'ITPA',
   'IT Process Automation',
   'Robotic Process Automation',
   'AutomationEdge',
-  'process automation',
-  'workflow automation',
-  'IT operations',
-  'service desk',
+  'AutomationEdge Server',
+  'AutomationEdge Agent',
+  'Process Studio',
+  'SolFlows',
+  'Active MQ',
+  'GUI Spy',
+  'Switch Case',
+  'Filter Rows',
+  'Formula step',
+  'Rename Field',
+  'Calculator step',
+  'Start Browser',
+  'clear browser instance',
+  'locator',
+  'XPath',
+  'Web GUI automation',
+  'singleton',
+  'sequential',
+  'assisted workflow',
+  'unassisted',
+  'Awaiting Input',
+  'Execution Started',
+  'Unload Project',
+  'Load Project',
+  'Export Project',
+  'Import Project',
+  'Publish',
+  'Catalog',
+  'ETL',
+  'Extract Transform Load',
+  'multi-threading',
+  'digital worker',
+  'workflow',
+  'process',
   'orchestration',
 ];
 
@@ -537,15 +575,24 @@ export function useSpeechRecognition() {
         const transcript = alt.transcript || '';
 
         if (received.is_final) {
-          if (shouldAcceptFinalTranscript(alt, transcript)) {
-            console.log("[Deepgram] FINAL transcript:", transcript);
+          // Previously, a final segment scoring below the minimum confidence
+          // was dropped entirely — the candidate's words simply vanished
+          // from the transcript with no trace. Low confidence on an actual
+          // spoken answer is more often just an unusual word/accent than
+          // noise (the stream already has echo/noise suppression applied),
+          // so keep the text and only log the low-confidence case for
+          // diagnostics instead of discarding it.
+          if (transcript.trim()) {
+            if (!shouldAcceptFinalTranscript(alt, transcript)) {
+              console.warn("[Deepgram] Low-confidence final transcript (kept):", transcript);
+            } else {
+              console.log("[Deepgram] FINAL transcript:", transcript);
+            }
             setFinalText(prev => {
               const updated = prev + (prev ? ' ' : '') + transcript;
               finalTextRef.current = updated;
               return updated;
             });
-          } else if (transcript.trim()) {
-            console.warn("[Deepgram] Ignoring low-confidence final transcript:", transcript);
           }
           setLiveText('');
           liveTextRef.current = '';
