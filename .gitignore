@@ -258,4 +258,6 @@ backend/faiss_index/
 
 # Test scripts
 backend/tests/
-TEST_CASES*.md
+TEST_CASES*.md
+graphify-out
+docs/

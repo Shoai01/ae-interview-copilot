@@ -382,7 +382,7 @@ export default function UsageAnalytics() {
                     <YAxis tickFormatter={formatCompact} tick={{ fontSize: 11, fill: '#64748B' }} axisLine={false} tickLine={false} width={42} />
                     <RechartsTooltip
                       labelFormatter={(label) => formatDayLabel(label)}
-                      formatter={(value, name) => [formatFull(value), name === 'input_tokens' ? 'Input Tokens' : name === 'output_tokens' ? 'Output Tokens' : 'Calls']}
+                      formatter={(value, name) => [formatFull(value), name]}
                       contentStyle={tooltipContentStyle}
                     />
                     <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" iconSize={8} />

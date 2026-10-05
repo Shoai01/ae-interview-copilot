@@ -251,10 +251,11 @@ def get_audit_logs(
     current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))
 ):
     from services.audit_service import get_audit_logs
+    exclude_actor_roles = [UserRole.ADMIN] if current_user.role != UserRole.ADMIN else None
     return get_audit_logs(
         db, actor_id=actor_id, category=category, action_type=action_type,
         date_from=date_from, date_to=date_to,
-        cursor=cursor, limit=limit
+        cursor=cursor, limit=limit, exclude_actor_roles=exclude_actor_roles
     )
 
 @router.get("/llm-usage/summary", response_model=admin_schemas.LLMUsageSummaryResponse)

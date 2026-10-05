@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 from repositories import audit_repository
-from models.domain import AuditActionType, AuditLogCategory
+from models.domain import AuditActionType, AuditLogCategory, UserRole
 from schemas import admin as admin_schemas
 
 CATEGORY_MAPPING = {
@@ -42,8 +42,8 @@ def log_action(db: Session, action_type: AuditActionType, actor_id: Optional[int
         except Exception as e:
             print(f'Audit log error: {e}')
 
-def get_audit_logs(db: Session, actor_id: Optional[int] = None, category: Optional[str] = None, action_type: Optional[str] = None, date_from: Optional[datetime] = None, date_to: Optional[datetime] = None, cursor: Optional[str] = None, limit: int = 50) -> admin_schemas.AuditLogCursorPage:
-    items, next_cursor = audit_repository.get_logs(db, actor_id, category, action_type, date_from, date_to, cursor, limit)
+def get_audit_logs(db: Session, actor_id: Optional[int] = None, category: Optional[str] = None, action_type: Optional[str] = None, date_from: Optional[datetime] = None, date_to: Optional[datetime] = None, cursor: Optional[str] = None, limit: int = 50, exclude_actor_roles: Optional[List[UserRole]] = None) -> admin_schemas.AuditLogCursorPage:
+    items, next_cursor = audit_repository.get_logs(db, actor_id, category, action_type, date_from, date_to, cursor, limit, exclude_actor_roles=exclude_actor_roles)
     
     response_items = []
     for item in items:

@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, and_
+from sqlalchemy import desc, and_, or_
 import base64
 from typing import List, Tuple, Optional
 from datetime import datetime
-from models.domain import AuditLog, AuditActionType, AuditLogCategory
+from models.domain import AuditLog, AuditActionType, AuditLogCategory, User, UserRole
 
 def create_log(db: Session, actor_id: Optional[int], actor_name: Optional[str], category: AuditLogCategory, action_type: AuditActionType, target: Optional[str] = None, details: Optional[dict] = None) -> AuditLog:
     log_entry = AuditLog(actor_id=actor_id, actor_name=actor_name, category=category, action_type=action_type, target=target, details=details)
@@ -24,8 +24,12 @@ def decode_cursor(cursor: str) -> Tuple[datetime, int]:
     except Exception:
         return None, None
 
-def get_logs(db: Session, actor_id: Optional[int] = None, category: Optional[str] = None, action_type: Optional[str] = None, date_from: Optional[datetime] = None, date_to: Optional[datetime] = None, cursor: Optional[str] = None, limit: int = 50) -> Tuple[List[AuditLog], Optional[str]]:
+def get_logs(db: Session, actor_id: Optional[int] = None, category: Optional[str] = None, action_type: Optional[str] = None, date_from: Optional[datetime] = None, date_to: Optional[datetime] = None, cursor: Optional[str] = None, limit: int = 50, exclude_actor_roles: Optional[List[UserRole]] = None) -> Tuple[List[AuditLog], Optional[str]]:
     query = db.query(AuditLog)
+    if exclude_actor_roles:
+        query = query.outerjoin(User, AuditLog.actor_id == User.id).filter(
+            or_(User.role.is_(None), User.role.notin_(exclude_actor_roles))
+        )
     if actor_id:
         query = query.filter(AuditLog.actor_id == actor_id)
     if category:
