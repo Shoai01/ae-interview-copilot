@@ -122,6 +122,8 @@ class VivaQuestion(Base):
     question_order = Column(Integer, nullable=False) # sequence within the session
     transcript = Column(Text, nullable=True) # STT transcript
     audio_url = Column(String, nullable=True) # URL path to the uploaded audio file
+    transcript_manually_enhanced = Column(Boolean, nullable=False, default=False) # candidate used Enhance Transcript
+    transcript_enhance_attempts = Column(Integer, nullable=False, default=0)
     asked_at = Column(DateTime, default=datetime.utcnow)
     answered_at = Column(DateTime, nullable=True) # needed to compute response time
 

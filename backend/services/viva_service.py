@@ -3,7 +3,16 @@ from sqlalchemy.orm import Session
 from models import domain
 from schemas import viva as viva_schemas
 from repositories import viva_repository
+from services import deepgram_service
 import datetime
+import os
+import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+logger = logging.getLogger(__name__)
+
+class EnhanceAttemptLimitExceeded(Exception):
+    """Raised when a question has already used up its manual Enhance Transcript attempts."""
 
 class ReviewConflictError(Exception):
     """
@@ -347,6 +356,27 @@ def upload_answer_audio(db: Session, session_id: int, viva_question_id: int, aud
         return True
     return False
 
+def enhance_transcript(db: Session, session_id: int, viva_question_id: int, audio_bytes: bytes, content_type: str) -> str | None:
+    """
+    Re-run batch STT against in-memory audio for the current (pre-submit)
+    question and persist the improved transcript + manual-enhancement flag.
+
+    Returns the new transcript, or None if the question isn't found in
+    this session (caller maps that to 404).
+    Raises EnhanceAttemptLimitExceeded if the attempt cap is already reached
+    (caller maps that to 429).
+    """
+    viva_question = viva_repository.get_viva_question(db, viva_question_id, session_id)
+    if not viva_question:
+        return None
+
+    if not viva_repository.increment_enhance_attempts(db, viva_question):
+        raise EnhanceAttemptLimitExceeded()
+
+    transcript = deepgram_service.transcribe_audio(audio_bytes, content_type=content_type)
+    viva_repository.set_enhanced_transcript(db, viva_question, transcript)
+    return transcript
+
 def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSummaryResponse:
     """
     Calculate and retrieve summary metrics for a session.
@@ -395,6 +425,25 @@ def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSum
 
 from ai import evaluator as ai_service
 
+def _regenerate_transcript_from_disk(q: domain.VivaQuestion) -> tuple[int, str | None]:
+    """
+    Runs in a worker thread. Never raises — returns (question_id, None) on
+    any failure (missing file, Deepgram error, etc.) so one bad file/API
+    call can't take down the whole evaluation; the caller falls back to
+    the question's existing (live) transcript when this returns None.
+    """
+    try:
+        rel_path = q.audio_url.lstrip('/')
+        if not os.path.exists(rel_path):
+            logger.warning("STT regen: audio file missing for question %s at %s", q.id, rel_path)
+            return q.id, None
+        with open(rel_path, "rb") as f:
+            audio_bytes = f.read()
+        return q.id, deepgram_service.transcribe_audio(audio_bytes, content_type="audio/webm")
+    except Exception as e:
+        logger.warning("STT regen failed for question %s: %s", q.id, e)
+        return q.id, None
+
 def evaluate_session(db: Session, session_id: int):
     """
     Evaluate a completed session using the AI service.
@@ -415,6 +464,29 @@ def evaluate_session(db: Session, session_id: int):
         # evaluations.viva_question_id / viva_reports.session_id; treat repeat
         # calls (e.g. a trainee double-submitting) as a no-op success.
         return True
+
+    # Regenerate transcripts for every answered question NOT manually
+    # enhanced in-exam — skips manually-enhanced ones to avoid a redundant
+    # Deepgram call/cost for audio already re-transcribed once. Runs
+    # concurrently since this whole function is synchronous and the
+    # candidate never awaits it (fire-and-forget from the frontend), so
+    # added latency here is invisible to them.
+    to_regenerate = [
+        q for q in session.questions
+        if q.answered_at and q.audio_url and not q.transcript_manually_enhanced
+    ]
+    if to_regenerate:
+        with ThreadPoolExecutor(max_workers=min(len(to_regenerate), 5)) as pool:
+            futures = [pool.submit(_regenerate_transcript_from_disk, q) for q in to_regenerate]
+            results = dict(f.result() for f in as_completed(futures))
+        for q in to_regenerate:
+            new_transcript = results.get(q.id)
+            if new_transcript:
+                q.transcript = new_transcript
+                # Leave transcript_manually_enhanced False deliberately — this was an
+                # automatic session-level regeneration, not a candidate action; the
+                # flag's meaning stays precise ("the candidate clicked Enhance").
+        db.commit()
 
     questions_data = []
     for q in session.questions:

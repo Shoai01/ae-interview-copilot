@@ -222,6 +222,46 @@ async def upload_audio(
         
     return viva_schemas.StatusResponse(status="uploaded")
 
+@router.post("/{session_id}/answer/{viva_question_id}/enhance-transcript", response_model=viva_schemas.EnhanceTranscriptResponse, status_code=status.HTTP_200_OK)
+async def enhance_transcript(
+    session_id: int,
+    viva_question_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.TRAINEE]))
+):
+    _verify_session_ownership(db, session_id, current_user)
+
+    # Same validation as upload_audio, deliberately WITHOUT its disk-write
+    # step — the audio bytes are only ever held in memory for this one
+    # request, sent to Deepgram's batch endpoint, then discarded. The
+    # normal uploadAnswerAudio call at real-submit time remains the only
+    # thing that persists audio to disk.
+    content_type = file.content_type or ""
+    allowed_types = ["audio/", "video/webm", "application/octet-stream"]
+    if not any(content_type.startswith(t) if t.endswith("/") else content_type == t for t in allowed_types):
+        raise HTTPException(status_code=400, detail=f"Invalid audio file type: {content_type}")
+
+    content = await file.read(MAX_AUDIO_SIZE + 1)
+    if len(content) > MAX_AUDIO_SIZE:
+        raise HTTPException(status_code=413, detail="Audio file too large (max 50MB)")
+
+    try:
+        transcript = viva_service.enhance_transcript(db, session_id, viva_question_id, content, content_type)
+    except viva_service.EnhanceAttemptLimitExceeded:
+        raise HTTPException(status_code=429, detail="Enhancement limit reached for this answer (max 2 attempts).")
+    except deepgram_service.DeepgramConfigError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except deepgram_service.DeepgramRequestError:
+        raise HTTPException(status_code=502, detail="Transcript enhancement failed. Please try again.")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if transcript is None:
+        raise HTTPException(status_code=404, detail="Question not found in session")
+
+    return viva_schemas.EnhanceTranscriptResponse(transcript=transcript)
+
 @router.get("/{session_id}/answer/{viva_question_id}/audio")
 def stream_answer_audio(
     session_id: int,

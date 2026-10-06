@@ -213,6 +213,35 @@ export const vivaService = {
     
     return await response.json();
   },
+  enhanceTranscript: async (sessionId, questionId, audioBlob, token = null) => {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'answer.webm');
+
+    const headers = {
+      'ngrok-skip-browser-warning': 'true'
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Note: Do NOT set Content-Type — fetch automatically sets multipart/form-data with boundary
+    const response = await fetch(`${API_BASE_URL}/viva/${sessionId}/answer/${questionId}/enhance-transcript`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[EnhanceTranscript] Server returned error ${response.status}:`, errText);
+      const err = new Error(`Enhance transcript failed (${response.status}): ${errText}`);
+      err.status = response.status;
+      throw err;
+    }
+
+    return await response.json();
+  },
   getSessionSummary: async (sessionId) => {
     const response = await api.get(`/viva/${sessionId}/summary`);
     return response.data;

@@ -98,6 +98,23 @@ def update_viva_question_answer(db: Session, viva_question: domain.VivaQuestion,
     viva_question.transcript = transcript
     db.commit()
 
+MAX_ENHANCE_ATTEMPTS = 2
+
+def increment_enhance_attempts(db: Session, viva_question: domain.VivaQuestion) -> bool:
+    """Returns False (and does not increment) if the cap is already reached."""
+    if viva_question.transcript_enhance_attempts >= MAX_ENHANCE_ATTEMPTS:
+        return False
+    viva_question.transcript_enhance_attempts += 1
+    db.commit()
+    return True
+
+def set_enhanced_transcript(db: Session, viva_question: domain.VivaQuestion, transcript: str) -> None:
+    """Overwrite transcript with a manually-enhanced (batch STT) result and flag it —
+    deliberately does NOT touch answered_at, since Enhance runs pre-submit."""
+    viva_question.transcript = transcript
+    viva_question.transcript_manually_enhanced = True
+    db.commit()
+
 def end_session(db: Session, session: domain.VivaSession, end_time: datetime.datetime) -> None:
     session.end_time = end_time
     session.status = domain.SessionStatus.COMPLETED

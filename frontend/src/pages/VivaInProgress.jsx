@@ -7,6 +7,7 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import SendIcon from '@mui/icons-material/Send';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import api, { vivaService } from '@/services/api';
 import { globalState, AUDIO_CONSTRAINTS } from '@/store';
 import TranscriptPanel from '@/components/TranscriptPanel';
@@ -66,6 +67,8 @@ export default function VivaInProgress() {
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhanceAttempts, setEnhanceAttempts] = useState(0); // local mirror of the server-side cap, reset per question
 
   // Server-synced countdown timer
   const [sessionStartTime, setSessionStartTime] = useState(sessionInfo.startTime || null);
@@ -310,6 +313,7 @@ export default function VivaInProgress() {
       if (question?.text) prefetchQuestion(question.text);
       setCurrentQuestion(question);
       resetTranscript();
+      setEnhanceAttempts(0);
     } catch (err) {
       console.error("Failed to fetch question:", err);
       // If 404 (session completed or all questions answered), navigate to complete page
@@ -435,6 +439,41 @@ export default function VivaInProgress() {
       });
     }
   }, [timerWarning]);
+
+  const MAX_ENHANCE_ATTEMPTS = 2;
+
+  const handleEnhanceTranscript = async () => {
+    if (!currentQuestion || enhancing || submitting || isRecording || isConnecting) return;
+    if (enhanceAttempts >= MAX_ENHANCE_ATTEMPTS) return;
+
+    if (isRecording) {
+      await stopRecording(); // pause, not stop — keeps socket warm, MediaRecorder resumable
+    }
+
+    const audioBlob = getAudioBlob();
+    if (!audioBlob || audioBlob.size === 0) {
+      toast.error("No recorded audio yet for this question.", { id: 'enhance-transcript-error' });
+      return;
+    }
+
+    setEnhancing(true);
+    try {
+      const result = await vivaService.enhanceTranscript(sessionId, currentQuestion.viva_question_id, audioBlob, accessToken);
+      setFinalText(result.transcript);
+      setLiveText('');
+      setEnhanceAttempts(prev => prev + 1);
+      toast.success("Transcript enhanced.");
+    } catch (err) {
+      setEnhanceAttempts(prev => prev + 1); // count failed attempts too — it's the same audio either way
+      console.error("Failed to enhance transcript:", err);
+      const message = err.status === 429
+        ? "Enhancement limit reached for this answer."
+        : "Could not enhance transcript. Your existing transcript is unchanged.";
+      toast.error(message, { id: 'enhance-transcript-error' });
+    } finally {
+      setEnhancing(false);
+    }
+  };
 
   const handleNextAction = async () => {
     if (!currentQuestion || submitting || hasSessionBeenSubmitted(sessionId)) return;
@@ -773,6 +812,18 @@ export default function VivaInProgress() {
             />
             {isConnecting ? "Connecting to audio engine..." : isRecording ? "Transcribing your spoken answer live..." : "Click microphone to record your response"}
           </Box>
+
+          {/* Enhance Transcript Action — only usable once the mic is off and there's something recorded */}
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleEnhanceTranscript}
+            disabled={!currentQuestion || isRecording || isConnecting || submitting || enhancing || enhanceAttempts >= MAX_ENHANCE_ATTEMPTS || !getAudioBlob()}
+            startIcon={enhancing ? <CircularProgress size={14} color="inherit" /> : <AutoFixHighIcon sx={{ fontSize: 16 }} />}
+            sx={{ mb: 2, textTransform: 'none', borderColor: '#E2E8F0', color: '#475569' }}
+          >
+            {enhancing ? 'Enhancing...' : enhanceAttempts >= MAX_ENHANCE_ATTEMPTS ? 'Enhancement limit reached' : 'Enhance Transcript'}
+          </Button>
 
           {/* Transcript Display Surface */}
           <TranscriptPanel

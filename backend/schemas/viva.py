@@ -55,6 +55,11 @@ class AnswerSubmit(BaseModel):
     viva_question_id: int
     transcript: str
 
+class EnhanceTranscriptResponse(BaseModel):
+    transcript: str
+
+    model_config = ConfigDict(from_attributes=True)
+
 class FraudFlagCreate(BaseModel):
     viva_question_id: int
     flag_type: str
