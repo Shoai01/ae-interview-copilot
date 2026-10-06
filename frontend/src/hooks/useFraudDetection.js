@@ -110,12 +110,66 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     let inMultipleFaceEvent = false;
     let videoEl = null;
 
+    // Second-person detection via a whole-body "person" object detector
+    // rather than relying solely on the face detector above. A face
+    // detector needs enough facial features (eyes/nose/mouth) to register
+    // anything, so a second person who is only half in frame routinely
+    // produces no detection at all regardless of threshold tuning — that's
+    // a model-family limitation, not something scoreThreshold can fix.
+    // The underlying SSD "person" class is trained on plenty of
+    // partially-occluded people, so it catches a shoulder or side-profile
+    // that TinyFaceDetector would simply never see.
+    //
+    // This uses our own loadGraphModel call against the self-hosted model
+    // (personDetector.js) instead of the @tensorflow-models/coco-ssd
+    // package, because: (a) the installed coco-ssd version has no way to
+    // override its hardcoded fetch from storage.googleapis.com, and (b) a
+    // modern coco-ssd/tfjs version pulls in @tensorflow/tfjs-core 4.x,
+    // which crashes when loaded alongside face-api.js's bundled 1.7.0 (two
+    // different major tfjs engine versions fighting over the same global
+    // registry — not fixable by threshold tuning either). Pinning
+    // everything to tfjs-core@1.7.0 (see package.json "overrides") avoids
+    // that clash entirely.
+    let personDetectorModel = null;
+    // Captured from the dynamic import below — kept as a plain variable
+    // (rather than a static top-of-file import) so tfjs + this detection
+    // code stay in their own lazy chunk, loaded only when this effect
+    // actually runs, not bundled into every page's initial load.
+    let countPersonsFn = null;
+    // Lowered from 0.5 — a partially visible second person likely scores
+    // lower than a fully visible one; the debug logging below surfaces raw
+    // scores so this can be tuned against real footage once we see what
+    // partial appearances actually score.
+    const PERSON_SCORE_THRESHOLD = 0.35;
+
+    const loadPersonDetector = async () => {
+      try {
+        const personDetector = await import('@/utils/personDetector');
+        countPersonsFn = personDetector.countPersons;
+        // Self-hosted (frontend/public/models/coco-ssd) — same pattern
+        // already used for face-api.js's models — so this doesn't add a
+        // new external network dependency.
+        personDetectorModel = await personDetector.loadPersonDetector(
+          `${import.meta.env.BASE_URL}models/coco-ssd/model.json`
+        );
+        if (!isActive) { personDetectorModel = null; return; }
+        console.log('[FraudDetection] Person detector model loaded successfully');
+        addLog('SYSTEM', 'Person detector model loaded', 'info');
+      } catch (err) {
+        console.error('[FraudDetection] Person detector failed to load:', err);
+        addLog('SYSTEM', `Person detector init failed: ${err.message}`, 'error');
+      }
+    };
+
     const startFaceDetection = async () => {
       try {
         const faceapi = await import('face-api.js');
-        await faceapi.nets.tinyFaceDetector.loadFromUri(`${import.meta.env.BASE_URL}models`);
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(`${import.meta.env.BASE_URL}models`),
+          loadPersonDetector(),
+        ]);
         if (!isActive) return;
-        
+
         addLog('SYSTEM', 'Face detector model loaded', 'info');
         setDetectorStatus(prev => ({ ...prev, faceDetection: 'active' }));
 
@@ -155,6 +209,29 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
             const detections = await faceapi.detectAllFaces(videoEl, options);
             const faceCount = detections.length;
 
+            // Person-count check runs independently of face count — a
+            // second person who registers 0 faces (turned away, partially
+            // out of frame) can still register as a "person" here.
+            let personCount = 0;
+            if (personDetectorModel && countPersonsFn) {
+              try {
+                const { personCount: count, personScores } = await countPersonsFn(
+                  personDetectorModel, videoEl, PERSON_SCORE_THRESHOLD
+                );
+                personCount = count;
+                // Temporary debug visibility — log every person-class
+                // detection with its raw score, even ones below threshold,
+                // so we can see what the model is actually seeing (e.g. a
+                // partial second person scoring 0.3 would show up here even
+                // though it doesn't count toward personCount yet).
+                if (personScores.length > 0) {
+                  console.log('[FraudDetection] person scores:', personScores.map((s) => s.toFixed(2)));
+                }
+              } catch (e) {
+                console.error('[FraudDetection] person detection failed:', e);
+              }
+            }
+
             if (faceCount === 0) {
               consecutiveMisses++;
               setDetectorStatus(prev => ({ ...prev, facePresent: false }));
@@ -164,30 +241,41 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
               } else if (consecutiveMisses === 1) {
                 addLog('NO_FACE', `No face detected (1st miss — waiting for confirmation)`, 'warn');
               }
-            } else if (faceCount > 1) {
-              if (inAbsenceEvent) {
-                addLog('NO_FACE', `Face re-detected — absence event ended`, 'info');
-              }
-              consecutiveMisses = 0;
-              inAbsenceEvent = false;
-              setDetectorStatus(prev => ({ ...prev, facePresent: true }));
-              
-              if (!inMultipleFaceEvent) {
+              // A candidate briefly turned away (0 faces) can still have a
+              // second person fully visible behind them — check regardless.
+              if (personCount > 1 && !inMultipleFaceEvent) {
                 inMultipleFaceEvent = true;
                 reportFlag('MULTIPLE_FACES');
-                addLog('MULTIPLE_FACES', `Multiple faces detected in frame`, 'warn');
+                addLog('MULTIPLE_FACES', `Additional person detected (person-detector) while no face in frame`, 'warn');
+              } else if (personCount <= 1 && inMultipleFaceEvent) {
+                inMultipleFaceEvent = false;
               }
             } else {
+              const multiplePersonsDetected = faceCount > 1 || personCount > 1;
+
               if (inAbsenceEvent) {
                 addLog('NO_FACE', `Face re-detected — absence event ended`, 'info');
               }
-              if (inMultipleFaceEvent) {
-                addLog('MULTIPLE_FACES', `Returned to single face`, 'info');
-              }
               consecutiveMisses = 0;
               inAbsenceEvent = false;
-              inMultipleFaceEvent = false;
               setDetectorStatus(prev => ({ ...prev, facePresent: true }));
+
+              if (multiplePersonsDetected) {
+                if (!inMultipleFaceEvent) {
+                  inMultipleFaceEvent = true;
+                  reportFlag('MULTIPLE_FACES');
+                  addLog(
+                    'MULTIPLE_FACES',
+                    faceCount > 1
+                      ? `Multiple faces detected in frame`
+                      : `Additional person detected (person-detector, partial/angled face)`,
+                    'warn'
+                  );
+                }
+              } else if (inMultipleFaceEvent) {
+                inMultipleFaceEvent = false;
+                addLog('MULTIPLE_FACES', `Returned to single person`, 'info');
+              }
             }
           } catch (e) {
             console.log(e);
@@ -208,6 +296,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
       isMountedRef.current = false;
       isActive = false;
       if (intervalId) clearInterval(intervalId);
+      if (personDetectorModel) { personDetectorModel.dispose?.(); personDetectorModel = null; }
       const el = document.getElementById('__fraud_detection_video');
       if (el) { el.srcObject = null; el.remove(); }
     };
