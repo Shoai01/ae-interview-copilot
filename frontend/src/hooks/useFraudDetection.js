@@ -4,6 +4,61 @@ import { globalState } from '@/store';
 import { waitForMediaStream } from '@/utils/audioGraph';
 import toast from 'react-hot-toast';
 
+// TinyFaceDetector's own duplicate-box suppression uses a FIXED IoU
+// threshold of 0.4 baked into its model config (tinyYolov2/const.js,
+// IOU_THRESHOLD) — it is not exposed via TinyFaceDetectorOptions, so
+// raising inputSize/lowering scoreThreshold (done to catch partial faces)
+// made it more likely for two overlapping candidate boxes on the SAME
+// face to both survive that fixed threshold and inflate faceCount past 1
+// for a single real face. This is a second, more aggressive dedup pass
+// on top of that fixed one, applied to our own counted detections.
+function mergeOverlappingFaceBoxes(detections, iouThreshold = 0.3) {
+  const boxes = detections.map((d) => d.box);
+  const kept = [];
+  const order = detections
+    .map((d, i) => i)
+    .sort((a, b) => detections[b].score - detections[a].score);
+
+  const iou = (a, b) => {
+    const x1 = Math.max(a.x, b.x);
+    const y1 = Math.max(a.y, b.y);
+    const x2 = Math.min(a.x + a.width, b.x + b.width);
+    const y2 = Math.min(a.y + a.height, b.y + b.height);
+    const interArea = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+    if (interArea <= 0) return 0;
+    const unionArea = a.width * a.height + b.width * b.height - interArea;
+    return unionArea > 0 ? interArea / unionArea : 0;
+  };
+
+  for (const idx of order) {
+    const box = boxes[idx];
+    const overlapsKept = kept.some((keptIdx) => iou(box, boxes[keptIdx]) > iouThreshold);
+    if (!overlapsKept) kept.push(idx);
+  }
+  return kept.map((idx) => detections[idx]);
+}
+
+// Cheap average-luminance sample (downscaled to a tiny canvas) to decide
+// whether the frame needs brightening before detection — TinyFaceDetector
+// (and the person detector) both degrade in low light, which threshold
+// tuning alone can't fix since the face's features simply aren't
+// distinguishable in the raw pixel data at that point.
+const LUMINANCE_SAMPLE_SIZE = 32;
+const DARK_LUMINANCE_THRESHOLD = 90; // 0-255 scale; below this, brighten before detecting
+
+function sampleAverageLuminance(videoEl, sampleCanvas) {
+  const ctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(videoEl, 0, 0, LUMINANCE_SAMPLE_SIZE, LUMINANCE_SAMPLE_SIZE);
+  const { data } = ctx.getImageData(0, 0, LUMINANCE_SAMPLE_SIZE, LUMINANCE_SAMPLE_SIZE);
+  let sum = 0;
+  const pixelCount = data.length / 4;
+  for (let i = 0; i < data.length; i += 4) {
+    // Standard relative luminance weighting.
+    sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+  }
+  return sum / pixelCount;
+}
+
 /**
  * Background fraud detection hook for the Viva session.
  * Runs three independent detectors:
@@ -109,6 +164,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     let inAbsenceEvent = false;
     let inMultipleFaceEvent = false;
     let videoEl = null;
+    let wasBrightening = false;
 
     // Second-person detection via a whole-body "person" object detector
     // rather than relying solely on the face detector above. A face
@@ -201,13 +257,61 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
         // score above threshold instead of going uncounted.
         const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 });
 
+        // Tiny canvas for cheap luminance sampling, and a full-size one
+        // reused only when the frame is actually dark enough to need
+        // brightening before detection (avoids the draw/filter cost on
+        // every tick when lighting is already fine).
+        const sampleCanvas = document.createElement('canvas');
+        sampleCanvas.width = LUMINANCE_SAMPLE_SIZE;
+        sampleCanvas.height = LUMINANCE_SAMPLE_SIZE;
+        const enhanceCanvas = document.createElement('canvas');
+
         intervalId = setInterval(async () => {
           if (!isMountedRef.current || !isActive) return;
           if (!videoEl || videoEl.readyState < 2) return;
 
           try {
-            const detections = await faceapi.detectAllFaces(videoEl, options);
+            // Pick the detection source: the raw video frame normally, or
+            // a brightened canvas copy of it when the room is too dark for
+            // the model to pick out facial features at all — tuning
+            // scoreThreshold doesn't help when the pixel data itself has
+            // too little contrast to work with.
+            let detectionSource = videoEl;
+            try {
+              const avgLuminance = sampleAverageLuminance(videoEl, sampleCanvas);
+              if (avgLuminance < DARK_LUMINANCE_THRESHOLD) {
+                const vw = videoEl.videoWidth || 640;
+                const vh = videoEl.videoHeight || 480;
+                enhanceCanvas.width = vw;
+                enhanceCanvas.height = vh;
+                const ctx = enhanceCanvas.getContext('2d');
+                // Darker frames get a stronger boost, capped so it doesn't
+                // blow out whatever light there is.
+                const boost = Math.min(2.2, 1 + (DARK_LUMINANCE_THRESHOLD - avgLuminance) / 60);
+                ctx.filter = `brightness(${boost.toFixed(2)}) contrast(1.15)`;
+                ctx.drawImage(videoEl, 0, 0, vw, vh);
+                detectionSource = enhanceCanvas;
+                if (!wasBrightening) {
+                  wasBrightening = true;
+                  console.log(`[FraudDetection] Low light detected (avg luminance ${avgLuminance.toFixed(0)}) — brightening frame before detection (boost ${boost.toFixed(2)})`);
+                  addLog('SYSTEM', 'Low light detected — brightening camera frame for detection', 'info');
+                }
+              } else if (wasBrightening) {
+                wasBrightening = false;
+                addLog('SYSTEM', 'Lighting back to normal — detection using raw frame', 'info');
+              }
+            } catch (e) {
+              // Luminance sampling/canvas drawing failed (e.g. tainted
+              // canvas) — fall back to the raw video frame, same as before.
+              console.log(e);
+            }
+
+            const rawDetections = await faceapi.detectAllFaces(detectionSource, options);
+            const detections = mergeOverlappingFaceBoxes(rawDetections);
             const faceCount = detections.length;
+            if (rawDetections.length !== detections.length) {
+              console.log(`[FraudDetection] Merged ${rawDetections.length} raw face boxes down to ${detections.length} (removed overlapping duplicates)`);
+            }
 
             // Person-count check runs independently of face count — a
             // second person who registers 0 faces (turned away, partially
@@ -216,7 +320,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
             if (personDetectorModel && countPersonsFn) {
               try {
                 const { personCount: count, personScores } = await countPersonsFn(
-                  personDetectorModel, videoEl, PERSON_SCORE_THRESHOLD
+                  personDetectorModel, detectionSource, PERSON_SCORE_THRESHOLD
                 );
                 personCount = count;
                 // Temporary debug visibility — log every person-class

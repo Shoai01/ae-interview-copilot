@@ -3,9 +3,16 @@ import { acquireAudioGraph, releaseAudioGraph, waitForMediaStream, ANALYSER_FFT_
 import { vivaService } from '@/services/api';
 import toast from 'react-hot-toast';
 
-const NOISE_THRESHOLD = 0.02; // ~ -34 dBFS (lowered from 0.03/-30dBFS to catch moderate voices/noise)
-const SUSTAINED_CHECKS_REQUIRED = 3; // 3 * 500ms = 1.5 seconds (lowered from 2.5s so shorter bursts still trigger)
-const COOLDOWN_MS = 15000; // 15 seconds (lowered from 30s so repeated short bursts are each caught)
+// Raised back up from 0.02/3-checks/15s — that tuning turned out too
+// sensitive in practice, flagging brief ambient sounds (a cough, a door,
+// a short word from someone else) that aren't real "excessive noise".
+// Landed between the original (0.03/5/30s, too insensitive — issue #9)
+// and that over-correction: a higher bar plus a longer sustained window
+// means only sound that's both loud AND ongoing for 2+ seconds triggers,
+// which is what actually distinguishes a real disturbance from a blip.
+const NOISE_THRESHOLD = 0.025; // ~ -32 dBFS
+const SUSTAINED_CHECKS_REQUIRED = 4; // 4 * 500ms = 2 seconds
+const COOLDOWN_MS = 20000; // 20 seconds
 
 export function useNoiseDetection(sessionId, activeQuestionId, isEndingRef, isRecording = false) {
   const [noiseLevel, setNoiseLevel] = useState('quiet'); // 'quiet', 'moderate', 'loud'
