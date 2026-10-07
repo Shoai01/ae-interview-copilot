@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Enum as SQLEnum, Text
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Enum as SQLEnum, Text, JSON
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
@@ -148,8 +148,12 @@ class FraudFlag(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     viva_question_id = Column(Integer, ForeignKey("viva_questions.id"), nullable=False)
     flag_type = Column(SQLEnum(FraudFlagType), nullable=False)
-    count = Column(Integer, default=1, nullable=False)
-    detected_at = Column(DateTime, default=datetime.utcnow) # format as mm:ss only at display time
+    count = Column(Integer, default=1, nullable=False)  # number of episodes (uncapped)
+    detected_at = Column(DateTime, default=datetime.utcnow)  # latest detection time
+    # Timeline of episodes: [{"start": ISO-UTC, "end": ISO-UTC | None}, ...].
+    # end is None while the condition is still active (or was never closed,
+    # e.g. the tab was closed mid-episode). Capped at MAX_FLAG_EVENTS entries.
+    events = Column(JSON, nullable=False, default=list, server_default="[]")
 
     viva_question = relationship("VivaQuestion", back_populates="fraud_flags")
 

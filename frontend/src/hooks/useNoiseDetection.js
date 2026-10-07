@@ -96,8 +96,8 @@ export function useNoiseDetection(sessionId, activeQuestionId, isEndingRef, isRe
 
           toast.error("⚠️ Warning: Excessive background noise detected and recorded.");
 
-          vivaService.reportFraudFlag(sessionId, activeQuestionId, 'BACKGROUND_NOISE')
-            .catch(err => console.warn("Failed to report noise flag", err));
+          // A noise burst is a point-in-time event (no start/end window).
+          vivaService.reportFraudFlag(sessionId, activeQuestionId, 'BACKGROUND_NOISE', 'EVENT');
         }
       }
     }, 500);

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { vivaService } from '@/services/api';
+import { useFlagEpisodes } from '@/hooks/useFlagEpisodes';
 import { globalState } from '@/store';
 import { waitForMediaStream } from '@/utils/audioGraph';
 import toast from 'react-hot-toast';
@@ -11,11 +11,25 @@ import toast from 'react-hot-toast';
  *   2. TAB_SWITCH — visibilitychange + window blur
  *   3. FULLSCREEN_EXIT — fullscreenchange listener
  *
+ * Each detector reports an *episode* (start + end), not a single event — see
+ * useFlagEpisodes. A flag type that is already open is not re-triggered.
+ *
  * Returns a logs array for the debug monitor panel.
  */
+// While a flag stays open, remind the candidate this often. TAB_SWITCH is
+// excluded: the candidate is by definition away from this page, so a toast
+// here would only be seen after they're already back (which ends the flag).
+const REMINDER_INTERVAL_MS = 15000;
+const REMINDER_FLAGS = ['NO_FACE', 'MULTIPLE_FACES', 'FULLSCREEN_EXIT'];
+
+const FLAG_WARNINGS = {
+  TAB_SWITCH: 'Tab switching is not allowed and has been recorded.',
+  FULLSCREEN_EXIT: 'Please remain in full-screen mode.',
+  MULTIPLE_FACES: 'Multiple faces detected. Please ensure you are alone.',
+  NO_FACE: 'Face not detected. Please stay in the camera frame.',
+};
+
 export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = null) {
-  const questionIdRef = useRef(activeQuestionId);
-  const sessionIdRef = useRef(sessionId);
   const isMountedRef = useRef(true);
 
   // Live log state for the monitor panel
@@ -29,17 +43,10 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     facePresent: null,              // true | false | null (unknown)
   });
 
-  // Flags raised before any question is active yet (e.g. the candidate
-  // switches tabs or exits fullscreen during the welcome/instructions
-  // screen) have no viva_question_id to attach to. Queue them here and
-  // flush once a question becomes active, instead of dropping them —
-  // previously these were only logged to the local (unrendered) monitor
-  // panel and never reached the trainer at all.
-  const pendingFlagsRef = useRef([]);
+  // Episodes (and the hold-until-a-question-is-active queue) live here.
+  const episodes = useFlagEpisodes(sessionId, activeQuestionId);
+  const reminderTimersRef = useRef({}); // flag type -> reminder interval id
 
-  // Sync sessionId ref with latest prop (questionId's sync effect lives
-  // below reportFlag's declaration — it needs to call it).
-  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   // ---------------------------------------------------------------
   // Log helper — pushes to state for the monitor panel
@@ -56,47 +63,44 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
   }, []);
 
   // ---------------------------------------------------------------
-  // Shared flag reporter
+  // Shared episode begin/finish
   // ---------------------------------------------------------------
-  const reportFlag = useCallback((flagType) => {
+  const beginFlag = useCallback((flagType) => {
     if (isEndingRef && isEndingRef.current) {
       addLog(flagType, `Skipped — detection disabled (session ending)`, 'info');
       return;
     }
-    const qId = questionIdRef.current;
-    const sId = sessionIdRef.current;
-    if (!sId || !qId) {
-      pendingFlagsRef.current.push(flagType);
-      addLog(flagType, `Queued — no active question yet, will record once one starts`, 'warn');
-      return;
-    }
+    // Already open for this type — don't re-warn or re-record.
+    if (!episodes.start(flagType)) return;
 
     // User Warning Toast
-    if (flagType === 'TAB_SWITCH') {
-      toast.error('⚠️ Warning: Tab switching is not allowed and has been recorded.', { duration: 5000 });
-    } else if (flagType === 'FULLSCREEN_EXIT') {
-      toast.error('⚠️ Warning: Please remain in full-screen mode.', { duration: 5000 });
-    } else if (flagType === 'MULTIPLE_FACES') {
-      toast.error('⚠️ Warning: Multiple faces detected. Please ensure you are alone.', { duration: 5000 });
-    } else if (flagType === 'NO_FACE') {
-      toast.error('⚠️ Warning: Face not detected. Please stay in the camera frame.', { duration: 4000 });
+    if (FLAG_WARNINGS[flagType]) {
+      toast.error(`⚠️ Warning: ${FLAG_WARNINGS[flagType]}`, { id: `flag-${flagType}`, duration: 5000 });
     }
 
-    addLog(flagType, `Flagged on Q${qId}`, 'flag');
-    vivaService.reportFraudFlag(sId, qId, flagType);
-  }, [addLog]);
+    // Keep reminding while this flag stays open. A fixed toast id makes each
+    // reminder replace the previous one instead of stacking.
+    if (REMINDER_FLAGS.includes(flagType)) {
+      reminderTimersRef.current[flagType] = setInterval(() => {
+        if (isEndingRef && isEndingRef.current) return;
+        toast.error(`⚠️ Reminder: ${FLAG_WARNINGS[flagType]}`, { id: `flag-${flagType}`, duration: 5000 });
+      }, REMINDER_INTERVAL_MS);
+    }
 
-  // Sync questionId ref with latest prop, and flush any flags queued
-  // before a question was active (see pendingFlagsRef above) the moment
-  // one becomes active.
+    addLog(flagType, 'Episode started', 'flag');
+  }, [addLog, episodes, isEndingRef]);
+
+  const finishFlag = useCallback((flagType) => {
+    clearInterval(reminderTimersRef.current[flagType]);
+    delete reminderTimersRef.current[flagType];
+    if (episodes.end(flagType)) addLog(flagType, 'Episode ended', 'info');
+  }, [addLog, episodes]);
+
+  // Stop all reminders when the page goes away.
   useEffect(() => {
-    questionIdRef.current = activeQuestionId;
-    if (activeQuestionId && pendingFlagsRef.current.length > 0) {
-      const queued = pendingFlagsRef.current;
-      pendingFlagsRef.current = [];
-      queued.forEach(reportFlag);
-    }
-  }, [activeQuestionId, reportFlag]);
+    const timers = reminderTimersRef.current;
+    return () => Object.values(timers).forEach(clearInterval);
+  }, []);
 
   // ---------------------------------------------------------------
   // 1. NO_FACE DETECTION (face-api.js)
@@ -138,9 +142,45 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
           await videoEl.play().catch(() => {});
         } else {
           addLog('SYSTEM', 'No media stream available — face detection disabled', 'error');
-          setDetectorStatus(prev => ({ ...prev, faceDetection: 'error' }));
+          // No camera feed at all is itself suspicious (blocked/unplugged) —
+          // flag it instead of silently running with no face monitoring.
+          setDetectorStatus(prev => ({ ...prev, faceDetection: 'error', facePresent: false }));
+          beginFlag('NO_FACE');
           return;
         }
+
+        // A camera that is unplugged, disabled or blocked mid-exam leaves the
+        // <video> frozen on its last frame (the face detector then keeps
+        // "seeing" the old face) or stuck below readyState 2 (the poll below
+        // would just skip). Check the live video track directly.
+        // Read globalState.mediaStream live (not the captured `stream`): the
+        // exam page may replace it after a mid-exam reload, and the old one's
+        // tracks would then look "ended" and raise a false flag.
+        const isCameraDead = () => {
+          const current = globalState.mediaStream;
+          if (current && current !== videoEl.srcObject) {
+            videoEl.srcObject = current;
+            videoEl.play().catch(() => {});
+          }
+          const track = current?.getVideoTracks()[0];
+          return !track || track.readyState === 'ended' || !track.enabled || track.muted;
+        };
+
+        const registerMiss = (reason) => {
+          consecutiveMisses++;
+          setDetectorStatus(prev => ({ ...prev, facePresent: false }));
+          // Nobody (extra) is in frame any more, so a multiple-faces episode is over.
+          if (inMultipleFaceEvent) {
+            inMultipleFaceEvent = false;
+            finishFlag('MULTIPLE_FACES');
+          }
+          if (consecutiveMisses >= 2 && !inAbsenceEvent) {
+            inAbsenceEvent = true;
+            beginFlag('NO_FACE');
+          } else if (consecutiveMisses === 1) {
+            addLog('NO_FACE', `${reason} (1st miss — waiting for confirmation)`, 'warn');
+          }
+        };
 
         // inputSize raised and scoreThreshold lowered from the original
         // 224/0.4 so partially-visible/angled faces at frame edges still
@@ -149,24 +189,23 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
 
         intervalId = setInterval(async () => {
           if (!isMountedRef.current || !isActive) return;
-          if (!videoEl || videoEl.readyState < 2) return;
+          if (!videoEl) return;
+
+          if (isCameraDead()) {
+            registerMiss('Camera feed lost/blocked');
+            return;
+          }
+          if (videoEl.readyState < 2) return;
 
           try {
             const detections = await faceapi.detectAllFaces(videoEl, options);
             const faceCount = detections.length;
 
             if (faceCount === 0) {
-              consecutiveMisses++;
-              setDetectorStatus(prev => ({ ...prev, facePresent: false }));
-              if (consecutiveMisses >= 2 && !inAbsenceEvent) {
-                inAbsenceEvent = true;
-                reportFlag('NO_FACE');
-              } else if (consecutiveMisses === 1) {
-                addLog('NO_FACE', `No face detected (1st miss — waiting for confirmation)`, 'warn');
-              }
+              registerMiss('No face detected');
             } else if (faceCount > 1) {
               if (inAbsenceEvent) {
-                addLog('NO_FACE', `Face re-detected — absence event ended`, 'info');
+                finishFlag('NO_FACE');
               }
               consecutiveMisses = 0;
               inAbsenceEvent = false;
@@ -174,15 +213,15 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
               
               if (!inMultipleFaceEvent) {
                 inMultipleFaceEvent = true;
-                reportFlag('MULTIPLE_FACES');
+                beginFlag('MULTIPLE_FACES');
                 addLog('MULTIPLE_FACES', `Multiple faces detected in frame`, 'warn');
               }
             } else {
               if (inAbsenceEvent) {
-                addLog('NO_FACE', `Face re-detected — absence event ended`, 'info');
+                finishFlag('NO_FACE');
               }
               if (inMultipleFaceEvent) {
-                addLog('MULTIPLE_FACES', `Returned to single face`, 'info');
+                finishFlag('MULTIPLE_FACES');
               }
               consecutiveMisses = 0;
               inAbsenceEvent = false;
@@ -211,7 +250,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
       const el = document.getElementById('__fraud_detection_video');
       if (el) { el.srcObject = null; el.remove(); }
     };
-  }, [addLog, reportFlag]);
+  }, [addLog, beginFlag, finishFlag]);
 
   // ---------------------------------------------------------------
   // 2. TAB_SWITCH DETECTION
@@ -231,14 +270,14 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
           debounceTimer = setTimeout(() => {
             if (document.hidden || !document.hasFocus()) {
               hasFiredForThisHide = true;
-              reportFlag('TAB_SWITCH');
+              beginFlag('TAB_SWITCH');
             }
           }, 500);
         }
       } else {
         if (debounceTimer) clearTimeout(debounceTimer);
         if (hasFiredForThisHide) {
-          addLog('TAB_SWITCH', 'Tab refocused', 'info');
+          finishFlag('TAB_SWITCH');
         }
         hasFiredForThisHide = false;
       }
@@ -250,7 +289,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
         debounceTimer = setTimeout(() => {
           if (document.hidden || !document.hasFocus()) {
             hasFiredForThisHide = true;
-            reportFlag('TAB_SWITCH');
+            beginFlag('TAB_SWITCH');
           }
         }, 500);
       }
@@ -258,6 +297,9 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
 
     const handleWindowFocus = () => {
       if (debounceTimer) clearTimeout(debounceTimer);
+      if (hasFiredForThisHide) {
+        finishFlag('TAB_SWITCH');
+      }
       hasFiredForThisHide = false;
     };
 
@@ -271,7 +313,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [addLog, reportFlag]);
+  }, [addLog, beginFlag, finishFlag]);
 
   // ---------------------------------------------------------------
   // 3. FULLSCREEN_EXIT DETECTION
@@ -287,20 +329,21 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     } else {
       setTimeout(() => addLog('SYSTEM', 'Not in fullscreen — FULLSCREEN_EXIT detection skipped', 'warn'), 0);
       // Surface this to the trainer like any other integrity flag instead
-      // of only the local (unrendered) monitor log. reportFlag queues it
-      // itself via pendingFlagsRef if no question is active yet.
-      reportFlag('FULLSCREEN_EXIT');
+      // of only the local (unrendered) monitor log. The episode is held
+      // until a question is active if none is yet.
+      setTimeout(() => beginFlag('FULLSCREEN_EXIT'), 0);
     }
 
     const handleFullscreenChange = () => {
       if (document.fullscreenElement) {
         wasFullscreen = true;
         setDetectorStatus(prev => ({ ...prev, fullscreen: 'active' }));
+        finishFlag('FULLSCREEN_EXIT');
         addLog('FULLSCREEN', 'Re-entered fullscreen', 'info');
       } else if (wasFullscreen) {
         wasFullscreen = false;
         setDetectorStatus(prev => ({ ...prev, fullscreen: 'inactive' }));
-        reportFlag('FULLSCREEN_EXIT');
+        beginFlag('FULLSCREEN_EXIT');
       }
     };
 
@@ -309,7 +352,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
-  }, [addLog, reportFlag]);
+  }, [addLog, beginFlag, finishFlag]);
 
   return { logs, detectorStatus };
 }

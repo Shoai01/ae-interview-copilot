@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
+from models.domain import FraudFlagType
 
 class SessionCreate(BaseModel):
     trainee_id: Optional[int] = None
@@ -57,7 +58,13 @@ class AnswerSubmit(BaseModel):
 
 class FraudFlagCreate(BaseModel):
     viva_question_id: int
-    flag_type: str
+    # Enum-typed so an unknown flag type is rejected with a 422 at the API
+    # boundary instead of raising ValueError (500) in the repository.
+    flag_type: FraudFlagType
+    # START opens a new episode of this flag type; END closes the most recent
+    # open one. detected_at is the time of that start/end event.
+    # EVENT records a single instant (no duration), e.g. background noise bursts.
+    phase: Literal["START", "END", "EVENT"] = "START"
     detected_at: str
 
 class SessionSummaryResponse(BaseModel):
