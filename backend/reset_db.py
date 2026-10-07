@@ -8,6 +8,12 @@ from models.domain import Base
 from sqlalchemy import text
 from services.admin_seed_service import seed_admin
 
+# Destructive: drops the whole public schema of whatever DB core.database points at.
+_target = os.getenv("DB_NAME")
+if input(f'This will ERASE ALL DATA in database "{_target}". Type its name to continue: ').strip() != _target:
+    print("Aborted.")
+    sys.exit(1)
+
 print("Dropping schema...")
 with engine.connect() as conn:
     conn.execute(text("DROP SCHEMA public CASCADE;"))

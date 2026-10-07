@@ -1,4 +1,6 @@
 -r requirements.txt
-pytest
-pytest-asyncio
-httpx
+
+# Testing
+pytest==9.1.1
+pytest-asyncio==1.4.0
+httpx==0.28.1                 # FastAPI TestClient
