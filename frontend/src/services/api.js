@@ -132,6 +132,9 @@ export const adminService = {
   }
 };
 
+// Serialises fraud-flag POSTs (see vivaService.reportFraudFlag).
+let fraudFlagQueue = Promise.resolve();
+
 export const vivaService = {
   getTrainee: async (userId) => {
     const response = await api.get(`/viva/trainee/${userId}`);
@@ -266,16 +269,24 @@ export const vivaService = {
     const response = await api.get('/viva');
     return response.data;
   },
-  reportFraudFlag: async (sessionId, vivaQuestionId, flagType) => {
-    try {
-      await api.post(`/viva/${sessionId}/fraud-flag`, {
-        viva_question_id: vivaQuestionId,
-        flag_type: flagType,
-        detected_at: new Date().toISOString()
-      });
-    } catch {
-      // Fail silently — never interrupt the trainee's exam
-    }
+  // phase: 'START' opens an episode of this flag type, 'END' closes it,
+  // 'EVENT' records a single instant with no duration.
+  // Calls are chained so a quick START→END pair reaches the server in order.
+  reportFraudFlag: (sessionId, vivaQuestionId, flagType, phase = 'START') => {
+    const detectedAt = new Date().toISOString(); // capture the event time now, not when the request is sent
+    fraudFlagQueue = fraudFlagQueue.then(async () => {
+      try {
+        await api.post(`/viva/${sessionId}/fraud-flag`, {
+          viva_question_id: vivaQuestionId,
+          flag_type: flagType,
+          phase,
+          detected_at: detectedAt
+        });
+      } catch {
+        // Fail silently — never interrupt the trainee's exam
+      }
+    });
+    return fraudFlagQueue;
   },
   submitDecision: async (sessionId, decision, notes, finalScore) => {
     const payload = { decision, notes: notes || null };

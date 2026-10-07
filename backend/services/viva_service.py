@@ -491,7 +491,7 @@ def evaluate_session(db: Session, session_id: int):
     questions_data = []
     for q in session.questions:
         if q.answered_at and q.transcript:
-            flags = [f"{f.flag_type.value} (Count: {f.count})" for f in q.fraud_flags] if q.fraud_flags else []
+            flags = [f"{f.flag_type.value} (Count: {f.count}, Total: {_flag_total_seconds(f.events)}s)" for f in q.fraud_flags] if q.fraud_flags else []
             questions_data.append({
                 'viva_question_id': q.id,
                 'question_text': q.question_bank.text,
@@ -573,8 +573,13 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
             "transcript": q.transcript,
             "audio_url": q.audio_url,
             "duration": int((q.answered_at - q.asked_at).total_seconds()) if q.answered_at and q.asked_at else 0,
+            # Naive UTC column -> ISO with "Z", so the UI can show flag episodes as an offset into the answer.
+            "asked_at": q.asked_at.isoformat() + "Z" if q.asked_at else None,
             "evaluation": eval_data,
-            "fraud_flags": [{"type": f.flag_type.value, "count": f.count} for f in q.fraud_flags] if q.fraud_flags else []
+            "fraud_flags": [
+                {"type": f.flag_type.value, "count": f.count, "total_seconds": _flag_total_seconds(f.events), "events": f.events or []}
+                for f in q.fraud_flags
+            ] if q.fraud_flags else []
         })
         
     report_data = None
@@ -668,9 +673,21 @@ def get_all_sessions(db: Session):
         ))
     return result
 
+def _flag_total_seconds(events) -> int:
+    """Sum of closed episode lengths (open/unclosed episodes have no known length)."""
+    from datetime import datetime as dt
+    total = 0.0
+    for e in events or []:
+        if e.get("end"):
+            try:
+                total += (dt.fromisoformat(e["end"].replace('Z', '+00:00')) - dt.fromisoformat(e["start"].replace('Z', '+00:00'))).total_seconds()
+            except (ValueError, KeyError, AttributeError):
+                continue
+    return int(round(total))
+
 def create_fraud_flag(db: Session, session_id: int, flag_data: viva_schemas.FraudFlagCreate):
     """
-    Record a fraud flag detected by the frontend (e.g. TAB_SWITCH, NO_FACE) for a question.
+    Record the start or end of a fraud-flag episode (e.g. TAB_SWITCH, NO_FACE) reported by the frontend.
     
     Args:
         db (Session): Database session.
@@ -691,7 +708,11 @@ def create_fraud_flag(db: Session, session_id: int, flag_data: viva_schemas.Frau
         detected_at = dt.fromisoformat(flag_data.detected_at.replace('Z', '+00:00'))
     except (ValueError, AttributeError):
         detected_at = dt.utcnow()
-    return viva_repository.create_fraud_flag(db, flag_data.viva_question_id, flag_data.flag_type, detected_at)
+    flag = viva_repository.record_fraud_event(
+        db, flag_data.viva_question_id, flag_data.flag_type, flag_data.phase, detected_at
+    )
+    # An END with no open episode to close is a harmless no-op, not an error.
+    return flag or (flag_data.phase == "END")
 
 from services.audit_service import log_action
 from models.domain import AuditActionType

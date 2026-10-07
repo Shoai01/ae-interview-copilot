@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Box, Typography, Button, Avatar, Stack, CircularProgress, Grid, Card, Chip, TextField, Alert } from '@mui/material';
+import { Box, Typography, Button, Avatar, Stack, CircularProgress, Grid, Card, Chip, TextField, Alert, Collapse } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -14,6 +14,8 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import LockIcon from '@mui/icons-material/Lock';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CustomAudioPlayer from '@/components/CustomAudioPlayer';
 import { vivaService } from '@/services/api';
 import { useAuth } from '@/store/AuthContext';
@@ -472,6 +474,9 @@ export default function TrainerReviewDetail() {
                       <Typography variant="caption" sx={{ color: '#94A3B8'}}>No evaluation metrics available.</Typography>
                     )}
                   </Box>
+
+                  {/* Integrity timeline: when each flag was active, and for how long */}
+                  {q.fraud_flags?.length > 0 && <FlagTimeline flags={q.fraud_flags} askedAt={q.asked_at} />}
                 </Card>
               ))
             )}
@@ -663,6 +668,150 @@ export default function TrainerReviewDetail() {
         </Box>
       </Box>
     </Layout>
+  );
+}
+
+const FLAG_META = {
+  NO_FACE: { label: 'Not on screen', color: '#EF4444' },
+  MULTIPLE_FACES: { label: 'Multiple faces', color: '#F97316' },
+  TAB_SWITCH: { label: 'Left the tab', color: '#8B5CF6' },
+  FULLSCREEN_EXIT: { label: 'Exited fullscreen', color: '#0EA5E9' },
+  BACKGROUND_NOISE: { label: 'Background noise', color: '#CA8A04' },
+};
+const flagMeta = (type) => FLAG_META[type] || { label: type, color: '#64748B' };
+
+// Episodes listed per flag type before collapsing behind "+ N more".
+const FLAG_EPISODES_PREVIEW = 3;
+
+const toMs = (iso) => new Date(iso).getTime();
+
+function formatClock(iso) {
+  return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+}
+
+function formatSeconds(total) {
+  const s = Math.max(0, Math.round(total));
+  if (s < 60) return `${s}s`;
+  return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+}
+
+// m:ss offset into the answer
+function formatOffset(ms) {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+// Collapsed by default: a one-line summary the trainer can click to open the
+// full per-flag breakdown.
+function FlagTimeline({ flags, askedAt }) {
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState({});
+
+  const totalCount = flags.reduce((sum, f) => sum + (f.count || 0), 0);
+
+  return (
+    <Box sx={{ borderTop: '1px solid #F1F5F9', bgcolor: '#FFFFFF' }}>
+      <Box
+        onClick={() => setOpen((v) => !v)}
+        role="button"
+        aria-expanded={open}
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((v) => !v); } }}
+        sx={{
+          px: { xs: 2, md: 2.5 }, py: 1.25, display: 'flex', alignItems: 'center', gap: 1.25, cursor: 'pointer',
+          bgcolor: open ? '#FEF2F2' : '#FFFFFF', transition: 'background-color 0.2s ease',
+          '&:hover': { bgcolor: '#FEF2F2' },
+        }}
+      >
+        <ShieldOutlinedIcon sx={{ fontSize: 18, color: '#DC2626' }} />
+        <Typography variant="body2" sx={{ fontWeight: 700, color: '#991B1B' }}>
+          Integrity timeline
+        </Typography>
+        <Chip size="small" label={`${totalCount} ${totalCount === 1 ? 'flag' : 'flags'}`}
+          sx={{ height: 20, fontWeight: 700, fontSize: '0.7rem', bgcolor: '#FEE2E2', color: '#B91C1C' }} />
+        <Stack direction="row" spacing={1.25} sx={{ flex: 1, minWidth: 0, flexWrap: 'wrap', rowGap: 0.5, display: { xs: 'none', sm: 'flex' } }}>
+          {flags.map((f) => {
+            const meta = flagMeta(f.type);
+            return (
+              <Stack key={f.type} direction="row" spacing={0.5} alignItems="center">
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: meta.color }} />
+                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>{meta.label} {f.count}×</Typography>
+              </Stack>
+            );
+          })}
+        </Stack>
+        <Box sx={{ flex: { xs: 1, sm: 0 } }} />
+        <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600 }}>{open ? 'Hide' : 'View details'}</Typography>
+        <ExpandMoreIcon sx={{ fontSize: 20, color: '#94A3B8', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s ease' }} />
+      </Box>
+
+      <Collapse in={open} timeout={250} unmountOnExit>
+        <Box sx={{ px: { xs: 2, md: 2.5 }, pb: 2, pt: 0.5, bgcolor: '#FEF2F2' }}>
+          <Stack spacing={1.25}>
+            {flags.map((flag) => {
+              const meta = flagMeta(flag.type);
+              const hasTimeline = flag.type !== 'BACKGROUND_NOISE';
+              const events = hasTimeline ? (flag.events || []) : [];
+              const shown = expanded[flag.type] ? events : events.slice(0, FLAG_EPISODES_PREVIEW);
+              const hidden = events.length - shown.length;
+              return (
+                <Box key={flag.type} sx={{ bgcolor: '#FFFFFF', borderRadius: 2, border: '1px solid #FEE2E2', borderLeft: `4px solid ${meta.color}`, px: 1.75, py: 1.25 }}>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A' }}>{meta.label}</Typography>
+                    <Chip size="small" label={`${flag.count}×`} sx={{ height: 20, fontWeight: 700, bgcolor: `${meta.color}1A`, color: meta.color }} />
+                    {flag.total_seconds > 0 && (
+                      <Stack direction="row" spacing={0.5} alignItems="center" sx={{ color: '#64748B' }}>
+                        <AccessTimeIcon sx={{ fontSize: 14 }} />
+                        <Typography variant="caption" sx={{ fontWeight: 600 }}>{formatSeconds(flag.total_seconds)} total</Typography>
+                      </Stack>
+                    )}
+                  </Stack>
+
+                  {hasTimeline && <Stack spacing={0.5} sx={{ mt: 1 }}>
+                    {shown.map((e, i) => {
+                      const isPoint = e.end && e.end === e.start;
+                      const durationMs = e.end ? toMs(e.end) - toMs(e.start) : 0;
+                      return (
+                        <Stack key={i} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                          {askedAt && (
+                            <Chip size="small" variant="outlined"
+                              label={`${formatOffset(toMs(e.start) - toMs(askedAt))}${e.end && !isPoint ? ` → ${formatOffset(toMs(e.end) - toMs(askedAt))}` : ''}`}
+                              sx={{ height: 22, fontWeight: 700, fontVariantNumeric: 'tabular-nums', borderColor: `${meta.color}66`, color: '#334155' }} />
+                          )}
+                          <Typography variant="caption" sx={{ color: '#64748B', fontVariantNumeric: 'tabular-nums' }}>
+                            {formatClock(e.start)}{e.end && !isPoint && ` – ${formatClock(e.end)}`}
+                          </Typography>
+                          {e.end && !isPoint && (
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: meta.color }}>{formatSeconds(durationMs / 1000)}</Typography>
+                          )}
+                          {!e.end && (
+                            <Typography variant="caption" sx={{ color: '#94A3B8', fontStyle: 'italic' }}>
+                              not closed (page closed or connection lost)
+                            </Typography>
+                          )}
+                        </Stack>
+                      );
+                    })}
+                    {hidden > 0 && (
+                      <Typography variant="caption"
+                        onClick={() => setExpanded((prev) => ({ ...prev, [flag.type]: true }))}
+                        sx={{ color: '#B91C1C', cursor: 'pointer', fontWeight: 700, width: 'fit-content' }}>
+                        + {hidden} more
+                      </Typography>
+                    )}
+                    {events.length < flag.count && (
+                      <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                        Only the first {events.length} of {flag.count} are listed.
+                      </Typography>
+                    )}
+                  </Stack>}
+                </Box>
+              );
+            })}
+          </Stack>
+        </Box>
+      </Collapse>
+    </Box>
   );
 }
 

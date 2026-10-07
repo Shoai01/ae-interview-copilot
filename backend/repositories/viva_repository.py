@@ -130,29 +130,61 @@ def save_report(db: Session, db_report: domain.VivaReport) -> domain.VivaReport:
     db.commit()
     return db_report
 
-def create_fraud_flag(db: Session, viva_question_id: int, flag_type: str, detected_at) -> domain.FraudFlag:
+# Upper bound on stored episodes per (question, flag type) row so a client that
+# keeps tripping a detector can't grow the JSON column without limit. `count`
+# keeps counting past it.
+MAX_FLAG_EVENTS = 50
+
+def record_fraud_event(db: Session, viva_question_id: int, flag_type, phase: str, at) -> domain.FraudFlag | None:
+    """
+    Record one edge of a fraud-flag episode.
+
+    START: opens a new episode and bumps `count`.
+    EVENT: like START but instantaneous — stored already closed (end == start).
+    END:   closes the most recent still-open episode; a no-op (returns None)
+           if there is none, e.g. the START was dropped or already closed.
+    """
     from models.domain import FraudFlagType
-    
-    # Check if a flag of this type already exists for this question
-    existing_flag = db.query(domain.FraudFlag).filter(
+    flag_type = FraudFlagType(flag_type)
+    # Normalise to naive UTC, then to a millisecond ISO string with a "Z"
+    # suffix (what the frontend's Date parser expects; also sorts chronologically).
+    if at.tzinfo:
+        at = at.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+    at_iso = at.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+    flag = db.query(domain.FraudFlag).filter(
         domain.FraudFlag.viva_question_id == viva_question_id,
-        domain.FraudFlag.flag_type == FraudFlagType(flag_type)
+        domain.FraudFlag.flag_type == flag_type
     ).first()
-    
-    if existing_flag:
-        existing_flag.count += 1
-        existing_flag.detected_at = detected_at # Update to latest detection time
-        db.commit()
-        db.refresh(existing_flag)
-        return existing_flag
-        
-    flag = domain.FraudFlag(
-        viva_question_id=viva_question_id,
-        flag_type=FraudFlagType(flag_type),
-        count=1,
-        detected_at=detected_at
-    )
-    db.add(flag)
+
+    if phase == "END":
+        if not flag:
+            return None
+        # Reassign a fresh list — in-place mutation isn't tracked by SQLAlchemy's JSON type.
+        events = [dict(e) for e in (flag.events or [])]
+        for event in reversed(events):
+            if event.get("end") is None:
+                event["end"] = max(at_iso, event["start"])  # ISO-UTC strings sort chronologically
+                flag.events = events
+                db.commit()
+                db.refresh(flag)
+                return flag
+        return None
+
+    if not flag:
+        flag = domain.FraudFlag(
+            viva_question_id=viva_question_id,
+            flag_type=flag_type,
+            count=0,
+            events=[],
+        )
+        db.add(flag)
+    flag.count = (flag.count or 0) + 1
+    flag.detected_at = at
+    events = [dict(e) for e in (flag.events or [])]
+    if len(events) < MAX_FLAG_EVENTS:
+        events.append({"start": at_iso, "end": at_iso if phase == "EVENT" else None})
+    flag.events = events
     db.commit()
     db.refresh(flag)
     return flag
