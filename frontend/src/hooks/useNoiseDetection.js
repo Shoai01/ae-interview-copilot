@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { acquireAudioGraph, releaseAudioGraph, waitForMediaStream, ANALYSER_FFT_SIZE } from '@/utils/audioGraph';
 import { vivaService } from '@/services/api';
-import toast from 'react-hot-toast';
+import { showFlagToast } from '@/utils/flagToast';
 
 // Raised back up from 0.02/3-checks/15s — that tuning turned out too
 // sensitive in practice, flagging brief ambient sounds (a cough, a door,
@@ -101,7 +101,7 @@ export function useNoiseDetection(sessionId, activeQuestionId, isEndingRef, isRe
           lastTriggeredRef.current = now;
           consecutiveLoudRef.current = 0; // Reset counter
 
-          toast.error("⚠️ Warning: Excessive background noise detected and recorded.");
+          showFlagToast('flag-BACKGROUND_NOISE', "⚠️ Warning: Excessive background noise detected and recorded.");
 
           // A noise burst is a point-in-time event (no start/end window).
           vivaService.reportFraudFlag(sessionId, activeQuestionId, 'BACKGROUND_NOISE', 'EVENT');

@@ -15,6 +15,7 @@ import ExamSidebar from '@/components/ExamSidebar';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis';
 import { useFraudDetection } from '@/hooks/useFraudDetection';
+import { exitFullscreen } from '@/utils/fullscreen';
 import { useNoiseDetection } from '@/hooks/useNoiseDetection';
 import { useAuth } from '@/store/AuthContext';
 import toast from 'react-hot-toast';
@@ -327,9 +328,7 @@ export default function VivaInProgress() {
           sessionStorage.removeItem('active_viva_session');
         } catch {}
         markSessionSubmitted(sessionId);
-        if (document.fullscreenElement) {
-          document.exitFullscreen().catch(() => {});
-        }
+        exitFullscreen();
         navigate('/complete', { state: { sessionId }, replace: true });
         return;
       }
@@ -409,9 +408,7 @@ export default function VivaInProgress() {
         sessionStorage.removeItem('active_viva_session');
       } catch {}
       markSessionSubmitted(sessionId);
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
+      exitFullscreen();
 
       vivaService.evaluateSession(sessionId).catch(e => console.error("Evaluation error on timeout:", e));
 
@@ -539,9 +536,7 @@ export default function VivaInProgress() {
           sessionStorage.removeItem('active_viva_session');
         } catch {}
         markSessionSubmitted(sessionId);
-        if (document.fullscreenElement) {
-          document.exitFullscreen().catch(() => {});
-        }
+        exitFullscreen();
 
         // Trigger AI evaluation in the background before navigating
         vivaService.evaluateSession(sessionId).catch(e => {
@@ -574,11 +569,10 @@ export default function VivaInProgress() {
     `Background noise: ${noiseLevel}`,
   ].join('\n');
 
-  // The only path back into monitored fullscreen: the browser's own F11
-  // "kiosk" toggle never fires the Fullscreen API's fullscreenchange event,
-  // so once a candidate exits (Escape, taskbar, etc.) the proctoring status
-  // is stuck on 'inactive' forever unless something calls requestFullscreen()
-  // again — nothing else in this page does that mid-exam.
+  // One-click way back into fullscreen after an exit (Escape, taskbar, etc.).
+  // Pressing F11 also works: useFraudDetection recognises the browser's kiosk
+  // fullscreen too (display-mode media query / screen-size match), even though
+  // F11 never fires the Fullscreen API's fullscreenchange event.
   const handleReenterFullscreen = () => {
     if (!isFullscreenInactive) return;
     const el = document.documentElement;

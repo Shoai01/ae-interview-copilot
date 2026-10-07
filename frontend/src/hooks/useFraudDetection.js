@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useFlagEpisodes } from '@/hooks/useFlagEpisodes';
 import { globalState } from '@/store';
 import { waitForMediaStream } from '@/utils/audioGraph';
-import toast from 'react-hot-toast';
+import { showFlagToast } from '@/utils/flagToast';
 
 // TinyFaceDetector's own duplicate-box suppression uses a FIXED IoU
 // threshold of 0.4 baked into its model config (tinyYolov2/const.js,
@@ -130,7 +130,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
 
     // User Warning Toast
     if (FLAG_WARNINGS[flagType]) {
-      toast.error(`⚠️ Warning: ${FLAG_WARNINGS[flagType]}`, { id: `flag-${flagType}`, duration: 5000 });
+      showFlagToast(`flag-${flagType}`, `⚠️ Warning: ${FLAG_WARNINGS[flagType]}`);
     }
 
     // Keep reminding while this flag stays open. A fixed toast id makes each
@@ -138,7 +138,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
     if (REMINDER_FLAGS.includes(flagType)) {
       reminderTimersRef.current[flagType] = setInterval(() => {
         if (isEndingRef && isEndingRef.current) return;
-        toast.error(`⚠️ Reminder: ${FLAG_WARNINGS[flagType]}`, { id: `flag-${flagType}`, duration: 5000 });
+        showFlagToast(`flag-${flagType}`, `⚠️ Reminder: ${FLAG_WARNINGS[flagType]}`);
       }, REMINDER_INTERVAL_MS);
     }
 
@@ -510,7 +510,19 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
   // 3. FULLSCREEN_EXIT DETECTION
   // ---------------------------------------------------------------
   useEffect(() => {
-    let wasFullscreen = !!document.fullscreenElement;
+    // Two kinds of "fullscreen": the Fullscreen API (sets document.fullscreenElement
+    // and fires `fullscreenchange`) and the browser's own F11 kiosk mode, which
+    // does neither. Without checking the latter, a candidate who returns to
+    // fullscreen with F11 stays flagged as "exited" forever (red shield, flag
+    // never closes, reminders keep firing). The display-mode media query and
+    // an exact screen-size match both cover F11.
+    const displayMode = window.matchMedia ? window.matchMedia('(display-mode: fullscreen)') : null;
+    const isFullscreenNow = () =>
+      !!document.fullscreenElement ||
+      !!displayMode?.matches ||
+      (window.innerWidth === window.screen.width && window.innerHeight === window.screen.height);
+
+    let wasFullscreen = isFullscreenNow();
     setTimeout(() => {
       setDetectorStatus(prev => ({ ...prev, fullscreen: wasFullscreen ? 'active' : 'inactive' }));
     }, 0);
@@ -525,23 +537,32 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
       setTimeout(() => beginFlag('FULLSCREEN_EXIT'), 0);
     }
 
-    const handleFullscreenChange = () => {
-      if (document.fullscreenElement) {
-        wasFullscreen = true;
+    // Re-evaluate on any signal that fullscreen may have changed; act only on a transition.
+    const syncFullscreenState = () => {
+      const now = isFullscreenNow();
+      if (now === wasFullscreen) return;
+      wasFullscreen = now;
+      if (now) {
         setDetectorStatus(prev => ({ ...prev, fullscreen: 'active' }));
         finishFlag('FULLSCREEN_EXIT');
         addLog('FULLSCREEN', 'Re-entered fullscreen', 'info');
-      } else if (wasFullscreen) {
-        wasFullscreen = false;
+      } else {
         setDetectorStatus(prev => ({ ...prev, fullscreen: 'inactive' }));
         beginFlag('FULLSCREEN_EXIT');
       }
     };
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('fullscreenchange', syncFullscreenState);
+    window.addEventListener('resize', syncFullscreenState);
+    displayMode?.addEventListener?.('change', syncFullscreenState);
+    // Safety net for browsers that fire none of the above for F11.
+    const pollId = setInterval(syncFullscreenState, 1000);
 
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('fullscreenchange', syncFullscreenState);
+      window.removeEventListener('resize', syncFullscreenState);
+      displayMode?.removeEventListener?.('change', syncFullscreenState);
+      clearInterval(pollId);
     };
   }, [addLog, beginFlag, finishFlag]);
 

@@ -7,6 +7,7 @@ import FormatListNumberedOutlinedIcon from '@mui/icons-material/FormatListNumber
 import { useLocation, useNavigate } from 'react-router-dom';
 import { vivaService } from '@/services/api';
 import { useAuth } from '@/store/AuthContext';
+import { exitFullscreen } from '@/utils/fullscreen';
 
 export default function VivaComplete() {
   const location = useLocation();
@@ -39,6 +40,12 @@ export default function VivaComplete() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // The exam is over — make sure the completion screen isn't stuck in the
+  // exam's fullscreen even if the exam page's own exit didn't run.
+  useEffect(() => {
+    exitFullscreen();
+  }, []);
 
   useEffect(() => {
     if (!sessionId) {

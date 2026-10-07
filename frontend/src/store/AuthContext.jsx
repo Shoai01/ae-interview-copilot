@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useContext, useRef } from 'react';
 import api, { authService } from '@/services/api';
 import { globalState } from '@/store';
+import { exitFullscreen } from '@/utils/fullscreen';
 
 const AuthContext = createContext(null);
 
@@ -101,6 +102,7 @@ export const AuthProvider = ({ children }) => {
             setAccessToken(null);
             setUser(null);
             clearSharedSessionStorage();
+            exitFullscreen();
           }
         }
         return Promise.reject(error);
@@ -163,6 +165,9 @@ export const AuthProvider = ({ children }) => {
       setAccessToken(null);
       setUser(null);
       clearSharedSessionStorage();
+
+      // Don't leave the next screen (login) stuck in the exam's fullscreen
+      exitFullscreen();
 
       // Clean up global media stream (camera/mic) on sign out
       if (globalState.mediaStream) {

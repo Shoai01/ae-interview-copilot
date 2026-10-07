@@ -792,11 +792,19 @@ function FlagTimeline({ flags, askedAt }) {
                         </Stack>
                       );
                     })}
-                    {hidden > 0 && (
+                    {events.length > FLAG_EPISODES_PREVIEW && (
                       <Typography variant="caption"
-                        onClick={() => setExpanded((prev) => ({ ...prev, [flag.type]: true }))}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setExpanded((prev) => ({ ...prev, [flag.type]: !prev[flag.type] }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setExpanded((prev) => ({ ...prev, [flag.type]: !prev[flag.type] }));
+                          }
+                        }}
                         sx={{ color: '#B91C1C', cursor: 'pointer', fontWeight: 700, width: 'fit-content' }}>
-                        + {hidden} more
+                        {expanded[flag.type] ? 'Show less' : `+ ${hidden} more`}
                       </Typography>
                     )}
                     {events.length < flag.count && (
