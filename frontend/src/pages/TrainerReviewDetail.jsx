@@ -16,6 +16,12 @@ import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import LockIcon from '@mui/icons-material/Lock';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import VideocamOffOutlinedIcon from '@mui/icons-material/VideocamOffOutlined';
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import TabOutlinedIcon from '@mui/icons-material/TabOutlined';
+import FullscreenExitOutlinedIcon from '@mui/icons-material/FullscreenExitOutlined';
+import GraphicEqOutlinedIcon from '@mui/icons-material/GraphicEqOutlined';
+import VerifiedUserOutlinedIcon from '@mui/icons-material/VerifiedUserOutlined';
 import CustomAudioPlayer from '@/components/CustomAudioPlayer';
 import { vivaService } from '@/services/api';
 import { useAuth } from '@/store/AuthContext';
@@ -371,6 +377,9 @@ export default function TrainerReviewDetail() {
           </Card>
         )}
 
+        {/* Whole-session integrity totals */}
+        {questions.length > 0 && <SessionIntegrityTotals questions={questions} />}
+
         {/* Trainer Remarks (if present) */}
         {report?.trainer_notes && (
           <Card elevation={0} sx={{ p: { xs: 2.5, md: 3 }, border: '1px solid #E2E8F0', borderRadius: 2.5, bgcolor: '#FFFFFF', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)' }}>
@@ -672,9 +681,9 @@ export default function TrainerReviewDetail() {
 }
 
 const FLAG_META = {
-  NO_FACE: { label: 'Not on screen', color: '#EF4444' },
-  MULTIPLE_FACES: { label: 'Multiple faces', color: '#F97316' },
-  TAB_SWITCH: { label: 'Left the tab', color: '#8B5CF6' },
+  NO_FACE: { label: 'Not visible on camera', color: '#EF4444' },
+  MULTIPLE_FACES: { label: 'More than one person in view', color: '#F97316' },
+  TAB_SWITCH: { label: 'Left the exam tab', color: '#8B5CF6' },
   FULLSCREEN_EXIT: { label: 'Exited fullscreen', color: '#0EA5E9' },
   BACKGROUND_NOISE: { label: 'Background noise', color: '#CA8A04' },
 };
@@ -729,17 +738,9 @@ function FlagTimeline({ flags, askedAt }) {
         </Typography>
         <Chip size="small" label={`${totalCount} ${totalCount === 1 ? 'flag' : 'flags'}`}
           sx={{ height: 20, fontWeight: 700, fontSize: '0.7rem', bgcolor: '#FEE2E2', color: '#B91C1C' }} />
-        <Stack direction="row" spacing={1.25} sx={{ flex: 1, minWidth: 0, flexWrap: 'wrap', rowGap: 0.5, display: { xs: 'none', sm: 'flex' } }}>
-          {flags.map((f) => {
-            const meta = flagMeta(f.type);
-            return (
-              <Stack key={f.type} direction="row" spacing={0.5} alignItems="center">
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: meta.color }} />
-                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>{meta.label} {f.count}×</Typography>
-              </Stack>
-            );
-          })}
-        </Stack>
+        <Typography variant="caption" noWrap sx={{ flex: 1, minWidth: 0, color: '#64748B', fontWeight: 600, display: { xs: 'none', sm: 'block' } }}>
+          {flags.map((f) => `${flagMeta(f.type).label} ${f.count}×`).join('  ·  ')}
+        </Typography>
         <Box sx={{ flex: { xs: 1, sm: 0 } }} />
         <Typography variant="caption" sx={{ color: '#94A3B8', fontWeight: 600 }}>{open ? 'Hide' : 'View details'}</Typography>
         <ExpandMoreIcon sx={{ fontSize: 20, color: '#94A3B8', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s ease' }} />
@@ -820,6 +821,167 @@ function FlagTimeline({ flags, askedAt }) {
         </Box>
       </Collapse>
     </Box>
+  );
+}
+
+// Windows of the same flag that touch within this gap are one continuous event
+// (a flag still open when the next question loads is closed and reopened).
+const MERGE_GAP_MS = 2000;
+
+// Every flag window in the session, in time order, across all questions.
+// Background noise is count-only (no timeline), so it is left out.
+function buildSessionTimeline(questions) {
+  const byType = {};
+  questions.forEach((q, index) => {
+    const qNumber = q.question_order ?? index + 1;
+    (q.fraud_flags || []).forEach((flag) => {
+      if (flag.type === 'BACKGROUND_NOISE') return;
+      (flag.events || []).forEach((e) => {
+        (byType[flag.type] ||= []).push({
+          type: flag.type,
+          start: toMs(e.start),
+          end: e.end ? toMs(e.end) : null,
+          firstQ: qNumber,
+          lastQ: qNumber,
+        });
+      });
+    });
+  });
+
+  const merged = [];
+  Object.values(byType).forEach((list) => {
+    list.sort((a, b) => a.start - b.start);
+    let current = null;
+    list.forEach((item) => {
+      if (current && current.end !== null && item.start - current.end <= MERGE_GAP_MS) {
+        current.end = item.end;
+        current.lastQ = item.lastQ;
+      } else {
+        if (current) merged.push(current);
+        current = { ...item };
+      }
+    });
+    if (current) merged.push(current);
+  });
+
+  return merged.sort((a, b) => a.start - b.start);
+}
+
+const FLAG_ICONS = {
+  NO_FACE: VideocamOffOutlinedIcon,
+  MULTIPLE_FACES: GroupsOutlinedIcon,
+  TAB_SWITCH: TabOutlinedIcon,
+  FULLSCREEN_EXIT: FullscreenExitOutlinedIcon,
+  BACKGROUND_NOISE: GraphicEqOutlinedIcon,
+};
+
+// Whole-session totals: for each kind of flag, how many times it happened and
+// for how long in total, with a bar showing its share of the biggest one. No
+// per-event log — each question has its own timeline for that.
+function SessionIntegrityTotals({ questions }) {
+  // Merged so a flag that runs across a question change counts once, not twice.
+  const timeline = buildSessionTimeline(questions);
+
+  const rows = Object.keys(FLAG_META)
+    .map((type) => {
+      if (type === 'BACKGROUND_NOISE') {
+        // Count-only: no start/end times are recorded for noise.
+        const count = questions.reduce(
+          (sum, q) => sum + ((q.fraud_flags || []).find((f) => f.type === type)?.count || 0),
+          0
+        );
+        return { type, count, seconds: null, unclosed: 0 };
+      }
+      const events = timeline.filter((e) => e.type === type);
+      const seconds = events.reduce((sum, e) => sum + (e.end ? (e.end - e.start) / 1000 : 0), 0);
+      return { type, count: events.length, seconds, unclosed: events.filter((e) => !e.end).length };
+    })
+    .filter((row) => row.count > 0);
+
+  const unclosed = rows.reduce((sum, row) => sum + row.unclosed, 0);
+  const maxSeconds = Math.max(0, ...rows.map((row) => row.seconds || 0));
+  const flaggedSeconds = rows.reduce((sum, row) => sum + (row.seconds || 0), 0);
+  const timedRows = rows.filter((row) => row.seconds !== null && row.seconds > 0).length;
+  const hasNoise = rows.some((row) => row.type === 'BACKGROUND_NOISE');
+  const isClean = rows.length === 0;
+
+  return (
+    <Card elevation={0} sx={{ border: '1px solid #E2E8F0', borderRadius: 2.5, bgcolor: '#FFFFFF', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)', overflow: 'hidden' }}>
+      {/* Heading */}
+      <Box sx={{ px: 2.25, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, borderBottom: '1px solid #F1F5F9' }}>
+        <Stack direction="row" spacing={1.25} alignItems="center">
+          <Box sx={{ width: 34, height: 34, borderRadius: 1.75, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: isClean ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.1)', color: isClean ? '#059669' : '#DC2626' }}>
+            {isClean ? <VerifiedUserOutlinedIcon sx={{ fontSize: 22 }} /> : <ShieldOutlinedIcon sx={{ fontSize: 22 }} />}
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', fontSize: '1.02rem', lineHeight: 1.2 }}>
+              Session Integrity
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#64748B', display: 'block' }}>
+              {isClean
+                ? 'No integrity flags were recorded during this session.'
+                : 'Total time the candidate triggered each flag. For review only — it does not change the AI score.'}
+            </Typography>
+          </Box>
+        </Stack>
+      </Box>
+
+      {!isClean && (
+        <Box sx={{ px: 2.25, py: 0.5 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, columnGap: 6, rowGap: 2.5, py: 2.25 }}>
+            {rows.map((row) => {
+              const meta = flagMeta(row.type);
+              const Icon = FLAG_ICONS[row.type];
+              const share = row.seconds && maxSeconds > 0 ? Math.max(4, (row.seconds / maxSeconds) * 100) : 0;
+              return (
+                <Box key={row.type}>
+                  <Stack direction="row" alignItems="center" spacing={1.5}>
+                    <Box sx={{ width: 36, height: 36, borderRadius: 1.75, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: `${meta.color}1A`, color: meta.color, flexShrink: 0 }}>
+                      <Icon sx={{ fontSize: 20 }} />
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A', fontSize: '0.92rem', lineHeight: 1.25 }} noWrap>{meta.label}</Typography>
+                      <Typography variant="caption" sx={{ color: '#64748B' }}>
+                        {row.count} {row.count === 1 ? 'time' : 'times'}
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', fontVariantNumeric: 'tabular-nums', color: row.seconds === null ? '#94A3B8' : '#0F172A' }}>
+                      {row.seconds === null ? '—' : formatSeconds(row.seconds)}
+                    </Typography>
+                  </Stack>
+                  {/* Bar: share of the longest flag. Noise has no duration, so no bar. */}
+                  {row.seconds !== null && (
+                    <Box sx={{ height: 6, borderRadius: 3, bgcolor: '#F1F5F9', overflow: 'hidden', mt: 1.1 }}>
+                      <Box sx={{ width: `${share}%`, height: '100%', borderRadius: 3, bgcolor: meta.color, transition: 'width 0.5s ease' }} />
+                    </Box>
+                  )}
+                </Box>
+              );
+            })}
+          </Box>
+
+          {timedRows > 1 && (
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 2, py: 1.25, borderTop: '1px solid #E2E8F0' }}>
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0F172A' }}>Total time flagged</Typography>
+                {hasNoise && (
+                  <Typography variant="caption" sx={{ color: '#94A3B8' }}>Background noise is not included (no duration recorded).</Typography>
+                )}
+              </Box>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.05rem', color: '#0F172A', fontVariantNumeric: 'tabular-nums' }}>
+                {formatSeconds(flaggedSeconds)}
+              </Typography>
+            </Box>
+          )}
+
+          {unclosed > 0 && (
+            <Typography variant="caption" sx={{ color: '#94A3B8', display: 'block', pb: 1.25 }}>
+              {unclosed} {unclosed === 1 ? 'occurrence was' : 'occurrences were'} never closed (page closed or connection lost), so {unclosed === 1 ? 'its' : 'their'} time is not counted.
+            </Typography>
+          )}
+        </Box>
+      )}
+    </Card>
   );
 }
 
