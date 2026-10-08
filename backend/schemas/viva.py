@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import Optional, Literal
+from typing import List, Optional, Literal
 from datetime import datetime
 from models.domain import FraudFlagType
 
@@ -43,6 +43,9 @@ class TraineeResponse(BaseModel):
 class DeepgramTokenResponse(BaseModel):
     access_token: str
     expires_in: int
+    # Domain terms to boost in live captions (curated base + terms extracted
+    # from the module's question bank), already trimmed to Deepgram's limits.
+    keyterms: List[str] = []
 
 class TTSRequest(BaseModel):
     text: str

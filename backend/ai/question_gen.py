@@ -12,6 +12,7 @@ from ai.base import get_embeddings_model, get_chat_model
 from ai.text_quality import is_good_chunk
 from services.knowledge_service import FAISS_INDEX_PATH
 from services.llm_usage_service import track_llm_call
+from services import keyterm_service
 
 SEMANTIC_DUPLICATE_THRESHOLD = 0.85
 DIVERSITY_TOLERANCE = 0.02  # how close to the "most diverse" candidate still counts as a tie
@@ -184,6 +185,7 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
     chain = prompt | structured_llm
 
     generated_questions = []
+    new_question_ids = []  # rows created by this call (not reused duplicates), for STT keyterm extraction
     seen_texts_with_embs = []
     seen_topics_with_embs = []
     previous_questions_list = []
@@ -297,6 +299,7 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
         db.commit()
         db.refresh(qb_item)
         generated_questions.append(qb_item)
+        new_question_ids.append(qb_item.id)
         previous_questions_list.append(qb_item.text)
         return True
 
@@ -363,4 +366,5 @@ def generate_dynamic_questions_for_session(db, module_id: int, count: int = 5, s
             f"generated {len(generated_questions)} (docs_available={len(docs)}, retries_used={retries})"
         )
 
+    keyterm_service.schedule_extraction(new_question_ids)
     return generated_questions

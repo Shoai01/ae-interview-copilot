@@ -1,9 +1,12 @@
-# Mirror of frontend's DEFAULT_DEEPGRAM_KEYTERMS
-# (frontend/src/hooks/useSpeechRecognition.js) — keep in sync manually,
-# there is no shared source of truth between the two. Re-extract from the
-# question_bank table whenever the question bank grows so this list keeps
-# tracking real exam content, same as the frontend copy's own comment says.
-DEEPGRAM_KEYTERMS: list[str] = [
+# Curated base keyterms, always sent to Deepgram (live captions and batch
+# Enhance/regeneration alike). Terms extracted from the question bank by
+# services.keyterm_service are appended per module on top of these.
+#
+# Only distinctive product/feature nouns belong here: Deepgram biases toward
+# every keyterm, so ordinary words ("process", "workflow", "Publish", "Catalog")
+# cause words to be inserted that were never said, and the whole list shares
+# a ~500-token budget per request.
+BASE_DEEPGRAM_KEYTERMS: list[str] = [
     'RPA',
     'ITPA',
     'IT Process Automation',
@@ -35,13 +38,9 @@ DEEPGRAM_KEYTERMS: list[str] = [
     'Load Project',
     'Export Project',
     'Import Project',
-    'Publish',
-    'Catalog',
     'ETL',
     'Extract Transform Load',
     'multi-threading',
     'digital worker',
-    'workflow',
-    'process',
     'orchestration',
 ]

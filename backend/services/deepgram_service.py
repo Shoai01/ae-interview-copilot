@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Optional
 
 import requests
 
@@ -99,7 +100,7 @@ def synthesize_speech(text: str, model: str = DEFAULT_TTS_MODEL) -> tuple[bytes,
     return response.content, content_type
 
 
-def transcribe_audio(audio_bytes: bytes, content_type: str = "audio/webm", model: str = DEFAULT_STT_MODEL) -> str:
+def transcribe_audio(audio_bytes: bytes, content_type: str = "audio/webm", model: str = DEFAULT_STT_MODEL, keyterms: Optional[list[str]] = None) -> str:
     """
     Run Deepgram's prerecorded/batch STT (POST /v1/listen) against raw audio
     bytes already in memory. Shared by both the manual Enhance-Transcript
@@ -117,14 +118,16 @@ def transcribe_audio(audio_bytes: bytes, content_type: str = "audio/webm", model
     if not audio_bytes:
         raise ValueError("No audio data provided to transcribe.")
 
-    from services.deepgram_keyterms import DEEPGRAM_KEYTERMS
+    if keyterms is None:
+        from services.deepgram_keyterms import BASE_DEEPGRAM_KEYTERMS
+        keyterms = BASE_DEEPGRAM_KEYTERMS
 
     params = [
         ("model", model),
         ("language", DEFAULT_STT_LANGUAGE),
         ("smart_format", "true"),
         ("punctuate", "true"),
-    ] + [("keyterm", term) for term in DEEPGRAM_KEYTERMS]
+    ] + [("keyterm", term) for term in keyterms]
 
     try:
         response = requests.post(

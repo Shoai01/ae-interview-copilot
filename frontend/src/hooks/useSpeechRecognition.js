@@ -15,52 +15,10 @@ const DEFAULT_DEEPGRAM_MODEL = 'nova-3';
 // improving recognition of occasional Hindi words in English speech, which
 // isn't what's needed here — candidates answer in English.
 const DEFAULT_DEEPGRAM_LANGUAGE = 'en-IN';
-// Pulled from the actual viva question_bank content (text + ideal_answer
-// columns) rather than guessed — these are the real product/feature nouns
-// candidates are asked about. Re-extract from the DB whenever the question
-// bank grows so this list keeps tracking real exam content.
-const DEFAULT_DEEPGRAM_KEYTERMS = [
-  'RPA',
-  'ITPA',
-  'IT Process Automation',
-  'Robotic Process Automation',
-  'AutomationEdge',
-  'AutomationEdge Server',
-  'AutomationEdge Agent',
-  'Process Studio',
-  'SolFlows',
-  'Active MQ',
-  'GUI Spy',
-  'Switch Case',
-  'Filter Rows',
-  'Formula step',
-  'Rename Field',
-  'Calculator step',
-  'Start Browser',
-  'clear browser instance',
-  'locator',
-  'XPath',
-  'Web GUI automation',
-  'singleton',
-  'sequential',
-  'assisted workflow',
-  'unassisted',
-  'Awaiting Input',
-  'Execution Started',
-  'Unload Project',
-  'Load Project',
-  'Export Project',
-  'Import Project',
-  'Publish',
-  'Catalog',
-  'ETL',
-  'Extract Transform Load',
-  'multi-threading',
-  'digital worker',
-  'workflow',
-  'process',
-  'orchestration',
-];
+// The domain keyterms boosted in recognition come from the backend (curated
+// base list + terms extracted from the module's question bank), delivered with
+// the Deepgram token — see getDeepgramToken(). VITE_DEEPGRAM_KEYTERMS can still
+// add extras locally.
 
 function uniqueTerms(terms) {
   const seen = new Set();
@@ -79,7 +37,7 @@ function getConfiguredKeyterms() {
   return raw.split(',').map((term) => term.trim()).filter(Boolean);
 }
 
-function buildDeepgramUrl() {
+function buildDeepgramUrl(serverKeyterms = []) {
   const model = import.meta.env.VITE_DEEPGRAM_MODEL || DEFAULT_DEEPGRAM_MODEL;
   const language = import.meta.env.VITE_DEEPGRAM_LANGUAGE || DEFAULT_DEEPGRAM_LANGUAGE;
   const params = new URLSearchParams({
@@ -95,7 +53,7 @@ function buildDeepgramUrl() {
     channels: '1',
   });
 
-  const keyterms = uniqueTerms([...DEFAULT_DEEPGRAM_KEYTERMS, ...getConfiguredKeyterms()]);
+  const keyterms = uniqueTerms([...serverKeyterms, ...getConfiguredKeyterms()]);
   if (model.startsWith('nova-3')) {
     keyterms.forEach((term) => params.append('keyterm', term));
   } else if (model.startsWith('nova-2')) {
@@ -126,7 +84,7 @@ function shouldAcceptFinalTranscript(alt, transcript) {
   return confidence === null || confidence >= getMinFinalConfidence();
 }
 
-export function useSpeechRecognition() {
+export function useSpeechRecognition({ sessionId } = {}) {
   const [liveText, setLiveTextState] = useState('');
   const [finalText, setFinalTextState] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -164,6 +122,11 @@ export function useSpeechRecognition() {
   // and gets dropped instead of bleeding into the new question's transcript.
   const activeGenerationRef = useRef(0);
   const audioGenerationRef = useRef(0);
+
+  // Latest session id for the cold-connect token request, without making
+  // startRecording re-create (and re-render consumers) when it changes.
+  const sessionIdRef = useRef(sessionId);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   // Refs mirror state to avoid stale closures in async/event-driven code paths
   const liveTextRef = useRef('');
@@ -508,9 +471,11 @@ export function useSpeechRecognition() {
     // opening the socket — it only needs to survive the handshake, so it's
     // safe to request fresh on every cold (re)connect rather than caching it.
     let deepgramToken = null;
+    let keyterms = [];
     try {
-      const tokenData = await vivaService.getDeepgramToken();
+      const tokenData = await vivaService.getDeepgramToken(sessionIdRef.current);
       deepgramToken = tokenData.access_token;
+      keyterms = Array.isArray(tokenData.keyterms) ? tokenData.keyterms : [];
     } catch (err) {
       console.error("[Deepgram] Failed to obtain a live-captioning token:", err);
     }
@@ -534,7 +499,7 @@ export function useSpeechRecognition() {
     // Deepgram's temporary JWTs (from /v1/auth/grant) must be presented via
     // the "Bearer" subprotocol scheme, not "token" (that's only for permanent
     // API keys) — "token" silently 401s the handshake for a JWT.
-    const socket = new WebSocket(buildDeepgramUrl(), ['Bearer', deepgramToken]);
+    const socket = new WebSocket(buildDeepgramUrl(keyterms), ['Bearer', deepgramToken]);
     socketRef.current = socket;
 
     socket.onopen = () => {

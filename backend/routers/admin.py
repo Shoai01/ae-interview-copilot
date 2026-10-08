@@ -6,7 +6,7 @@ from datetime import datetime
 from core.database import get_db
 from schemas import admin as admin_schemas
 from schemas import user as user_schemas
-from services import admin_service, user_service, knowledge_service
+from services import admin_service, user_service, knowledge_service, keyterm_service
 from core.deps import require_role
 from models.domain import UserRole, User
 from models import domain
@@ -144,6 +144,19 @@ def update_question(question_id: int, update_data: admin_schemas.QuestionUpdate,
     if not updated:
         raise HTTPException(status_code=404, detail="Question not found")
     return updated
+
+@router.get("/keyterms", response_model=List[admin_schemas.KeytermResponse])
+def list_keyterms(module_id: Optional[int] = None, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    """STT keyterms extracted from the question bank (the curated base list is not included)."""
+    return keyterm_service.list_terms(db, module_id=module_id)
+
+@router.put("/keyterms/{keyterm_id}", response_model=admin_schemas.KeytermResponse)
+def set_keyterm_enabled(keyterm_id: int, body: admin_schemas.KeytermToggle, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    """Enable/disable an extracted keyterm; disabled terms are no longer sent to Deepgram."""
+    row = keyterm_service.set_term_enabled(db, keyterm_id, body.enabled)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Keyterm not found")
+    return next(t for t in keyterm_service.list_terms(db, module_id=row.module_id) if t["id"] == row.id)
 
 @router.put("/modules/{module_id}/sets/{set_name}", status_code=status.HTTP_204_NO_CONTENT)
 def rename_set(module_id: int, set_name: str, rename_data: admin_schemas.SetRename, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):

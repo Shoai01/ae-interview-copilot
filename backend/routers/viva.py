@@ -2,11 +2,11 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from core.database import get_db
 from schemas import viva as viva_schemas
-from services import viva_service, user_service, deepgram_service
+from services import viva_service, user_service, deepgram_service, keyterm_service
 from repositories import viva_repository
 from core.deps import get_current_user, require_role
 from models.domain import User, UserRole
@@ -121,12 +121,24 @@ def get_current_session(db: Session = Depends(get_db), current_user: User = Depe
     return session
 
 @router.get("/deepgram/token", response_model=viva_schemas.DeepgramTokenResponse)
-def get_deepgram_token(current_user: User = Depends(get_current_user)):
+def get_deepgram_token(session_id: Optional[int] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Mint a short-lived Deepgram token server-side so the permanent API key
     never ships to the browser. The token only needs to live long enough
     for the client to open its WebSocket handshake.
+
+    Also returns the keyterms to boost. With `session_id` (the caller's own
+    session) they are scoped to that session's module; otherwise they span
+    every module.
     """
+    module_id = None
+    if session_id is not None:
+        session = db.query(domain.VivaSession).filter(
+            domain.VivaSession.id == session_id,
+            domain.VivaSession.trainee_id == current_user.id
+        ).first()
+        module_id = session.module_id if session else None
+
     try:
         token_data = deepgram_service.mint_temporary_token()
     except deepgram_service.DeepgramConfigError as e:
@@ -135,7 +147,8 @@ def get_deepgram_token(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=502, detail="Failed to obtain a live-captioning token. Please try again.")
     return viva_schemas.DeepgramTokenResponse(
         access_token=token_data["access_token"],
-        expires_in=token_data.get("expires_in", deepgram_service.GRANT_TTL_SECONDS)
+        expires_in=token_data.get("expires_in", deepgram_service.GRANT_TTL_SECONDS),
+        keyterms=keyterm_service.get_keyterms(db, module_id=module_id),
     )
 
 @router.post("/tts")

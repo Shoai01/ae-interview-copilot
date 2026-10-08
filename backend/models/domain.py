@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Enum as SQLEnum, Text, JSON
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, Enum as SQLEnum, Text, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 import enum
 from datetime import datetime
@@ -90,9 +90,36 @@ class QuestionBank(Base):
     difficulty = Column(SQLEnum(DifficultyLevel), nullable=False)
     set_name = Column(String, nullable=True, default="Default Set")
     is_active = Column(Boolean, default=True)
+    # Set once STT keyterms have been extracted for the current text/ideal_answer.
+    # NULL = pending (new, edited, or a previous extraction attempt failed).
+    keyterms_extracted_at = Column(DateTime, nullable=True)
 
     module = relationship("TrainingModule", back_populates="questions")
     viva_questions = relationship("VivaQuestion", back_populates="question_bank")
+
+
+class SttKeyterm(Base):
+    """A domain term (product/feature name, acronym, ...) pulled from the question
+    bank and sent to Deepgram as a keyterm so it is recognized correctly."""
+    __tablename__ = "stt_keyterms"
+    __table_args__ = (UniqueConstraint("module_id", "term_key", name="uq_stt_keyterms_module_term"),)
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    module_id = Column(Integer, ForeignKey("training_modules.id", ondelete="CASCADE"), nullable=False, index=True)
+    term = Column(String, nullable=False)
+    term_key = Column(String, nullable=False)  # lowercased, whitespace-collapsed; dedupe key
+    enabled = Column(Boolean, nullable=False, default=True)  # admin kill-switch for a bad term
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class QuestionKeyterm(Base):
+    """Which questions mention which keyterm. A term is only served while at least
+    one *active* question links to it, so deleting/deactivating questions retires
+    their terms without any cleanup job."""
+    __tablename__ = "question_keyterms"
+
+    question_id = Column(Integer, ForeignKey("question_bank.id", ondelete="CASCADE"), primary_key=True)
+    keyterm_id = Column(Integer, ForeignKey("stt_keyterms.id", ondelete="CASCADE"), primary_key=True)
 
 class VivaSession(Base):
     __tablename__ = "viva_sessions"
@@ -236,6 +263,7 @@ class LLMCallSite(str, enum.Enum):
     QUESTION_GEN = "QUESTION_GEN"         # generate_dynamic_questions_for_session (per-question)
     IDEAL_ANSWER = "IDEAL_ANSWER"         # generate_ideal_answer_from_kb (RAG draft)
     EMBEDDING = "EMBEDDING"               # VertexAIEmbeddings calls (KB ingestion, question dedup, RAG retrieval)
+    KEYTERM_EXTRACTION = "KEYTERM_EXTRACTION"  # extract_keyterms (STT keyword pipeline)
 
 class LLMCallStatus(str, enum.Enum):
     SUCCESS = "SUCCESS"

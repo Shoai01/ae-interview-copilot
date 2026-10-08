@@ -4,6 +4,7 @@ from models import domain
 from schemas import admin as admin_schemas
 from typing import List, Optional
 from repositories import admin_repository
+from services import keyterm_service
 
 def get_module_by_id(db: Session, module_id: int) -> domain.TrainingModule:
     """
@@ -58,11 +59,13 @@ def create_question(db: Session, question: admin_schemas.QuestionCreate, actor_i
         new_q = admin_repository.create_question(db, question)
         log['target'] = f"Question: {new_q.id} (Set: {new_q.set_name})"
         log['details'] = {"module_id": new_q.module_id, "difficulty": new_q.difficulty.value}
+        keyterm_service.schedule_extraction([new_q.id])
         return new_q
 
 def create_questions_bulk(db: Session, bulk_data: admin_schemas.BulkQuestionCreate, actor_id: int = None, actor_name: str = None) -> admin_schemas.BulkQuestionResponse:
     with log_action(db, AuditActionType.BULK_QUESTION_UPLOAD, actor_id, actor_name) as log:
         count = 0
+        created_ids = []
         for q in bulk_data.questions:
             q_create = admin_schemas.QuestionCreate(
                 module_id=bulk_data.module_id,
@@ -72,11 +75,12 @@ def create_questions_bulk(db: Session, bulk_data: admin_schemas.BulkQuestionCrea
                 set_name=q.set_name
             )
             q_create = _with_kb_grounded_ideal_answer(db, q_create, actor_id)
-            admin_repository.create_question(db, q_create)
+            created_ids.append(admin_repository.create_question(db, q_create).id)
             count += 1
 
         log['target'] = f"Module: {bulk_data.module_id}"
         log['details'] = {"count": count}
+        keyterm_service.schedule_extraction(created_ids)
         return admin_schemas.BulkQuestionResponse(message="Successfully created questions in bulk", count=count)
 
 def toggle_question_active_status(db: Session, question_id: int, actor_id: int = None, actor_name: str = None) -> domain.QuestionBank:
@@ -107,9 +111,21 @@ def update_question(db: Session, question_id: int, update_data: admin_schemas.Qu
     with log_action(db, AuditActionType.QUESTION_UPDATED, actor_id, actor_name) as log:
         question = admin_repository.get_question_by_id(db, question_id)
         if question:
-            result = admin_repository.update_question(db, question, update_data.model_dump(exclude_unset=True))
+            changes = update_data.model_dump(exclude_unset=True)
+            # New wording can introduce (or drop) domain terms; re-extract.
+            reextract = any(
+                changes.get(field) is not None and changes[field] != getattr(question, field)
+                for field in ("text", "ideal_answer")
+            )
+            if reextract:
+                # The repo's update skips None values, so reset the flag directly;
+                # update_question below commits it with the other changes.
+                question.keyterms_extracted_at = None
+            result = admin_repository.update_question(db, question, changes)
             log['target'] = f"Question: {question.id}"
-            log['details'] = {"updated_fields": list(update_data.model_dump(exclude_unset=True).keys())}
+            log['details'] = {"updated_fields": list(changes.keys())}
+            if reextract:
+                keyterm_service.schedule_extraction([question.id])
             return result
         return None
 

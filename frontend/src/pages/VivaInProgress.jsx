@@ -254,7 +254,7 @@ export default function VivaInProgress() {
     getTranscriptText,
     startAudioCapture,
     stopAudioCapture,
-  } = useSpeechRecognition();
+  } = useSpeechRecognition({ sessionId });
 
   // Noise detection — skips flagging while the candidate is actively
   // recording their own answer, so their own speaking voice isn't

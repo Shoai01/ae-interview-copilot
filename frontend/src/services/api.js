@@ -249,8 +249,9 @@ export const vivaService = {
     const response = await api.get(`/viva/${sessionId}/summary`);
     return response.data;
   },
-  getDeepgramToken: async () => {
-    const response = await api.get('/viva/deepgram/token');
+  // With a session id the returned keyterms are scoped to that session's module.
+  getDeepgramToken: async (sessionId) => {
+    const response = await api.get('/viva/deepgram/token', { params: sessionId ? { session_id: sessionId } : undefined });
     return response.data;
   },
   synthesizeSpeech: async (text) => {

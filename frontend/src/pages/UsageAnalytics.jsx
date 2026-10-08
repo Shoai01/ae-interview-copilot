@@ -30,6 +30,7 @@ const MAJOR_CATEGORY_MAP = {
   EVALUATOR: 'Evaluation',
   QUESTION_GEN: 'Question Generation',
   IDEAL_ANSWER: 'Question Generation',
+  KEYTERM_EXTRACTION: 'Question Generation',
   EMBEDDING: 'KB',
 };
 

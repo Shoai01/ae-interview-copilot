@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from models import domain
 from schemas import viva as viva_schemas
 from repositories import viva_repository
-from services import deepgram_service
+from services import deepgram_service, keyterm_service
 import datetime
 import os
 import logging
@@ -373,7 +373,8 @@ def enhance_transcript(db: Session, session_id: int, viva_question_id: int, audi
     if not viva_repository.increment_enhance_attempts(db, viva_question):
         raise EnhanceAttemptLimitExceeded()
 
-    transcript = deepgram_service.transcribe_audio(audio_bytes, content_type=content_type)
+    keyterms = keyterm_service.get_keyterms(db, module_id=viva_question.session.module_id)
+    transcript = deepgram_service.transcribe_audio(audio_bytes, content_type=content_type, keyterms=keyterms)
     viva_repository.set_enhanced_transcript(db, viva_question, transcript)
     return transcript
 
@@ -425,7 +426,7 @@ def get_session_summary(db: Session, session_id: int) -> viva_schemas.SessionSum
 
 from ai import evaluator as ai_service
 
-def _regenerate_transcript_from_disk(q: domain.VivaQuestion) -> tuple[int, str | None]:
+def _regenerate_transcript_from_disk(q: domain.VivaQuestion, keyterms: list[str] | None = None) -> tuple[int, str | None]:
     """
     Runs in a worker thread. Never raises — returns (question_id, None) on
     any failure (missing file, Deepgram error, etc.) so one bad file/API
@@ -439,7 +440,7 @@ def _regenerate_transcript_from_disk(q: domain.VivaQuestion) -> tuple[int, str |
             return q.id, None
         with open(rel_path, "rb") as f:
             audio_bytes = f.read()
-        return q.id, deepgram_service.transcribe_audio(audio_bytes, content_type="audio/webm")
+        return q.id, deepgram_service.transcribe_audio(audio_bytes, content_type="audio/webm", keyterms=keyterms)
     except Exception as e:
         logger.warning("STT regen failed for question %s: %s", q.id, e)
         return q.id, None
@@ -476,8 +477,10 @@ def evaluate_session(db: Session, session_id: int):
         if q.answered_at and q.audio_url and not q.transcript_manually_enhanced
     ]
     if to_regenerate:
+        # Resolved once here (not in the worker threads): the db session isn't thread-safe.
+        keyterms = keyterm_service.get_keyterms(db, module_id=session.module_id)
         with ThreadPoolExecutor(max_workers=min(len(to_regenerate), 5)) as pool:
-            futures = [pool.submit(_regenerate_transcript_from_disk, q) for q in to_regenerate]
+            futures = [pool.submit(_regenerate_transcript_from_disk, q, keyterms) for q in to_regenerate]
             results = dict(f.result() for f in as_completed(futures))
         for q in to_regenerate:
             new_transcript = results.get(q.id)

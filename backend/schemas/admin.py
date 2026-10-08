@@ -53,6 +53,16 @@ class QuestionUpdate(BaseModel):
 class SetRename(BaseModel):
     new_set_name: str
 
+class KeytermResponse(BaseModel):
+    id: int
+    module_id: int
+    term: str
+    enabled: bool
+    mentions: int  # active questions that mention this term
+
+class KeytermToggle(BaseModel):
+    enabled: bool
+
 class QuestionResponse(BaseModel):
     id: int
     module_id: int
