@@ -20,31 +20,41 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column('question_bank', sa.Column('keyterms_extracted_at', sa.DateTime(), nullable=True))
+    # main.py runs Base.metadata.create_all() at startup, so on any database
+    # where the app was started with this code before migrating, the new
+    # tables already exist (create_all never alters existing tables, though,
+    # so the question_bank column still has to be added). Each step is
+    # therefore skipped if already present.
+    inspector = sa.inspect(op.get_bind())
 
-    op.create_table(
-        'stt_keyterms',
-        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('module_id', sa.Integer(), nullable=False),
-        sa.Column('term', sa.String(), nullable=False),
-        sa.Column('term_key', sa.String(), nullable=False),
-        sa.Column('enabled', sa.Boolean(), nullable=False, server_default=sa.true()),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['module_id'], ['training_modules.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('module_id', 'term_key', name='uq_stt_keyterms_module_term'),
-    )
-    op.create_index(op.f('ix_stt_keyterms_id'), 'stt_keyterms', ['id'], unique=False)
-    op.create_index(op.f('ix_stt_keyterms_module_id'), 'stt_keyterms', ['module_id'], unique=False)
+    if 'keyterms_extracted_at' not in {c['name'] for c in inspector.get_columns('question_bank')}:
+        op.add_column('question_bank', sa.Column('keyterms_extracted_at', sa.DateTime(), nullable=True))
 
-    op.create_table(
-        'question_keyterms',
-        sa.Column('question_id', sa.Integer(), nullable=False),
-        sa.Column('keyterm_id', sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(['question_id'], ['question_bank.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['keyterm_id'], ['stt_keyterms.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('question_id', 'keyterm_id'),
-    )
+    if not inspector.has_table('stt_keyterms'):
+        op.create_table(
+            'stt_keyterms',
+            sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+            sa.Column('module_id', sa.Integer(), nullable=False),
+            sa.Column('term', sa.String(), nullable=False),
+            sa.Column('term_key', sa.String(), nullable=False),
+            sa.Column('enabled', sa.Boolean(), nullable=False, server_default=sa.true()),
+            sa.Column('created_at', sa.DateTime(), nullable=True),
+            sa.ForeignKeyConstraint(['module_id'], ['training_modules.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('id'),
+            sa.UniqueConstraint('module_id', 'term_key', name='uq_stt_keyterms_module_term'),
+        )
+        op.create_index(op.f('ix_stt_keyterms_id'), 'stt_keyterms', ['id'], unique=False)
+        op.create_index(op.f('ix_stt_keyterms_module_id'), 'stt_keyterms', ['module_id'], unique=False)
+
+    if not inspector.has_table('question_keyterms'):
+        op.create_table(
+            'question_keyterms',
+            sa.Column('question_id', sa.Integer(), nullable=False),
+            sa.Column('keyterm_id', sa.Integer(), nullable=False),
+            sa.ForeignKeyConstraint(['question_id'], ['question_bank.id'], ondelete='CASCADE'),
+            sa.ForeignKeyConstraint(['keyterm_id'], ['stt_keyterms.id'], ondelete='CASCADE'),
+            sa.PrimaryKeyConstraint('question_id', 'keyterm_id'),
+        )
 
 
 def downgrade() -> None:
