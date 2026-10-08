@@ -340,6 +340,10 @@ export function useSpeechRecognition() {
       if (event.data && event.data.size > 0) {
         if (mediaRecorderRef.current !== mediaRecorder) return;
         audioChunksRef.current.push(event.data);
+        // getAudioBlob() caches a blob built from the chunks so far (e.g. while
+        // paused). New audio after a resume makes that cache stale — drop it so
+        // Enhance Transcript sees the full recording, not just the pre-pause part.
+        recordedBlobRef.current = null;
       }
     };
 
