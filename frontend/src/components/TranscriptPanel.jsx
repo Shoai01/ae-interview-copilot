@@ -1,19 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Paper, TextField, Typography } from '@mui/material';
-import toast from 'react-hot-toast';
 
-const handlePaste = (e) => {
-  e.preventDefault();
-  toast.error("Pasting is not allowed during the exam.");
-};
-
-const handleCopy = (e) => e.preventDefault();
-const handleCut = (e) => e.preventDefault();
-
-const handleDrop = (e) => {
-  e.preventDefault();
-  toast.error("Drag and drop is not allowed.");
-};
+// Paste / copy / cut / drop are blocked page-wide by useExamLockdown.
 
 // Deepgram delivers text in phrase-sized bursts. Showing each burst instantly
 // looks jumpy, so the box reveals it progressively instead. Display-only: the
@@ -125,10 +113,6 @@ const TranscriptPanel = React.memo(function TranscriptPanel({ value, isRecording
         value={shown}
         inputRef={inputRef}
         onChange={handleChange}
-        onPaste={handlePaste}
-        onCopy={handleCopy}
-        onCut={handleCut}
-        onDrop={handleDrop}
         sx={{
           '& .MuiOutlinedInput-root': {
             fontSize: '0.975rem',

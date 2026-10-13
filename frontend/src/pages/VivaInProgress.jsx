@@ -15,6 +15,7 @@ import ExamSidebar from '@/components/ExamSidebar';
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis';
 import { useFraudDetection } from '@/hooks/useFraudDetection';
+import { useExamLockdown } from '@/hooks/useExamLockdown';
 import { exitFullscreen } from '@/utils/fullscreen';
 import { useNoiseDetection } from '@/hooks/useNoiseDetection';
 import { useAuth } from '@/store/AuthContext';
@@ -117,6 +118,9 @@ export default function VivaInProgress() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Block copy/paste/select/print of the exam page
+  useExamLockdown();
 
   // Fraud detection hook (noise detection is wired up below, once isRecording is available)
   const { detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
