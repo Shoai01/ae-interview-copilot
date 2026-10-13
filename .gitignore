@@ -59,3 +59,4 @@ reference_docs/
 graphify-out/
 Automation Edge Logo/
 .claude/
+backend/backfill_keyterms.py
