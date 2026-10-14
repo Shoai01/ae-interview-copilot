@@ -1,4 +1,5 @@
 import os
+import re
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from google import genai
@@ -19,11 +20,23 @@ class QuestionEvaluationResult(BaseModel):
     score_confidence: float
     ai_feedback: str = Field(description="Constructive feedback on the answer. **CRITICAL: If Fraud Flags are listed for this question, you MUST start your feedback with a warning noting the specific fraud flags detected.**")
 
+class LLMQuestionEvaluationResult(QuestionEvaluationResult):
+    """What the LLM returns per question: the scores plus a relevance verdict.
+    The verdict is enforced in code (see _zero_out_ungradable) rather than left
+    to the model's own scoring, and is not stored."""
+    is_relevant: bool = Field(description=(
+        "True ONLY if the answer is a genuine attempt to address THIS specific question with "
+        "subject-matter content, even if it is wrong, incomplete or poorly worded. "
+        "False if it is off-topic, about something else, small talk, technical content that does not "
+        "answer THIS question, or otherwise carries no attempt at the question. "
+        "A wrong-but-relevant answer is still True. Tolerate speech-to-text mistakes."
+    ))
+
 class LLMSessionEvaluationResult(BaseModel):
     ai_recommendation: AIRecommendationType
     strengths: str
     areas_of_improvement: str
-    question_evaluations: List[QuestionEvaluationResult]
+    question_evaluations: List[LLMQuestionEvaluationResult]
 
 class SessionEvaluationResult(BaseModel):
     aggregate_score: float
@@ -34,6 +47,68 @@ class SessionEvaluationResult(BaseModel):
     # True when this result came from the error-fallback path below, not a real
     # LLM evaluation. Callers must not treat these scores as genuine.
     is_fallback: bool = False
+
+# Words that, on their own, carry no answer content: affirmations, fillers and
+# "I don't know" phrasing. An answer made up ONLY of these is a non-response.
+# Kept deliberately small — any other word (even a single one, e.g.
+# "automation") sends the answer on to the LLM to judge.
+_NON_ANSWER_WORDS = frozenset({
+    "yeah", "yes", "yep", "yup", "yea", "ya", "no", "nope", "nah", "ok", "okay", "k",
+    "um", "umm", "uh", "uhh", "er", "erm", "hmm", "hm", "mm", "mmm", "ah", "oh",
+    "right", "sure", "well", "so", "like", "sorry", "pass", "skip", "next",
+    "thanks", "thank", "you", "hello", "hi",
+    "i", "do", "not", "dont", "don't", "know", "idea", "cant", "can't", "answer",
+})
+
+
+def is_non_answer(transcript: Optional[str]) -> bool:
+    """True when the transcript is blank or only affirmations/fillers/"I don't
+    know" (e.g. "Yeah.", "Um, okay.", "I don't know.") — i.e. nothing to grade.
+
+    Decided in code, not left to the LLM: the model scored a bare "Yeah." 1/10
+    on every metric because the rubric only reserved 0 for blank or an explicit
+    "I don't know".
+    """
+    text = (transcript or "").lower().replace("’", "'")
+    words = re.sub(r"[^a-z0-9']+", " ", text).split()
+    return all(w in _NON_ANSWER_WORDS for w in words)
+
+
+def _non_answer_feedback(flags: list) -> str:
+    feedback = "No answer provided."
+    if flags:
+        # Flag entries look like "TAB_SWITCH (Count: 1, Total: 3s)" — keep the type only.
+        types = ", ".join(f.split(" (")[0] for f in flags)
+        feedback = f"Note: {types} detected. {feedback}"
+    return feedback
+
+
+def _zero_out_ungradable(evaluations: List[QuestionEvaluationResult], questions_data: list, irrelevant_ids=frozenset()) -> List[QuestionEvaluationResult]:
+    """Force 0/0/0 on every answer that earns no marks, whatever the LLM scored:
+      - non-answers (blank / fillers / "I don't know") -> "No answer provided."
+      - answers the LLM judged not relevant to the question -> its own feedback
+        plus a "scores 0" reason.
+    Adds an entry if the LLM omitted the question."""
+    by_id = {e.viva_question_id: e for e in evaluations}
+    for q in questions_data:
+        qid = q['viva_question_id']
+        if is_non_answer(q['transcript']):
+            feedback = _non_answer_feedback(q.get('fraud_flags', []))
+        elif qid in irrelevant_ids:
+            # The LLM's feedback already carries any fraud-flag note (its schema requires it).
+            llm_feedback = by_id[qid].ai_feedback if qid in by_id else ""
+            feedback = f"{llm_feedback} Scored 0: the answer is not relevant to the question.".strip()
+        else:
+            continue
+        by_id[qid] = QuestionEvaluationResult(
+            viva_question_id=qid,
+            score_communication=0.0,
+            score_technical=0.0,
+            score_confidence=0.0,
+            ai_feedback=feedback,
+        )
+    return list(by_id.values())
+
 
 def evaluate_interview_session(questions_data: list, db=None, session_id: Optional[int] = None, triggered_by_user_id: Optional[int] = None, module_id: Optional[int] = None) -> SessionEvaluationResult:
     """
@@ -62,6 +137,16 @@ def evaluate_interview_session(questions_data: list, db=None, session_id: Option
             question_evaluations=[]
         )
 
+    if all(is_non_answer(q['transcript']) for q in questions_data):
+        # Nothing gradable — skip the LLM call entirely.
+        return SessionEvaluationResult(
+            aggregate_score=0.0,
+            ai_recommendation=AIRecommendationType.FAIL,
+            strengths="N/A",
+            areas_of_improvement="Candidate did not provide substantive answers.",
+            question_evaluations=_zero_out_ungradable([], questions_data),
+        )
+
     system_instruction = (
         "You are an expert technical interviewer evaluating a candidate's performance in a Viva session. "
         "Review the following questions and the candidate's answers. Provide an evaluation for each question "
@@ -74,10 +159,13 @@ def evaluate_interview_session(questions_data: list, db=None, session_id: Option
         "- 8-10: Correct, clear, and highly confident. Excellent grasp of the topic.\n"
         "- 5-7: Mostly correct but missing key details, slightly hesitant, or mildly vague.\n"
         "- 1-4: Incorrect, extremely vague, or highly unsure/stumbling.\n"
-        "- 0: No real answer provided (e.g., 'I don't know' or blank).\n\n"
+        "- 0: No real answer provided (e.g., 'I don't know', blank, or only a filler/affirmation such as 'yeah', 'yes', 'okay', 'um').\n\n"
         "EDGE CASES:\n"
-        "1. EMPTY/NON-RESPONSES: If the candidate's answer is blank, nonsensical, or explicitly states they don't know, score 0 across all categories. In the feedback, do not invent critiques; simply state 'No answer provided'.\n"
-        "2. FRAUD FLAGS: If a question is marked with 'Fraud Flags', include a short note about this in the feedback (e.g., 'Note: Tab switch detected during this answer.'). However, do NOT lower the candidate's score because of the fraud flags; score only based on the content of the answer, as fraud review is handled independently."
+        "1. EMPTY/NON-RESPONSES: If the candidate's answer is blank, nonsensical, only a filler or affirmation (e.g. 'Yeah.', 'Okay.', 'Um.') that does not address the question, or explicitly states they don't know, score 0 across all categories. In the feedback, do not invent critiques; simply state 'No answer provided'.\n"
+        "2. RELEVANCE: For EVERY question set is_relevant. Set it to false when the answer does not attempt THIS question: off-topic, about something else, small talk, "
+        "or technical content that does not answer what was asked. When is_relevant is false, score 0 across all categories. "
+        "Do NOT mark an answer irrelevant just because it is wrong, incomplete or poorly worded — a genuine attempt at the question stays relevant and is scored 1-4 or higher per the rubric.\n"
+        "3. FRAUD FLAGS: If a question is marked with 'Fraud Flags', include a short note about this in the feedback (e.g., 'Note: Tab switch detected during this answer.'). However, do NOT lower the candidate's score because of the fraud flags; score only based on the content of the answer, as fraud review is handled independently."
     )
 
     user_prompt = "Questions & Answers:\n"
@@ -124,11 +212,20 @@ def evaluate_interview_session(questions_data: list, db=None, session_id: Option
 
     try:
         llm_result = _call_gemini_api()
-        
+
+        # Enforce 0/0/0 for non-answers and answers the LLM judged irrelevant,
+        # regardless of the marks it gave them.
+        irrelevant_ids = {e.viva_question_id for e in llm_result.question_evaluations if not e.is_relevant}
+        question_evaluations = _zero_out_ungradable(
+            [QuestionEvaluationResult(**e.model_dump(exclude={'is_relevant'})) for e in llm_result.question_evaluations],
+            questions_data,
+            irrelevant_ids,
+        )
+
         # Calculate aggregate score from per-question scores
         total_score = 0.0
         count = 0
-        for q in llm_result.question_evaluations:
+        for q in question_evaluations:
             # Average of the 3 metrics for each question
             q_avg = (q.score_communication + q.score_technical + q.score_confidence) / 3.0
             total_score += q_avg
@@ -141,7 +238,7 @@ def evaluate_interview_session(questions_data: list, db=None, session_id: Option
             ai_recommendation=llm_result.ai_recommendation,
             strengths=llm_result.strengths,
             areas_of_improvement=llm_result.areas_of_improvement,
-            question_evaluations=llm_result.question_evaluations
+            question_evaluations=question_evaluations
         )
     except Exception as e:
         print(f"❌ Gemini evaluation failed after retries: {e}. Falling back to default dummy score.")
