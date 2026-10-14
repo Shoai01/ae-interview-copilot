@@ -3,7 +3,7 @@ import { vivaService } from '@/services/api';
 import { globalState } from '@/store';
 import { captureFrameBlob } from '@/utils/faceCapture';
 
-const FIRST_CHECK_DELAY_MS = [15000, 30000]; // soon after the start, so a quick swap is caught early
+const FIRST_CHECK_DELAY_MS = [5000, 10000]; // soon after the start, so a quick swap is caught early
 const JITTER = 0.25; // ±25% so the schedule can't be predicted
 
 /**

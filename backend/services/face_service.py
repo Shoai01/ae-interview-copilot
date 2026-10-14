@@ -57,8 +57,8 @@ def is_enabled() -> bool:
 # Cosine similarity at/above which two faces are treated as the same person.
 MATCH_THRESHOLD = _env_float("FACE_MATCH_THRESHOLD", 0.35)
 # Consecutive mismatching checks before a FACE_MISMATCH flag is raised.
-MISMATCH_RUN_TO_FLAG = _env_int("FACE_MISMATCH_RUN", 3)
-CHECK_INTERVAL_SECONDS = _env_int("FACE_CHECK_INTERVAL_SECONDS", 75)
+MISMATCH_RUN_TO_FLAG = _env_int("FACE_MISMATCH_RUN", 2)
+CHECK_INTERVAL_SECONDS = _env_int("FACE_CHECK_INTERVAL_SECONDS", 20)
 # Keep the snapshot of every Nth matching check as context (mismatches always kept).
 KEEP_EVERY_NTH_MATCH = _env_int("FACE_KEEP_EVERY_NTH_MATCH", 5)
 IMAGE_RETENTION_DAYS = _env_int("FACE_IMAGE_RETENTION_DAYS", 30)

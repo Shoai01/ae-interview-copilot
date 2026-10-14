@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 FACE_UPLOAD_ROOT = os.path.join("uploads", "faces")
 # Reject a check that arrives sooner than this after the previous one — the client
 # paces itself at CHECK_INTERVAL_SECONDS, so anything faster is a bug or abuse.
-MIN_SECONDS_BETWEEN_CHECKS = 10
+MIN_SECONDS_BETWEEN_CHECKS = 5
 JPEG_QUALITY = 88
 
 
