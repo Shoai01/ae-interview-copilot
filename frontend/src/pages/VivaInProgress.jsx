@@ -17,6 +17,7 @@ import { useSpeechSynthesis } from '@/hooks/useSpeechSynthesis';
 import { useFraudDetection } from '@/hooks/useFraudDetection';
 import { useExamLockdown } from '@/hooks/useExamLockdown';
 import { exitFullscreen } from '@/utils/fullscreen';
+import { ensureExamStream, releaseAllMedia } from '@/utils/mediaStreams';
 import { useNoiseDetection } from '@/hooks/useNoiseDetection';
 import { useFaceVerification } from '@/hooks/useFaceVerification';
 import FaceReferenceCapture from '@/components/FaceReferenceCapture';
@@ -153,9 +154,11 @@ export default function VivaInProgress() {
           setSessionStartTime(s.start_time);
           setSessionDuration(s.duration_minutes || 15);
         } else {
+          releaseAllMedia();
           navigate('/');
         }
       }).catch(() => {
+        releaseAllMedia();
         navigate('/');
       });
     } else if (!sessionStartTime || !sessionInfo.durationMinutes) {
@@ -168,36 +171,28 @@ export default function VivaInProgress() {
     }
   }, [sessionId, sessionStartTime, sessionInfo.durationMinutes, navigate]);
 
-  // 3. Hardware Stream Re-acquisition: Restore camera/mic if destroyed by refresh
+  // 3. Hardware Stream Re-acquisition: restore camera/mic if destroyed by a refresh.
+  // Shares one request with any other caller, and never reopens the camera for an exam
+  // that has already been submitted (e.g. browser Back onto this page).
   useEffect(() => {
     let isCancelled = false;
-    const restoreMedia = async () => {
-      if (!globalState.mediaStream || !globalState.mediaStream.active) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-            audio: AUDIO_CONSTRAINTS
-          });
-          if (!isCancelled) {
-            globalState.mediaStream = stream;
-            if (videoRef.current) {
-              videoRef.current.srcObject = stream;
-            }
-          }
-        } catch (err) {
-          console.warn("[VivaInProgress] Could not re-acquire media stream on reload:", err);
-        }
-      } else if (videoRef.current) {
-        videoRef.current.srcObject = globalState.mediaStream;
-      }
-    };
+    if (hasSessionBeenSubmitted(sessionId)) return undefined;
 
-    restoreMedia();
+    ensureExamStream({
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+      audio: AUDIO_CONSTRAINTS,
+    })
+      .then((stream) => {
+        if (!isCancelled && videoRef.current) videoRef.current.srcObject = stream;
+      })
+      .catch((err) => {
+        if (err?.name !== 'AbortError') console.warn('[VivaInProgress] Could not re-acquire media stream on reload:', err);
+      });
 
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [sessionId]);
 
   // 4. Tab Closure / Refresh Guard: Warn user before leaving active exam
   useEffect(() => {
@@ -315,6 +310,7 @@ export default function VivaInProgress() {
   const fetchQuestion = useCallback(async () => {
     if (!sessionId) return;
     if (hasSessionBeenSubmitted(sessionId)) {
+      releaseAllMedia();
       navigate('/complete', { state: { sessionId }, replace: true });
       return;
     }
@@ -332,10 +328,7 @@ export default function VivaInProgress() {
       console.error("Failed to fetch question:", err);
       // If 404 (session completed or all questions answered), navigate to complete page
       if (err.response?.status === 404) {
-        if (globalState.mediaStream) {
-          globalState.mediaStream.getTracks().forEach(track => track.stop());
-          globalState.mediaStream = null;
-        }
+        releaseAllMedia();
         isEndingRef.current = true;
         try {
           sessionStorage.removeItem('active_viva_session');
@@ -411,10 +404,7 @@ export default function VivaInProgress() {
     } catch (e) {
       console.warn("Auto-submit cleanup error:", e);
     } finally {
-      if (globalState.mediaStream) {
-        globalState.mediaStream.getTracks().forEach(track => track.stop());
-        globalState.mediaStream = null;
-      }
+      releaseAllMedia();
 
       isEndingRef.current = true;
       try {
@@ -538,10 +528,7 @@ export default function VivaInProgress() {
         // Deepgram connection (kept warm across questions until this point).
         await closeConnection();
 
-        if (globalState.mediaStream) {
-          globalState.mediaStream.getTracks().forEach(track => track.stop());
-          globalState.mediaStream = null;
-        }
+        releaseAllMedia();
 
         // Exit fullscreen when the session finishes
         isEndingRef.current = true;

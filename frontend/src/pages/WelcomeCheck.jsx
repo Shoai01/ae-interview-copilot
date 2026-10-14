@@ -19,7 +19,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import FaceRetouchingNaturalOutlinedIcon from '@mui/icons-material/FaceRetouchingNaturalOutlined';
 import { vivaService } from '@/services/api';
-import { globalState, AUDIO_CONSTRAINTS } from '@/store';
+import { AUDIO_CONSTRAINTS } from '@/store';
+import { ensureExamStream, releaseAllMedia } from '@/utils/mediaStreams';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/store/AuthContext';
 import FaceReferenceCapture from '@/components/FaceReferenceCapture';
@@ -149,6 +150,7 @@ function ProtocolRow({ icon, color, title, children }) {
 export default function WelcomeCheck() {
   const navigate = useNavigate();
   const videoRef = useRef(null);
+  const proceedingToExamRef = useRef(false);
   const { user, logout } = useAuth();
 
   // Camera/mic/speaker are always re-verified fresh on every mount (see the
@@ -230,19 +232,10 @@ export default function WelcomeCheck() {
     let activeStream = null;
     const setupMedia = async () => {
       try {
-        // Reuse the existing stream only if its tracks are actually still
-        // live — a stale globalState.mediaStream reference (permission
-        // revoked, device unplugged, track ended) must not short-circuit
-        // real verification.
-        const existing = globalState.mediaStream;
-        const existingIsLive = !!existing && existing.getTracks().length > 0 && existing.getTracks().every(t => t.readyState === 'live');
-
-        if (existingIsLive) {
-          activeStream = existing;
-        } else {
-          activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: AUDIO_CONSTRAINTS });
-          globalState.mediaStream = activeStream;
-        }
+        // One shared request: reuses the existing stream only while its tracks are still
+        // live (a stale reference after a revoked permission or unplugged device must not
+        // short-circuit real verification), and never opens a second one alongside it.
+        activeStream = await ensureExamStream({ video: true, audio: AUDIO_CONSTRAINTS });
         setStream(activeStream);
 
         if (videoRef.current) {
@@ -280,6 +273,15 @@ export default function WelcomeCheck() {
 
   const [isStartingSession, setIsStartingSession] = useState(false);
 
+  // Leaving this page for anywhere but the exam (Back button, a different route) must not
+  // leave the camera and microphone running; the exam page takes over the stream itself.
+  useEffect(
+    () => () => {
+      if (!proceedingToExamRef.current) releaseAllMedia();
+    },
+    []
+  );
+
   const handleStart = async () => {
     try {
       setIsStartingSession(true);
@@ -306,6 +308,7 @@ export default function WelcomeCheck() {
       }
       
       // Pass full session data to the interview page
+      proceedingToExamRef.current = true;
       navigate('/interview', { 
         state: { 
           sessionId: session.id,

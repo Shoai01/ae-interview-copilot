@@ -1,7 +1,7 @@
 import { createContext, useState, useEffect, useContext, useRef } from 'react';
 import api, { authService } from '@/services/api';
-import { globalState } from '@/store';
 import { exitFullscreen } from '@/utils/fullscreen';
+import { releaseAllMedia } from '@/utils/mediaStreams';
 
 const AuthContext = createContext(null);
 
@@ -103,6 +103,7 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
             clearSharedSessionStorage();
             exitFullscreen();
+            releaseAllMedia();
           }
         }
         return Promise.reject(error);
@@ -170,10 +171,7 @@ export const AuthProvider = ({ children }) => {
       exitFullscreen();
 
       // Clean up global media stream (camera/mic) on sign out
-      if (globalState.mediaStream) {
-        globalState.mediaStream.getTracks().forEach(track => track.stop());
-        globalState.mediaStream = null;
-      }
+      releaseAllMedia();
     }
   };
 
