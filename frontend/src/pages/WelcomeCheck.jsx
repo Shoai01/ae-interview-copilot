@@ -58,6 +58,14 @@ async function checkSpeakerAvailable() {
 const StatusIcon = ({ status }) => {
   if (status === 'passed') return <CheckCircleIcon sx={{ color: '#16A34A', fontSize: 18 }} />;
   if (status === 'failed') return <CancelIcon sx={{ color: '#DC2626', fontSize: 18 }} />;
+  if (status === 'pending') {
+    // Waiting on the candidate (e.g. the identity photo), not on an automatic check.
+    return (
+      <Typography variant="caption" sx={{ color: '#F26522', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '10px' }}>
+        Required
+      </Typography>
+    );
+  }
   return (
     <Stack direction="row" alignItems="center" spacing={0.75} sx={{ color: '#D97706' }}>
       <Typography variant="caption" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: '10px' }}>
@@ -194,6 +202,12 @@ export default function WelcomeCheck() {
     setupMedia();
   }, [currentSession]);
 
+  // The plain preview only exists while the identity-photo step is off;
+  // (re)attach the stream whenever it mounts.
+  useEffect(() => {
+    if (videoRef.current && stream) videoRef.current.srcObject = stream;
+  }, [stream, faceRequired]);
+
   const [isStartingSession, setIsStartingSession] = useState(false);
 
   const handleStart = async () => {
@@ -241,7 +255,8 @@ export default function WelcomeCheck() {
 
   const hardwareReady = Object.values(checks).every(status => status === 'passed');
   const isReady = hardwareReady && (!faceRequired || Boolean(facePhoto));
-  const readyCount = Object.values(checks).filter(status => status === 'passed').length;
+  const readyCount = Object.values(checks).filter(status => status === 'passed').length + (faceRequired && facePhoto ? 1 : 0);
+  const totalChecks = Object.keys(checks).length + (faceRequired ? 1 : 0);
 
   const handleLogout = async () => {
     await logout();
@@ -581,6 +596,22 @@ export default function WelcomeCheck() {
                         </Typography>
                       </Box>
                     </Box>
+
+                    {faceRequired && (
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
+                        <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#F26522', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
+                          <FaceRetouchingNaturalOutlinedIcon sx={{ fontSize: 16 }} />
+                        </Box>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25}}>
+                            Identity Photo
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem'}}>
+                            Take a clear photo facing the camera in good light, with only you in frame. It is used only to confirm the same person completes this exam.
+                          </Typography>
+                        </Box>
+                      </Box>
+                    )}
                   </Stack>
                 </CardContent>
               </Card>
@@ -603,12 +634,12 @@ export default function WelcomeCheck() {
                         <FactCheckOutlinedIcon sx={{ fontSize: 18 }} />
                       </Box>
                       <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
-                        Hardware Readiness
+                        {faceRequired ? 'Readiness Check' : 'Hardware Readiness'}
                       </Typography>
                     </Stack>
                     <Chip
                       size="small"
-                      label={`${readyCount}/5 Verified`}
+                      label={`${readyCount}/${totalChecks} Verified`}
                       sx={{
                         fontWeight: 700,
                         fontSize: '0.72rem',
@@ -620,7 +651,18 @@ export default function WelcomeCheck() {
                     />
                   </Box>
 
-                  {/* Live Video Preview Box */}
+                  {/* Live camera: doubles as the identity-photo capture when that step is on */}
+                  {faceRequired && stream ? (
+                    <FaceReferenceCapture
+                      layout="stacked"
+                      stream={stream}
+                      disabled={isStartingSession}
+                      onAccepted={setFacePhoto}
+                      onReset={() => setFacePhoto(null)}
+                      onUnavailable={() => setFaceUnavailable(true)}
+                    />
+                  ) : (
+                    <>
                   <Box
                     sx={{
                       width: '100%',
@@ -670,6 +712,9 @@ export default function WelcomeCheck() {
                     )}
                   </Box>
                   
+                    </>
+                  )}
+
                   {/* Checklist rows */}
                   <Stack spacing={1}>
                     {[
@@ -678,6 +723,7 @@ export default function WelcomeCheck() {
                       { label: 'Audio Speaker', icon: <VolumeUpOutlinedIcon sx={{ fontSize: 16 }} />, status: checks.speaker },
                       { label: 'Network Connection', icon: <WifiOutlinedIcon sx={{ fontSize: 16 }} />, status: checks.network },
                       { label: 'Browser Compatibility', icon: <PublicOutlinedIcon sx={{ fontSize: 16 }} />, status: checks.browser },
+                      ...(faceRequired ? [{ label: 'Identity Photo', icon: <FaceRetouchingNaturalOutlinedIcon sx={{ fontSize: 16 }} />, status: facePhoto ? 'passed' : 'pending' }] : []),
                     ].map((item) => (
                       <Box
                         key={item.label}
@@ -706,61 +752,6 @@ export default function WelcomeCheck() {
               </Card>
 
             </Box>
-
-            {/* Identity photo */}
-            {faceRequired && (
-              <Card
-                elevation={0}
-                sx={{
-                  width: '100%',
-                  borderRadius: 2.5,
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-                  bgcolor: '#FFFFFF',
-                }}
-              >
-                <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
-                  <Stack direction="row" alignItems="center" spacing={1.5} sx={{ pb: 2, mb: 3, borderBottom: '1px solid #F1F5F9' }}>
-                    <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(242, 101, 34, 0.08)', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <FaceRetouchingNaturalOutlinedIcon sx={{ fontSize: 18 }} />
-                    </Box>
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
-                        Identity Photo
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                        Used only to confirm the same person completes this exam.
-                      </Typography>
-                    </Box>
-                    <Chip
-                      size="small"
-                      label={facePhoto ? 'Captured' : 'Required'}
-                      sx={{
-                        fontWeight: 700,
-                        fontSize: '0.72rem',
-                        bgcolor: facePhoto ? 'rgba(34, 197, 94, 0.08)' : 'rgba(242, 101, 34, 0.08)',
-                        color: facePhoto ? '#16A34A' : '#F26522',
-                        border: `1px solid ${facePhoto ? 'rgba(34, 197, 94, 0.25)' : 'rgba(242, 101, 34, 0.25)'}`,
-                        borderRadius: 1.5,
-                      }}
-                    />
-                  </Stack>
-                  {stream ? (
-                    <FaceReferenceCapture
-                      stream={stream}
-                      disabled={isStartingSession}
-                      onAccepted={setFacePhoto}
-                      onReset={() => setFacePhoto(null)}
-                      onUnavailable={() => setFaceUnavailable(true)}
-                    />
-                  ) : (
-                    <Typography variant="body2" sx={{ color: '#94A3B8' }}>
-                      Allow camera access to take your identity photo.
-                    </Typography>
-                  )}
-                </CardContent>
-              </Card>
-            )}
 
             {/* CTA */}
             <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1, gap: 1.5 }}>

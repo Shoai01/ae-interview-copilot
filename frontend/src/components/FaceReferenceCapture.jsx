@@ -24,8 +24,11 @@ const TIPS = [
  *   onReset       the candidate chose to retake after an accepted photo
  *   onUnavailable the face service is down; caller decides whether to let the exam proceed
  *   disabled      lock the controls (e.g. while the session is starting)
+ *   layout        'side' (preview left, guidance right - dialogs) or 'stacked'
+ *                 (one column for narrow cards; the page shows the tips itself)
  */
-export default function FaceReferenceCapture({ stream, onAccepted, onReset, onUnavailable, disabled = false }) {
+export default function FaceReferenceCapture({ stream, onAccepted, onReset, onUnavailable, disabled = false, layout = 'side' }) {
+  const stacked = layout === 'stacked';
   const videoRef = useRef(null);
   const [phase, setPhase] = useState('live'); // live | checking | rejected | accepted
   const [photoUrl, setPhotoUrl] = useState(null);
@@ -76,14 +79,14 @@ export default function FaceReferenceCapture({ stream, onAccepted, onReset, onUn
   const showPhoto = phase !== 'live' && photoUrl;
 
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '280px 1fr' }, gap: 3, alignItems: 'center' }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: stacked ? '1fr' : { xs: '1fr', md: '280px 1fr' }, gap: stacked ? 1.5 : 3, alignItems: 'center' }}>
       <Box
         sx={{
           position: 'relative',
           width: '100%',
-          maxWidth: 280,
+          maxWidth: stacked ? 340 : 280,
           aspectRatio: '4 / 3',
-          mx: { xs: 'auto', md: 0 },
+          mx: stacked ? 'auto' : { xs: 'auto', md: 0 },
           bgcolor: '#0F172A',
           borderRadius: 2,
           overflow: 'hidden',
@@ -130,7 +133,7 @@ export default function FaceReferenceCapture({ stream, onAccepted, onReset, onUn
         )}
       </Box>
 
-      <Stack spacing={1.5}>
+      <Stack spacing={1.5} alignItems={stacked ? 'center' : 'stretch'} sx={stacked ? { textAlign: 'center' } : undefined}>
         {phase === 'accepted' ? (
           <Stack direction="row" spacing={1} alignItems="center">
             <CheckCircleIcon sx={{ color: '#16A34A', fontSize: 20 }} />
@@ -154,13 +157,19 @@ export default function FaceReferenceCapture({ stream, onAccepted, onReset, onUn
                 </Stack>
               </Box>
             )}
-            <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#64748B' }}>
-              {TIPS.map((t) => (
-                <Typography key={t} component="li" variant="body2" sx={{ fontSize: '0.825rem', lineHeight: 1.6 }}>
-                  {t}
-                </Typography>
-              ))}
-            </Box>
+            {stacked ? (
+              <Typography variant="body2" sx={{ color: '#64748B', fontSize: '0.8rem' }}>
+                Face the camera with your whole face inside the oval.
+              </Typography>
+            ) : (
+              <Box component="ul" sx={{ m: 0, pl: 2.5, color: '#64748B' }}>
+                {TIPS.map((t) => (
+                  <Typography key={t} component="li" variant="body2" sx={{ fontSize: '0.825rem', lineHeight: 1.6 }}>
+                    {t}
+                  </Typography>
+                ))}
+              </Box>
+            )}
           </>
         )}
 
