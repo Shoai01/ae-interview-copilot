@@ -582,7 +582,20 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
             "asked_at": q.asked_at.isoformat() + "Z" if q.asked_at else None,
             "evaluation": eval_data,
             "fraud_flags": [
-                {"type": f.flag_type.value, "count": f.count, "total_seconds": _flag_total_seconds(f.events), "events": f.events or []}
+                {
+                    "id": f.id,
+                    "type": f.flag_type.value,
+                    "count": f.count,
+                    "total_seconds": _flag_total_seconds(f.events),
+                    "events": [
+                        {
+                            "start": e.get("start"),
+                            "end": e.get("end"),
+                            "has_image": bool(e.get("has_image") or e.get("image_path")),
+                        }
+                        for e in (f.events or [])
+                    ]
+                }
                 for f in q.fraud_flags
             ] if q.fraud_flags else []
         })
@@ -714,7 +727,7 @@ def create_fraud_flag(db: Session, session_id: int, flag_data: viva_schemas.Frau
     except (ValueError, AttributeError):
         detected_at = dt.utcnow()
     flag = viva_repository.record_fraud_event(
-        db, flag_data.viva_question_id, flag_data.flag_type, flag_data.phase, detected_at
+        db, flag_data.viva_question_id, flag_data.flag_type, flag_data.phase, detected_at, flag_data.image_base64
     )
     # An END with no open episode to close is a harmless no-op, not an error.
     return flag or (flag_data.phase == "END")

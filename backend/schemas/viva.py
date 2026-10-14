@@ -75,6 +75,7 @@ class FraudFlagCreate(BaseModel):
     # EVENT records a single instant (no duration), e.g. background noise bursts.
     phase: Literal["START", "END", "EVENT"] = "START"
     detected_at: str
+    image_base64: Optional[str] = None
 
 class SessionSummaryResponse(BaseModel):
     session_id: int

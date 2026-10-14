@@ -84,8 +84,26 @@ const FLAG_WARNINGS = {
   NO_FACE: 'Face not detected. Please stay in the camera frame.',
 };
 
+// Grab current camera frame as JPEG data-URL for violation proof
+function captureSnapshotBase64(video, maxSide = 640, quality = 0.8) {
+  try {
+    if (!video || !video.videoWidth || !video.videoHeight || video.readyState < 2) return null;
+    const scale = Math.min(1, maxSide / Math.max(video.videoWidth, video.videoHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch (err) {
+    console.warn('[FraudDetection] Failed to capture snapshot:', err);
+    return null;
+  }
+}
+
 export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = null) {
   const isMountedRef = useRef(true);
+  const videoElRef = useRef(null);
 
   // Live log state for the monitor panel
   const [logs, setLogs] = useState([]);
@@ -120,13 +138,18 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
   // ---------------------------------------------------------------
   // Shared episode begin/finish
   // ---------------------------------------------------------------
-  const beginFlag = useCallback((flagType) => {
+  const beginFlag = useCallback((flagType, customSnapshot = null) => {
     if (isEndingRef && isEndingRef.current) {
       addLog(flagType, `Skipped — detection disabled (session ending)`, 'info');
       return;
     }
+    // Auto-capture proof snapshot for visual presence flags (MULTIPLE_FACES, NO_FACE) if not supplied
+    let imageBase64 = customSnapshot;
+    if (!imageBase64 && (flagType === 'MULTIPLE_FACES' || flagType === 'NO_FACE')) {
+      imageBase64 = captureSnapshotBase64(videoElRef.current);
+    }
     // Already open for this type — don't re-warn or re-record.
-    if (!episodes.start(flagType)) return;
+    if (!episodes.start(flagType, imageBase64)) return;
 
     // User Warning Toast
     if (FLAG_WARNINGS[flagType]) {
@@ -241,6 +264,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
         videoEl.style.top = '-9999px';
         videoEl.id = '__fraud_detection_video';
         document.body.appendChild(videoEl);
+        videoElRef.current = videoEl;
 
         // On a mid-exam page refresh, globalState.mediaStream may not be
         // (re)assigned yet at this point — wait for it instead of silently
@@ -440,6 +464,7 @@ export function useFraudDetection(sessionId, activeQuestionId, isEndingRef = nul
       if (personDetectorModel) { personDetectorModel.dispose?.(); personDetectorModel = null; }
       const el = document.getElementById('__fraud_detection_video');
       if (el) { el.srcObject = null; el.remove(); }
+      videoElRef.current = null;
     };
   }, [addLog, beginFlag, finishFlag]);
 

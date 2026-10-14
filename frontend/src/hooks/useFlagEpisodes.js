@@ -24,13 +24,13 @@ export function useFlagEpisodes(sessionId, activeQuestionId) {
   // type -> question id the START was reported on (null = not reported yet)
   const openRef = useRef(new Map());
 
-  const start = useCallback((type) => {
+  const start = useCallback((type, imageBase64 = null) => {
     if (openRef.current.has(type)) return false;
     const sId = sessionIdRef.current;
     const qId = questionIdRef.current;
     if (sId && qId) {
       openRef.current.set(type, qId);
-      vivaService.reportFraudFlag(sId, qId, type, 'START');
+      vivaService.reportFraudFlag(sId, qId, type, 'START', imageBase64);
     } else {
       openRef.current.set(type, null);
     }

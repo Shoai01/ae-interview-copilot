@@ -273,21 +273,30 @@ export const vivaService = {
   // phase: 'START' opens an episode of this flag type, 'END' closes it,
   // 'EVENT' records a single instant with no duration.
   // Calls are chained so a quick START→END pair reaches the server in order.
-  reportFraudFlag: (sessionId, vivaQuestionId, flagType, phase = 'START') => {
+  reportFraudFlag: (sessionId, vivaQuestionId, flagType, phase = 'START', imageBase64 = null) => {
     const detectedAt = new Date().toISOString(); // capture the event time now, not when the request is sent
+    const payload = {
+      viva_question_id: vivaQuestionId,
+      flag_type: flagType,
+      phase,
+      detected_at: detectedAt
+    };
+    if (imageBase64) {
+      payload.image_base64 = imageBase64;
+    }
     fraudFlagQueue = fraudFlagQueue.then(async () => {
       try {
-        await api.post(`/viva/${sessionId}/fraud-flag`, {
-          viva_question_id: vivaQuestionId,
-          flag_type: flagType,
-          phase,
-          detected_at: detectedAt
-        });
+        await api.post(`/viva/${sessionId}/fraud-flag`, payload);
       } catch {
         // Fail silently — never interrupt the trainee's exam
       }
     });
     return fraudFlagQueue;
+  },
+  // Fetch snapshot proof captured during a fraud flag episode (e.g. MULTIPLE_FACES, NO_FACE)
+  getFlagProofImage: async (sessionId, flagId, eventIndex) => {
+    const response = await api.get(`/viva/${sessionId}/flags/${flagId}/events/${eventIndex}/image`, { responseType: 'blob' });
+    return response.data;
   },
   // --- Face verification ---------------------------------------------------
   getFaceConfig: async () => {

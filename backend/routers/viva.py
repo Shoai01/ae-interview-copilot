@@ -406,6 +406,27 @@ def get_face_check_image(session_id: int, check_id: int, db: Session = Depends(g
         raise HTTPException(status_code=404, detail="Snapshot not found")
     return FileResponse(check.image_path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
 
+@router.get("/{session_id}/flags/{flag_id}/events/{event_index}/image")
+def get_fraud_flag_image(session_id: int, flag_id: int, event_index: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    _verify_session_access(db, session_id, current_user)
+    flag = db.query(domain.FraudFlag).filter(domain.FraudFlag.id == flag_id).first()
+    if not flag:
+        raise HTTPException(status_code=404, detail="Flag not found")
+    question = db.query(domain.VivaQuestion).filter(
+        domain.VivaQuestion.id == flag.viva_question_id,
+        domain.VivaQuestion.session_id == session_id
+    ).first()
+    if not question:
+        raise HTTPException(status_code=404, detail="Flag does not belong to this session")
+    events = flag.events or []
+    if event_index < 0 or event_index >= len(events):
+        raise HTTPException(status_code=404, detail="Event index out of range")
+    event = events[event_index]
+    path = event.get("image_path")
+    if not path or not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Snapshot proof not found")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
 @router.get("/{session_id}/summary", response_model=viva_schemas.SessionSummaryResponse)
 def get_session_summary_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _verify_session_access(db, session_id, current_user)

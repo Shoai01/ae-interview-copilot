@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 from models import domain
+import os
 import datetime
-from typing import List
+from typing import List, Optional
 
 def create_session(db: Session, trainee_id: int, module_id: int) -> domain.VivaSession:
     db_session = domain.VivaSession(
@@ -134,12 +135,32 @@ def save_report(db: Session, db_report: domain.VivaReport) -> domain.VivaReport:
 # keeps tripping a detector can't grow the JSON column without limit. `count`
 # keeps counting past it.
 MAX_FLAG_EVENTS = 50
+FLAG_UPLOAD_ROOT = os.path.join("uploads", "flags")
 
-def record_fraud_event(db: Session, viva_question_id: int, flag_type, phase: str, at) -> domain.FraudFlag | None:
+def _save_flag_snapshot(session_id: int, flag_id: int, event_idx: int, image_base64: str) -> str | None:
+    """Decode and save a base64-encoded frame as JPEG proof for a fraud flag."""
+    try:
+        import base64
+        if "," in image_base64:
+            image_base64 = image_base64.split(",", 1)[1]
+        raw_bytes = base64.b64decode(image_base64)
+        if len(raw_bytes) == 0 or len(raw_bytes) > 5 * 1024 * 1024:
+            return None
+        upload_dir = os.path.join(FLAG_UPLOAD_ROOT, str(session_id))
+        os.makedirs(upload_dir, exist_ok=True)
+        path = os.path.join(upload_dir, f"flag_{flag_id}_{event_idx}.jpg")
+        with open(path, "wb") as f:
+            f.write(raw_bytes)
+        return path
+    except Exception as e:
+        print(f"[FraudFlag] Failed to save snapshot: {e}")
+        return None
+
+def record_fraud_event(db: Session, viva_question_id: int, flag_type, phase: str, at, image_base64: str | None = None) -> domain.FraudFlag | None:
     """
     Record one edge of a fraud-flag episode.
 
-    START: opens a new episode and bumps `count`.
+    START: opens a new episode and bumps `count`. Saves proof snapshot if image_base64 provided.
     EVENT: like START but instantaneous — stored already closed (end == start).
     END:   closes the most recent still-open episode; a no-op (returns None)
            if there is none, e.g. the START was dropped or already closed.
@@ -182,8 +203,17 @@ def record_fraud_event(db: Session, viva_question_id: int, flag_type, phase: str
     flag.count = (flag.count or 0) + 1
     flag.detected_at = at
     events = [dict(e) for e in (flag.events or [])]
+    event_entry = {"start": at_iso, "end": at_iso if phase == "EVENT" else None}
     if len(events) < MAX_FLAG_EVENTS:
-        events.append({"start": at_iso, "end": at_iso if phase == "EVENT" else None})
+        if image_base64:
+            q = db.query(domain.VivaQuestion).filter(domain.VivaQuestion.id == viva_question_id).first()
+            if q and q.session_id:
+                db.flush()  # ensure flag.id is available
+                img_path = _save_flag_snapshot(q.session_id, flag.id, len(events), image_base64)
+                if img_path:
+                    event_entry["has_image"] = True
+                    event_entry["image_path"] = img_path
+        events.append(event_entry)
     flag.events = events
     db.commit()
     db.refresh(flag)
