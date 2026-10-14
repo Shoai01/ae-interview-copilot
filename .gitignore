@@ -23,6 +23,7 @@ vertex-key.json
 *.pem
 
 # ---------- Runtime data (never commit) ----------
+uploads/
 backend/uploads/
 backend/faiss_index/
 *.db
@@ -60,3 +61,4 @@ graphify-out/
 Automation Edge Logo/
 .claude/
 backend/backfill_keyterms.py
+EXTENSION_PROCTORING_PLAN.md
