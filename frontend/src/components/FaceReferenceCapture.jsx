@@ -79,14 +79,19 @@ export default function FaceReferenceCapture({ stream, onAccepted, onReset, onUn
   const showPhoto = phase !== 'live' && photoUrl;
 
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: stacked ? '1fr' : { xs: '1fr', md: '280px 1fr' }, gap: stacked ? 1.5 : 3, alignItems: 'center' }}>
+    <Box
+      sx={stacked
+        ? { display: 'flex', flexDirection: 'column', gap: 1.25, height: '100%', minHeight: 0 }
+        : { display: 'grid', gridTemplateColumns: { xs: '1fr', md: '280px 1fr' }, gap: 3, alignItems: 'center' }}
+    >
+      {/* Stacked: the frame fills whatever height the card has left (keeping 4:3),
+          so the page never needs to scroll. Side: a fixed-width 4:3 frame. */}
+      <Box sx={stacked ? { position: 'relative', flex: '1 1 0', minHeight: 110 } : { display: 'contents' }}>
       <Box
         sx={{
-          position: 'relative',
-          width: '100%',
-          maxWidth: stacked ? 340 : 280,
-          aspectRatio: '4 / 3',
-          mx: stacked ? 'auto' : { xs: 'auto', md: 0 },
+          ...(stacked
+            ? { position: 'absolute', top: 0, bottom: 0, left: '50%', transform: 'translateX(-50%)', height: '100%', aspectRatio: '4 / 3', maxWidth: '100%' }
+            : { position: 'relative', width: '100%', maxWidth: 280, aspectRatio: '4 / 3', mx: { xs: 'auto', md: 0 } }),
           bgcolor: '#0F172A',
           borderRadius: 2,
           overflow: 'hidden',
@@ -131,6 +136,7 @@ export default function FaceReferenceCapture({ stream, onAccepted, onReset, onUn
             <CircularProgress size={28} sx={{ color: '#FFFFFF' }} />
           </Box>
         )}
+      </Box>
       </Box>
 
       <Stack spacing={1.5} alignItems={stacked ? 'center' : 'stretch'} sx={stacked ? { textAlign: 'center' } : undefined}>

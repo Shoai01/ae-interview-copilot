@@ -76,6 +76,76 @@ const StatusIcon = ({ status }) => {
   );
 };
 
+const CARD_SX = {
+  borderRadius: 2.5,
+  border: '1px solid #E2E8F0',
+  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+  bgcolor: '#FFFFFF',
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: 0,
+  overflow: 'hidden',
+};
+
+const CARD_CONTENT_SX = {
+  p: 2.25,
+  '&:last-child': { pb: 2.25 },
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 1.5,
+  flex: 1,
+  minHeight: 0,
+  overflowY: 'auto',
+};
+
+function CardHeading({ icon, title, right }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, pb: 1.5, borderBottom: '1px solid #F1F5F9', flexShrink: 0 }}>
+      <Stack direction="row" alignItems="center" spacing={1.25} sx={{ minWidth: 0 }}>
+        <Box sx={{ width: 30, height: 30, borderRadius: 1.5, bgcolor: 'rgba(242, 101, 34, 0.08)', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {icon}
+        </Box>
+        <Typography variant="h6" noWrap sx={{ fontWeight: 700, fontSize: '1rem', color: '#0F172A' }}>
+          {title}
+        </Typography>
+      </Stack>
+      {right}
+    </Box>
+  );
+}
+
+function StatusChip({ ok, label }) {
+  return (
+    <Chip
+      size="small"
+      label={label}
+      sx={{
+        fontWeight: 700,
+        fontSize: '0.72rem',
+        flexShrink: 0,
+        bgcolor: ok ? 'rgba(34, 197, 94, 0.08)' : 'rgba(242, 101, 34, 0.08)',
+        color: ok ? '#16A34A' : '#F26522',
+        border: `1px solid ${ok ? 'rgba(34, 197, 94, 0.25)' : 'rgba(242, 101, 34, 0.25)'}`,
+        borderRadius: 1.5,
+      }}
+    />
+  );
+}
+
+function ProtocolRow({ icon, color, title, children }) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+      <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
+        {icon}
+      </Box>
+      <Box>
+        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', lineHeight: 1.3 }}>{title}</Typography>
+        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.45, fontSize: '0.8rem' }}>{children}</Typography>
+      </Box>
+    </Box>
+  );
+}
+
 export default function WelcomeCheck() {
   const navigate = useNavigate();
   const videoRef = useRef(null);
@@ -265,7 +335,7 @@ export default function WelcomeCheck() {
 
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: '#F8FAFC' }}>
+    <Box sx={{ height: { md: '100dvh' }, minHeight: { xs: '100dvh', md: 0 }, overflow: { md: 'hidden' }, display: 'flex', flexDirection: 'column', bgcolor: '#F8FAFC' }}>
       
       {/* Top Header with AutomationEdge Branding */}
       <Box
@@ -389,13 +459,14 @@ export default function WelcomeCheck() {
       <Box
         component="main"
         sx={{
-          flexGrow: 1,
+          flex: 1,
+          minHeight: 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          p: { xs: 2.5, md: 4 },
+          p: { xs: 2, md: '8px 24px 14px' },
           width: '100%',
-          maxWidth: 960,
+          maxWidth: 1240,
           mx: 'auto',
         }}
       >
@@ -473,10 +544,17 @@ export default function WelcomeCheck() {
             </Button>
           </Box>
         ) : (
-          <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-            
+          <Box sx={{ width: '100%', height: { md: '100%' }, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: { xs: 2, md: 1.75 } }}>
+
             {/* Welcome Header */}
-            <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, flexShrink: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', columnGap: 1.5, rowGap: 0.5 }}>
+              <Typography
+                variant="h3"
+                sx={{ fontWeight: 700, fontSize: { xs: '1.5rem', md: '1.75rem' }, color: '#0F172A', letterSpacing: '-0.02em', lineHeight: 1.2 }}
+              >
+                Welcome, {traineeName}
+              </Typography>
               <Chip
                 label={currentSession?.module_name ? `${currentSession.module_name.toUpperCase()} ASSESSMENT` : 'VIVA ASSESSMENT'}
                 size="small"
@@ -484,238 +562,110 @@ export default function WelcomeCheck() {
                   bgcolor: 'rgba(242, 101, 34, 0.08)',
                   color: 'primary.main',
                   fontWeight: 700,
-                  fontSize: '0.72rem',
+                  fontSize: '0.7rem',
                   letterSpacing: '0.04em',
                   borderRadius: 1.5,
                   border: '1px solid rgba(242, 101, 34, 0.2)',
-                  px: 1,
-                  py: 0.4,
-                  mb: 1,
                 }}
               />
-              <Typography
-                variant="h3"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: { xs: '1.75rem', md: '2.25rem' },
-                  color: '#0F172A',
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.2,
-                }}
-              >
-                Welcome, {traineeName}
-              </Typography>
+              </Box>
+              {/* Dropped on short screens so the cards keep their room. */}
               <Typography
                 variant="body1"
-                sx={{
-                  color: '#64748B',
-                  fontSize: '0.95rem',
-                  maxWidth: 580,
-                }}
+                sx={{ color: '#64748B', fontSize: '0.9rem', maxWidth: 580, '@media (max-height: 760px)': { display: 'none' } }}
               >
                 Complete your system readiness check and review the exam protocol before launching your AI viva session.
               </Typography>
             </Box>
 
-            {/* Cards Container */}
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, width: '100%' }}>
-              
-              {/* Instructions Card */}
-              <Card
-                elevation={0}
-                sx={{
-                  borderRadius: 2.5,
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-                  bgcolor: '#FFFFFF',
-                }}
-              >
-                <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
-                  <Stack direction="row" alignItems="center" spacing={1.5} sx={{ pb: 2, mb: 3, borderBottom: '1px solid #F1F5F9' }}>
-                    <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(242, 101, 34, 0.08)', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <InfoOutlinedIcon sx={{ fontSize: 18 }} />
-                    </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
-                      Assessment Protocol
-                    </Typography>
-                  </Stack>
-                  
-                  <Stack spacing={3}>
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
-                      <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
-                        <TimerOutlinedIcon sx={{ fontSize: 16 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25}}>
-                          Session Duration
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem'}}>
-                          Approximately {currentSession?.duration_minutes || '15'} minutes. Ensure you remain seated in a quiet, well-lit environment.
-                        </Typography>
-                      </Box>
-                    </Box>
-                    
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
-                      <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#0EA5E9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
-                        <FormatListNumberedOutlinedIcon sx={{ fontSize: 16 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25}}>
-                          Adaptive Questions
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem'}}>
-                          {currentSession?.total_questions ? `${currentSession.total_questions} questions` : 'Targeted questions'} covering core competencies in {currentSession?.module_name || 'your assigned module'}.
-                        </Typography>
-                      </Box>
-                    </Box>
-                    
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
-                      <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
-                        <SmartToyOutlinedIcon sx={{ fontSize: 16 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25}}>
-                          AI Voice Evaluation
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem'}}>
-                          Spoken responses are transcribed and graded for technical depth, terminology, and concept clarity.
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
-                      <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#6366F1', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
-                        <ShieldOutlinedIcon sx={{ fontSize: 16 }} />
-                      </Box>
-                      <Box>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25}}>
-                          Integrity & Proctoring
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem'}}>
-                          Maintain camera presence and avoid tab switching. Live proctoring logs environmental integrity.
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    {faceRequired && (
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.75 }}>
-                        <Box sx={{ width: 28, height: 28, borderRadius: 1, bgcolor: '#F8FAFC', border: '1px solid #E2E8F0', color: '#F26522', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, mt: 0.25 }}>
-                          <FaceRetouchingNaturalOutlinedIcon sx={{ fontSize: 16 }} />
-                        </Box>
-                        <Box>
-                          <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A', mb: 0.25}}>
-                            Identity Photo
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: '#64748B', lineHeight: 1.5, fontSize: '0.85rem'}}>
-                            Take a clear photo facing the camera in good light, with only you in frame. It is used only to confirm the same person completes this exam.
-                          </Typography>
-                        </Box>
-                      </Box>
-                    )}
-                  </Stack>
+            {/* Three columns on desktop: protocol | camera + identity photo | readiness checks.
+                The row takes whatever height is left (capped, so it doesn't stretch on tall
+                screens) and each card scrolls inside itself rather than the page. */}
+            <Box
+              sx={{
+                width: '100%',
+                flex: { md: '1 1 0' },
+                minHeight: 0,
+                maxHeight: { md: 560 },
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr)' },
+                gridTemplateRows: { md: 'minmax(0, 1fr)' },
+                gap: 2,
+              }}
+            >
+              {/* Protocol */}
+              <Card elevation={0} sx={CARD_SX}>
+                <CardContent sx={CARD_CONTENT_SX}>
+                  <CardHeading icon={<InfoOutlinedIcon sx={{ fontSize: 18 }} />} title="Assessment Protocol" />
+                  <ProtocolRow icon={<TimerOutlinedIcon sx={{ fontSize: 16 }} />} color="#F26522" title="Session Duration">
+                    About {currentSession?.duration_minutes || '15'} minutes, in a quiet, well-lit room.
+                  </ProtocolRow>
+                  <ProtocolRow icon={<FormatListNumberedOutlinedIcon sx={{ fontSize: 16 }} />} color="#0EA5E9" title="Adaptive Questions">
+                    {currentSession?.total_questions ? `${currentSession.total_questions} questions` : 'Targeted questions'} on {currentSession?.module_name || 'your assigned module'}.
+                  </ProtocolRow>
+                  <ProtocolRow icon={<SmartToyOutlinedIcon sx={{ fontSize: 16 }} />} color="#10B981" title="AI Voice Evaluation">
+                    Spoken answers are transcribed and graded.
+                  </ProtocolRow>
+                  <ProtocolRow icon={<ShieldOutlinedIcon sx={{ fontSize: 16 }} />} color="#6366F1" title="Integrity & Proctoring">
+                    Stay on camera and don't switch tabs.
+                  </ProtocolRow>
+                  {faceRequired && (
+                    <ProtocolRow icon={<FaceRetouchingNaturalOutlinedIcon sx={{ fontSize: 16 }} />} color="#F26522" title="Identity Photo">
+                      Only you in frame. Used only to confirm who sits the exam.
+                    </ProtocolRow>
+                  )}
                 </CardContent>
               </Card>
 
-              {/* System Check Card */}
-              <Card
-                elevation={0}
-                sx={{
-                  borderRadius: 2.5,
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-                  bgcolor: '#FFFFFF',
-                }}
-              >
-                <CardContent sx={{ p: 3, '&:last-child': { pb: 3 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 2, borderBottom: '1px solid #F1F5F9' }}>
-                    <Stack direction="row" alignItems="center" spacing={1.5}>
-                      <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(242, 101, 34, 0.08)', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <FactCheckOutlinedIcon sx={{ fontSize: 18 }} />
-                      </Box>
-                      <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
-                        {faceRequired ? 'Readiness Check' : 'Hardware Readiness'}
-                      </Typography>
-                    </Stack>
-                    <Chip
-                      size="small"
-                      label={`${readyCount}/${totalChecks} Verified`}
-                      sx={{
-                        fontWeight: 700,
-                        fontSize: '0.72rem',
-                        bgcolor: isReady ? 'rgba(34, 197, 94, 0.08)' : 'rgba(242, 101, 34, 0.08)',
-                        color: isReady ? '#16A34A' : '#F26522',
-                        border: `1px solid ${isReady ? 'rgba(34, 197, 94, 0.25)' : 'rgba(242, 101, 34, 0.25)'}`,
-                        borderRadius: 1.5,
-                      }}
-                    />
-                  </Box>
-
-                  {/* Live camera: doubles as the identity-photo capture when that step is on */}
-                  {faceRequired && stream ? (
-                    <FaceReferenceCapture
-                      layout="stacked"
-                      stream={stream}
-                      disabled={isStartingSession}
-                      onAccepted={setFacePhoto}
-                      onReset={() => setFacePhoto(null)}
-                      onUnavailable={() => setFaceUnavailable(true)}
-                    />
-                  ) : (
-                    <>
-                  <Box
-                    sx={{
-                      width: '100%',
-                      height: 150,
-                      bgcolor: '#0F172A',
-                      borderRadius: 2,
-                      overflow: 'hidden',
-                      position: 'relative',
-                      border: '1px solid #E2E8F0',
-                    }}
-                  >
-                    <Box
-                      component="video"
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                    {stream ? (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: 8,
-                          left: 8,
-                          bgcolor: 'rgba(15, 23, 42, 0.75)',
-                          backdropFilter: 'blur(4px)',
-                          px: 1,
-                          py: 0.3,
-                          borderRadius: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 0.75,
-                        }}
-                      >
-                        <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22C55E', boxShadow: '0 0 6px #22C55E' }} />
-                        <Typography variant="caption" sx={{ color: '#FFFFFF', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.04em' }}>
-                          FEED ACTIVE
-                        </Typography>
-                      </Box>
+              {/* Camera + identity photo */}
+              <Card elevation={0} sx={CARD_SX}>
+                <CardContent sx={CARD_CONTENT_SX}>
+                  <CardHeading
+                    icon={faceRequired ? <FaceRetouchingNaturalOutlinedIcon sx={{ fontSize: 18 }} /> : <VideocamOutlinedIcon sx={{ fontSize: 18 }} />}
+                    title={faceRequired ? 'Camera & Identity Photo' : 'Camera Preview'}
+                    right={faceRequired ? <StatusChip ok={Boolean(facePhoto)} label={facePhoto ? 'Captured' : 'Required'} /> : null}
+                  />
+                  <Box sx={{ flex: { md: '1 1 0' }, height: { xs: 320, md: 'auto' }, minHeight: 0 }}>
+                    {faceRequired && stream ? (
+                      <FaceReferenceCapture
+                        layout="stacked"
+                        stream={stream}
+                        disabled={isStartingSession}
+                        onAccepted={setFacePhoto}
+                        onReset={() => setFacePhoto(null)}
+                        onUnavailable={() => setFaceUnavailable(true)}
+                      />
                     ) : (
-                      <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Typography variant="caption" sx={{ color: '#94A3B8'}}>
-                          Requesting camera & microphone access...
-                        </Typography>
+                      <Box sx={{ width: '100%', height: '100%', minHeight: 140, bgcolor: '#0F172A', borderRadius: 2, overflow: 'hidden', position: 'relative', border: '1px solid #E2E8F0' }}>
+                        <Box component="video" ref={videoRef} autoPlay playsInline muted sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {stream ? (
+                          <Box sx={{ position: 'absolute', top: 8, left: 8, bgcolor: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(4px)', px: 1, py: 0.3, borderRadius: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22C55E', boxShadow: '0 0 6px #22C55E' }} />
+                            <Typography variant="caption" sx={{ color: '#FFFFFF', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.04em' }}>
+                              FEED ACTIVE
+                            </Typography>
+                          </Box>
+                        ) : (
+                          <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                              Requesting camera & microphone access...
+                            </Typography>
+                          </Box>
+                        )}
                       </Box>
                     )}
                   </Box>
-                  
-                    </>
-                  )}
+                </CardContent>
+              </Card>
 
-                  {/* Checklist rows */}
+              {/* Readiness checks */}
+              <Card elevation={0} sx={CARD_SX}>
+                <CardContent sx={CARD_CONTENT_SX}>
+                  <CardHeading
+                    icon={<FactCheckOutlinedIcon sx={{ fontSize: 18 }} />}
+                    title={faceRequired ? 'Readiness Check' : 'Hardware Readiness'}
+                    right={<StatusChip ok={isReady} label={`${readyCount}/${totalChecks} Verified`} />}
+                  />
                   <Stack spacing={1}>
                     {[
                       { label: 'Camera Sensor', icon: <VideocamOutlinedIcon sx={{ fontSize: 16 }} />, status: checks.camera },
@@ -727,16 +677,7 @@ export default function WelcomeCheck() {
                     ].map((item) => (
                       <Box
                         key={item.label}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          px: 1.5,
-                          py: 0.85,
-                          borderRadius: 1.5,
-                          bgcolor: '#F8FAFC',
-                          border: '1px solid #F1F5F9',
-                        }}
+                        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1.5, py: 0.9, borderRadius: 1.5, bgcolor: '#F8FAFC', border: '1px solid #F1F5F9' }}
                       >
                         <Stack direction="row" alignItems="center" spacing={1.25}>
                           <Box sx={{ color: '#64748B', display: 'flex', alignItems: 'center' }}>{item.icon}</Box>
@@ -750,11 +691,10 @@ export default function WelcomeCheck() {
                   </Stack>
                 </CardContent>
               </Card>
-
             </Box>
 
             {/* CTA */}
-            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1, gap: 1.5 }}>
+            <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
               <Button
                 variant="contained"
                 disabled={!isReady || isStartingSession}
@@ -767,7 +707,7 @@ export default function WelcomeCheck() {
                   fontWeight: 700,
                   fontSize: '0.95rem',
                   px: 5,
-                  py: 1.35,
+                  py: 1.1,
                   borderRadius: 2,
                   boxShadow: '0 4px 20px rgba(242, 101, 34, 0.35)',
                   transition: 'all 0.2s ease',
@@ -791,13 +731,16 @@ export default function WelcomeCheck() {
                   'Accept Guidelines & Begin Viva'
                 )}
               </Button>
-              {!isReady && (
-                <Typography variant="caption" sx={{ color: '#EF4444', fontSize: '0.8rem', fontWeight: 500}}>
-                  {!hardwareReady
-                    ? 'Please allow camera and microphone permissions in your browser to proceed.'
-                    : 'Please take your identity photo to proceed.'}
-                </Typography>
-              )}
+              {/* Fixed height so the cards above don't resize when this line goes away. */}
+              <Box sx={{ minHeight: 20 }}>
+                {!isReady && (
+                  <Typography variant="caption" sx={{ color: '#EF4444', fontSize: '0.8rem', fontWeight: 500 }}>
+                    {!hardwareReady
+                      ? 'Please allow camera and microphone permissions in your browser to proceed.'
+                      : 'Please take your identity photo to proceed.'}
+                  </Typography>
+                )}
+              </Box>
             </Box>
 
           </Box>
