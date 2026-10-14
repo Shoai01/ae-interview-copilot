@@ -339,6 +339,15 @@ def precheck_face_photo(file: UploadFile = File(...), current_user: User = Depen
         raise _face_unavailable(e)
     return viva_schemas.FaceReferenceResponse(accepted=outcome.accepted, reasons=outcome.reasons, messages=outcome.messages)
 
+@router.post("/face/live-check", response_model=viva_schemas.FaceLiveCheckResponse)
+def live_check_face(file: UploadFile = File(...), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
+    """Live guide feedback for the photo step: face/eye positions and which conditions pass."""
+    data = _read_face_image(file)
+    try:
+        return face_session_service.live_check(data)
+    except face_service.FaceModelUnavailable as e:
+        raise _face_unavailable(e)
+
 @router.post("/{session_id}/face/reference", response_model=viva_schemas.FaceReferenceResponse)
 def set_face_reference(session_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
     _verify_session_ownership(db, session_id, current_user)

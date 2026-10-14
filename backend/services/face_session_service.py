@@ -78,6 +78,24 @@ def precheck(data: bytes) -> ReferenceOutcome:
     return ReferenceOutcome(quality.ok, quality.reasons, quality.messages)
 
 
+def live_check(data: bytes) -> dict:
+    """
+    Per-frame feedback for the on-screen guide: where the face and eyes are and
+    which conditions pass. Uses the same assessment as the final capture check,
+    so the guide can't turn green on a frame the server would then reject.
+    """
+    img = face_service.decode_image(data)
+    if img is None:
+        return {"ok": False, "face_found": False, "face_count": 0, "box": None, "eyes": None,
+                "checks": [], "message": face_service.REASON_MESSAGES["invalid_image"]}
+    q = face_service.assess_quality(img)
+    message = None
+    if not q.ok:
+        message = face_service.REASON_MESSAGES.get(q.reasons[0], q.reasons[0])
+    return {"ok": q.ok, "face_found": q.face is not None, "face_count": q.face_count,
+            "box": q.box, "eyes": q.eyes, "checks": q.checks, "message": message}
+
+
 def set_reference(db: Session, session: domain.VivaSession, data: bytes) -> ReferenceOutcome:
     """
     Validate and lock in the session's reference photo.

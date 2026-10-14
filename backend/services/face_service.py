@@ -69,7 +69,10 @@ MAX_IMAGE_SIDE = 1280
 # --- reference-photo quality limits (tuned on webcam-sized frames) ---
 MIN_FACE_SIDE_PX = 90           # shortest side of the face box, in the (resized) image
 MIN_FACE_WIDTH_RATIO = 0.15     # face width / image width
-MAX_CENTER_OFFSET = 0.30        # face-centre offset from image centre, fraction of image size
+MAX_CENTER_X_OFFSET = 0.14      # face-centre offset from image centre, as a fraction of image width
+MAX_CENTER_Y_OFFSET = 0.18      # ... and of image height (the guide oval sits just above middle)
+MIN_FACE_HEIGHT_RATIO = 0.30    # face-box height / image height: below this, "move closer"
+MAX_FACE_HEIGHT_RATIO = 0.80    # above this, "move back"
 MIN_BRIGHTNESS = 55             # mean luma of the face crop (0-255)
 MAX_BRIGHTNESS = 215
 MIN_SHARPNESS = _env_float("FACE_MIN_SHARPNESS", 25.0)   # variance of Laplacian on the 112px face crop
@@ -85,6 +88,7 @@ REASON_MESSAGES = {
     "no_face": "No face found. Look straight at the camera.",
     "multiple_faces": "More than one person is in the frame. Only the candidate should be visible.",
     "face_too_small": "Move closer to the camera.",
+    "face_too_close": "Move back a little from the camera.",
     "face_not_centered": "Center your face in the frame.",
     "too_dark": "The image is too dark. Face a light source.",
     "too_bright": "The image is too bright. Reduce the light behind or on your face.",
@@ -123,6 +127,12 @@ class QualityResult:
     reasons: List[str] = field(default_factory=list)
     face: Optional[DetectedFace] = None
     face_count: int = 0
+    # One entry per condition the candidate can act on, in the order to fix them:
+    # {"id", "label", "ok", "message"}. Empty when no face was found.
+    checks: List[dict] = field(default_factory=list)
+    # Normalised (0-1) image coordinates for drawing the live guide.
+    box: Optional[List[float]] = None
+    eyes: Optional[List[List[float]]] = None
 
     @property
     def messages(self) -> List[str]:
@@ -314,26 +324,40 @@ def decode_image(data: bytes) -> Optional[np.ndarray]:
     return img
 
 
+# Which conditions the candidate sees, and which rejection reasons belong to each.
+QUALITY_CHECKS = [
+    ("single_person", "One person", ("multiple_faces",)),
+    ("distance", "Distance", ("face_too_small", "face_too_close")),
+    ("position", "Position", ("face_not_centered",)),
+    ("lighting", "Lighting", ("too_dark", "too_bright")),
+    ("focus", "Focus", ("blurry",)),
+    ("facing", "Facing camera", ("face_not_frontal", "face_tilted")),
+]
+
+
 def assess_quality(img: np.ndarray, engine: Optional[FaceEngine] = None) -> QualityResult:
-    """Decide whether `img` is usable as the reference photo."""
+    """Decide whether `img` is usable as the reference photo, and say what to fix if not."""
     engine = engine or get_engine()
     faces = [f for f in engine.detect(img) if f.score >= MIN_DETECTION_SCORE]
     if not faces:
         return QualityResult(ok=False, reasons=["no_face"])
     faces.sort(key=lambda f: f.area, reverse=True)
     main = faces[0]
-    result = QualityResult(ok=True, face=main, face_count=len(faces))
-    reasons = result.reasons
+    reasons: List[str] = []
 
     if any(f.score >= SECOND_FACE_MIN_SCORE and f.area >= main.area * SECOND_FACE_MIN_AREA_RATIO for f in faces[1:]):
         reasons.append("multiple_faces")
 
     img_h, img_w = img.shape[:2]
-    if min(main.width, main.height) < MIN_FACE_SIDE_PX or main.width / img_w < MIN_FACE_WIDTH_RATIO:
+    face_h_ratio = main.height / img_h
+    if (min(main.width, main.height) < MIN_FACE_SIDE_PX or main.width / img_w < MIN_FACE_WIDTH_RATIO
+            or face_h_ratio < MIN_FACE_HEIGHT_RATIO):
         reasons.append("face_too_small")
+    elif face_h_ratio > MAX_FACE_HEIGHT_RATIO:
+        reasons.append("face_too_close")
 
     cx, cy = (main.bbox[0] + main.bbox[2]) / 2, (main.bbox[1] + main.bbox[3]) / 2
-    if abs(cx - img_w / 2) / img_w > MAX_CENTER_OFFSET or abs(cy - img_h / 2) / img_h > MAX_CENTER_OFFSET:
+    if abs(cx - img_w / 2) / img_w > MAX_CENTER_X_OFFSET or abs(cy - img_h / 2) / img_h > MAX_CENTER_Y_OFFSET:
         reasons.append("face_not_centered")
 
     crop = engine.aligned_crop(img, main)
@@ -356,8 +380,23 @@ def assess_quality(img: np.ndarray, engine: Optional[FaceEngine] = None) -> Qual
         if roll > MAX_ROLL_DEG:
             reasons.append("face_tilted")
 
-    result.ok = not reasons
-    return result
+    checks = []
+    for check_id, label, owned in QUALITY_CHECKS:
+        failed = next((r for r in reasons if r in owned), None)
+        checks.append({"id": check_id, "label": label, "ok": failed is None,
+                       "message": REASON_MESSAGES[failed] if failed else None})
+
+    x1, y1, x2, y2 = main.bbox
+    return QualityResult(
+        ok=not reasons,
+        reasons=reasons,
+        face=main,
+        face_count=len(faces),
+        checks=checks,
+        box=[float(x1 / img_w), float(y1 / img_h), float(x2 / img_w), float(y2 / img_h)],
+        eyes=[[float(left_eye[0] / img_w), float(left_eye[1] / img_h)],
+              [float(right_eye[0] / img_w), float(right_eye[1] / img_h)]],
+    )
 
 
 def extract_embedding(img: np.ndarray, engine: Optional[FaceEngine] = None) -> Optional[np.ndarray]:

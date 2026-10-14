@@ -166,6 +166,21 @@ class FaceReferenceResponse(BaseModel):
     reasons: List[str] = []
     messages: List[str] = []
 
+class FaceLiveCondition(BaseModel):
+    id: str
+    label: str
+    ok: bool
+    message: Optional[str] = None
+
+class FaceLiveCheckResponse(BaseModel):
+    ok: bool
+    face_found: bool
+    face_count: int
+    box: Optional[List[float]] = None            # x1, y1, x2, y2 as 0-1 fractions of the frame
+    eyes: Optional[List[List[float]]] = None     # [[x, y], [x, y]] as 0-1 fractions
+    checks: List[FaceLiveCondition] = []
+    message: Optional[str] = None                # the most important thing to fix
+
 class FaceCheckItem(BaseModel):
     id: int
     status: str
