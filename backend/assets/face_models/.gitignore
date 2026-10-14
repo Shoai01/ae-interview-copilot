@@ -1,0 +1,2 @@
+# ONNX face models are downloaded on first use (see services/face_service.py)
+*.onnx

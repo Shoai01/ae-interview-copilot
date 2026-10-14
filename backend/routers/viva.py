@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from core.database import get_db
 from schemas import viva as viva_schemas
-from services import viva_service, user_service, deepgram_service, keyterm_service
+from services import viva_service, user_service, deepgram_service, keyterm_service, face_service, face_session_service
 from repositories import viva_repository
 from core.deps import get_current_user, require_role
 from models.domain import User, UserRole
@@ -184,7 +184,7 @@ def submit_answer(session_id: int, answer_data: viva_schemas.AnswerSubmit, db: S
         raise HTTPException(status_code=404, detail="Question not found in session")
     return viva_schemas.StatusResponse(status="success")
 
-from fastapi import UploadFile, File
+from fastapi import UploadFile, File, Form
 import os
 import uuid
 
@@ -304,6 +304,98 @@ def stream_answer_audio(
             "Cache-Control": "private, max-age=86400",
         }
     )
+
+# --- Face verification ------------------------------------------------------
+# Static /face/* routes sit before the /{session_id}/... ones so they are never
+# read as a session id.
+
+def _read_face_image(file: UploadFile) -> bytes:
+    content_type = file.content_type or ""
+    if not content_type.startswith("image/") and content_type != "application/octet-stream":
+        raise HTTPException(status_code=400, detail=f"Invalid image type: {content_type}")
+    data = file.file.read(face_service.MAX_IMAGE_BYTES + 1)
+    if len(data) > face_service.MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="Image too large")
+    return data
+
+def _face_unavailable(e: Exception) -> HTTPException:
+    logger.error("Face models unavailable: %s", e)
+    return HTTPException(status_code=503, detail="Face verification is temporarily unavailable")
+
+@router.get("/face/config", response_model=viva_schemas.FaceConfigResponse)
+def get_face_config(current_user: User = Depends(get_current_user)):
+    return viva_schemas.FaceConfigResponse(
+        enabled=face_service.is_enabled(),
+        check_interval_seconds=face_service.CHECK_INTERVAL_SECONDS,
+    )
+
+@router.post("/face/precheck", response_model=viva_schemas.FaceReferenceResponse)
+def precheck_face_photo(file: UploadFile = File(...), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
+    """Quality-check a candidate reference photo before the session is started."""
+    data = _read_face_image(file)
+    try:
+        outcome = face_session_service.precheck(data)
+    except face_service.FaceModelUnavailable as e:
+        raise _face_unavailable(e)
+    return viva_schemas.FaceReferenceResponse(accepted=outcome.accepted, reasons=outcome.reasons, messages=outcome.messages)
+
+@router.post("/{session_id}/face/reference", response_model=viva_schemas.FaceReferenceResponse)
+def set_face_reference(session_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
+    _verify_session_ownership(db, session_id, current_user)
+    data = _read_face_image(file)
+    session = viva_repository.get_session_by_id(db, session_id)
+    try:
+        outcome = face_session_service.set_reference(db, session, data)
+    except face_session_service.ReferenceAlreadySet:
+        raise HTTPException(status_code=409, detail="A reference photo is already set for this session")
+    except face_session_service.SessionNotActive:
+        raise HTTPException(status_code=409, detail="Session is not in progress")
+    except face_service.FaceModelUnavailable as e:
+        raise _face_unavailable(e)
+    return viva_schemas.FaceReferenceResponse(accepted=outcome.accepted, reasons=outcome.reasons, messages=outcome.messages)
+
+@router.post("/{session_id}/face/check", response_model=viva_schemas.StatusResponse)
+def check_face(session_id: int, file: UploadFile = File(...), viva_question_id: Optional[int] = Form(None), db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
+    """
+    Compare a snapshot with the session's reference photo. The verdict is
+    deliberately not returned to the candidate; trainers read it in the review.
+    """
+    _verify_session_ownership(db, session_id, current_user)
+    data = _read_face_image(file)
+    session = viva_repository.get_session_by_id(db, session_id)
+    try:
+        face_session_service.run_check(db, session, data, viva_question_id)
+    except face_session_service.ReferenceMissing:
+        raise HTTPException(status_code=409, detail="No reference photo set for this session")
+    except face_session_service.SessionNotActive:
+        raise HTTPException(status_code=409, detail="Session is not in progress")
+    except face_session_service.CheckTooSoon:
+        raise HTTPException(status_code=429, detail="Face checks are too frequent")
+    except face_service.FaceModelUnavailable as e:
+        raise _face_unavailable(e)
+    return viva_schemas.StatusResponse(status="recorded")
+
+@router.get("/{session_id}/face/summary", response_model=viva_schemas.FaceSummaryResponse)
+def get_face_summary(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    _verify_session_access(db, session_id, current_user)
+    return face_session_service.get_summary(db, session_id)
+
+@router.get("/{session_id}/face/reference-image")
+def get_face_reference_image(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    _verify_session_access(db, session_id, current_user)
+    session = viva_repository.get_session_by_id(db, session_id)
+    path = session.face_reference_path if session else None
+    if not path or not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Reference photo not found")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
+
+@router.get("/{session_id}/face/checks/{check_id}/image")
+def get_face_check_image(session_id: int, check_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.TRAINER]))):
+    _verify_session_access(db, session_id, current_user)
+    check = db.query(domain.FaceCheck).filter(domain.FaceCheck.id == check_id, domain.FaceCheck.session_id == session_id).first()
+    if not check or not check.image_path or not os.path.exists(check.image_path):
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    return FileResponse(check.image_path, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
 
 @router.get("/{session_id}/summary", response_model=viva_schemas.SessionSummaryResponse)
 def get_session_summary_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

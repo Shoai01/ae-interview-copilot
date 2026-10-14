@@ -55,6 +55,26 @@ with engine.connect() as connection:
     with Session(engine) as session:
         seed_admin(session)
 
+# Face verification: load the ONNX models in the background (downloads them on
+# first run) so the first exam start doesn't pay for it, and drop face images
+# past the retention window. Failures here never block startup — the face routes
+# report 503 and the exam proceeds without identity checks.
+def _prepare_face_verification():
+    import logging
+    from services import face_service, face_session_service
+    log = logging.getLogger("face_verification")
+    try:
+        face_service.get_engine()
+        with Session(engine) as session:
+            removed = face_session_service.purge_expired_images(session)
+        log.info("Face verification ready (%d expired images removed)", removed)
+    except Exception as e:  # noqa: BLE001
+        log.error("Face verification unavailable: %s", e)
+
+if os.environ.get("FACE_VERIFICATION_ENABLED", "1") != "0" and not os.environ.get("PYTEST_CURRENT_TEST"):
+    import threading
+    threading.Thread(target=_prepare_face_verification, name="face-warmup", daemon=True).start()
+
 # Include Routers
 app.include_router(auth.router)
 app.include_router(admin.router)

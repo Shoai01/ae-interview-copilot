@@ -27,6 +27,7 @@ class FraudFlagType(str, enum.Enum):
     TAB_SWITCH = "TAB_SWITCH"
     FULLSCREEN_EXIT = "FULLSCREEN_EXIT"
     BACKGROUND_NOISE = "BACKGROUND_NOISE"
+    FACE_MISMATCH = "FACE_MISMATCH"
 
 class AIRecommendationType(str, enum.Enum):
     PASS = "PASS"
@@ -134,11 +135,32 @@ class VivaSession(Base):
     start_time = Column(DateTime, default=datetime.utcnow)
     end_time = Column(DateTime, nullable=True)
     status = Column(SQLEnum(SessionStatus), nullable=False, default=SessionStatus.IN_PROGRESS)
+    # Identity check: the photo captured when the exam starts, and its face embedding
+    # (512 floats). Set once and then locked — see face_service / the viva face routes.
+    face_reference_path = Column(String, nullable=True)
+    face_reference_embedding = Column(JSON, nullable=True)
+    face_reference_at = Column(DateTime, nullable=True)
 
     trainee = relationship("User", back_populates="sessions", foreign_keys=[trainee_id])
     module = relationship("TrainingModule", back_populates="sessions")
     questions = relationship("VivaQuestion", back_populates="session")
     report = relationship("VivaReport", back_populates="session", uselist=False)
+    face_checks = relationship("FaceCheck", back_populates="session", cascade="all, delete-orphan")
+
+class FaceCheck(Base):
+    """One periodic comparison of a camera snapshot against the session's reference photo."""
+    __tablename__ = "face_checks"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    session_id = Column(Integer, ForeignKey("viva_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    viva_question_id = Column(Integer, ForeignKey("viva_questions.id"), nullable=True)
+    status = Column(String, nullable=False)  # MATCH | MISMATCH | NO_FACE
+    similarity = Column(Float, nullable=True)  # cosine similarity to the reference; null for NO_FACE
+    face_count = Column(Integer, nullable=False, default=0)
+    image_path = Column(String, nullable=True)  # kept for mismatches and a sample of matches
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    session = relationship("VivaSession", back_populates="face_checks")
 
 class VivaQuestion(Base):
     __tablename__ = "viva_questions"

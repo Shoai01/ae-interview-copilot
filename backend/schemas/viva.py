@@ -24,7 +24,8 @@ class SessionResponse(BaseModel):
     max_marks: int = 20
     start_time: Optional[datetime] = None
     new_user_password: Optional[str] = None
-    
+    face_reference_set: bool = False
+
     model_config = ConfigDict(from_attributes=True)
 
 class NextQuestionResponse(BaseModel):
@@ -154,3 +155,34 @@ class BulkSessionResponse(BaseModel):
     success_count: int
     failed_count: int
     results: list[BulkSessionResultItem]
+
+
+class FaceConfigResponse(BaseModel):
+    enabled: bool
+    check_interval_seconds: int
+
+class FaceReferenceResponse(BaseModel):
+    accepted: bool
+    reasons: List[str] = []
+    messages: List[str] = []
+
+class FaceCheckItem(BaseModel):
+    id: int
+    status: str
+    similarity: Optional[float] = None
+    face_count: int
+    viva_question_id: Optional[int] = None
+    created_at: datetime
+    has_image: bool
+
+class FaceSummaryResponse(BaseModel):
+    enabled: bool
+    reference_set: bool
+    reference_at: Optional[datetime] = None
+    match_threshold: float
+    total_checks: int
+    matches: int
+    mismatches: int
+    no_face: int
+    min_similarity: Optional[float] = None
+    checks: List[FaceCheckItem]
