@@ -425,6 +425,7 @@ export default function Layout({ children, breadcrumbs }) {
           component="header"
           sx={{
             height: 64,
+            flexShrink: 0, // tall page content must not squash the header
             px: { xs: 2, lg: 3.5 },
             display: 'flex',
             alignItems: 'center',
@@ -435,7 +436,7 @@ export default function Layout({ children, breadcrumbs }) {
           }}
         >
           {/* Left: Mobile Toggle & Breadcrumbs */}
-          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0, mr: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, overflow: 'hidden', mr: 2 }}>
             <IconButton
               color="inherit"
               aria-label="open drawer"
@@ -534,7 +535,7 @@ export default function Layout({ children, breadcrumbs }) {
           </Box>
 
           {/* Right Header Status & Role Indicator */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
             <Tooltip
               title={
                 engineStatus === 'active'
