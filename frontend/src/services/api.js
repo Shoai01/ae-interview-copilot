@@ -302,6 +302,13 @@ export const vivaService = {
     const response = await api.post('/viva/face/precheck', formData);
     return response.data;
   },
+  // Per-frame guide feedback: { ok, face_found, box, eyes, checks, message }.
+  liveCheckFace: async (frameBlob) => {
+    const formData = new FormData();
+    formData.append('file', frameBlob, 'frame.jpg');
+    const response = await api.post('/viva/face/live-check', formData);
+    return response.data;
+  },
   uploadFaceReference: async (sessionId, photoBlob) => {
     const formData = new FormData();
     formData.append('file', photoBlob, 'reference.jpg');

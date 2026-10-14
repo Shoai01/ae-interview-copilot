@@ -10,3 +10,14 @@ export async function captureFrameBlob(video, maxSide = 640, quality = 0.9) {
   canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
   return new Promise((resolve) => canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality));
 }
+
+// Where a point given as 0-1 fractions of the camera frame lands inside a box
+// that shows the video with object-fit: cover (and, optionally, mirrored the way
+// the preview is). Returns fractions of the box, so the result can drive CSS
+// left/top percentages; values outside 0-1 mean the point is cropped out of view.
+export function mapToCoverBox([nx, ny], videoW, videoH, boxW, boxH, mirror = true) {
+  const scale = Math.max(boxW / videoW, boxH / videoH);
+  const fx = (nx * videoW * scale - (videoW * scale - boxW) / 2) / boxW;
+  const fy = (ny * videoH * scale - (videoH * scale - boxH) / 2) / boxH;
+  return { x: mirror ? 1 - fx : fx, y: fy };
+}
