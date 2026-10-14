@@ -21,8 +21,7 @@ const TONE_TEXT = { idle: '#64748B', bad: '#DC2626', ok: '#16A34A' };
 // Consecutive passing frames needed before Capture unlocks (~0.5 s), so one lucky frame can't.
 const REQUIRED_PASS_STREAK = 2;
 
-function ConditionChip({ label, ok }) {
-  const color = ok ? '#16A34A' : '#DC2626';
+function ConditionChip({ label }) {
   return (
     <Box
       sx={{
@@ -34,12 +33,12 @@ function ConditionChip({ label, ok }) {
         borderRadius: 1,
         fontSize: '0.7rem',
         fontWeight: 600,
-        color,
-        bgcolor: ok ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.08)',
-        border: `1px solid ${ok ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+        color: '#DC2626',
+        bgcolor: 'rgba(239,68,68,0.08)',
+        border: '1px solid rgba(239,68,68,0.3)',
       }}
     >
-      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color }} />
+      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#DC2626' }} />
       {label}
     </Box>
   );
@@ -252,11 +251,9 @@ export default function FaceReferenceCapture({ stream, onAccepted, onReset, onUn
                 <Typography variant="body2" sx={{ color: TONE_TEXT[tone], fontWeight: hasVerdict ? 700 : 500, fontSize: '0.82rem', lineHeight: 1.35 }}>
                   {statusText}
                 </Typography>
-                {hasVerdict && live.face_found && (
+                {failing.length > 0 && live.face_found && (
                   <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ justifyContent: stacked ? 'center' : 'flex-start' }}>
-                    {live.ok
-                      ? <ConditionChip label={`All ${live.checks.length} checks passed`} ok />
-                      : failing.map((c) => <ConditionChip key={c.id} label={c.label} ok={false} />)}
+                    {failing.map((c) => <ConditionChip key={c.id} label={c.label} />)}
                   </Stack>
                 )}
               </Stack>
