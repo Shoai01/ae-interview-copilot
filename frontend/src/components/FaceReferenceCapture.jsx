@@ -119,12 +119,16 @@ export default function FaceReferenceCapture({ stream, onAccepted, onReset, onUn
             <Box
               sx={{
                 position: 'absolute',
-                top: '50%',
+                // Sized to a real face seen at laptop distance (face width ~1/3 of the
+                // frame, forehead-to-chin ~1.2x its width, centred just above middle).
+                // Sized by height with a fixed ratio so it can't stretch with the frame.
+                top: '49.5%',
                 left: '50%',
-                width: '46%',
-                height: '78%',
+                height: '72%',
+                aspectRatio: '1 / 1.2',
                 transform: 'translate(-50%, -50%)',
-                border: '2px dashed rgba(255,255,255,0.75)',
+                border: '2px dashed rgba(255,255,255,0.9)',
+                filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.65))', // stays visible on light backgrounds too
                 borderRadius: '50%',
                 pointerEvents: 'none',
               }}
