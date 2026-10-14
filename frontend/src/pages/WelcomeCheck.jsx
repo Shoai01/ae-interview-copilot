@@ -17,10 +17,12 @@ import SyncIcon from '@mui/icons-material/Sync';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import FaceRetouchingNaturalOutlinedIcon from '@mui/icons-material/FaceRetouchingNaturalOutlined';
 import { vivaService } from '@/services/api';
 import { globalState, AUDIO_CONSTRAINTS } from '@/store';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/store/AuthContext';
+import FaceReferenceCapture from '@/components/FaceReferenceCapture';
 
 /**
  * Real feature-support check instead of a hardcoded 'passed' — verifies the
@@ -89,6 +91,18 @@ export default function WelcomeCheck() {
   const [traineeName, setTraineeName] = useState("Loading...");
   const [currentSession, setCurrentSession] = useState(null);
   const [isFetchingSession, setIsFetchingSession] = useState(true);
+
+  // Identity photo: taken here, uploaded as the session's reference once the
+  // session exists. `faceRequired` is false when the feature is off or the
+  // face service is down, so neither can lock a candidate out of the exam.
+  const [faceConfig, setFaceConfig] = useState(null);
+  const [facePhoto, setFacePhoto] = useState(null);
+  const [faceUnavailable, setFaceUnavailable] = useState(false);
+  const faceRequired = Boolean(faceConfig?.enabled) && !faceUnavailable;
+
+  useEffect(() => {
+    vivaService.getFaceConfig().then(setFaceConfig).catch(() => setFaceConfig(null));
+  }, []);
 
   const fetchSession = async () => {
     setIsFetchingSession(true);
@@ -196,6 +210,16 @@ export default function WelcomeCheck() {
 
       // Start session using the token (backend determines module and trainee)
       const session = await vivaService.startSession();
+
+      // Lock in the identity photo as this session's reference. If it fails here
+      // the interview page asks for a new one, so this never blocks the start.
+      if (faceRequired && facePhoto && !session.face_reference_set) {
+        try {
+          await vivaService.uploadFaceReference(session.id, facePhoto);
+        } catch (err) {
+          console.warn("Reference photo upload failed; the interview page will ask again:", err);
+        }
+      }
       
       // Pass full session data to the interview page
       navigate('/interview', { 
@@ -215,7 +239,8 @@ export default function WelcomeCheck() {
     }
   };
 
-  const isReady = Object.values(checks).every(status => status === 'passed');
+  const hardwareReady = Object.values(checks).every(status => status === 'passed');
+  const isReady = hardwareReady && (!faceRequired || Boolean(facePhoto));
   const readyCount = Object.values(checks).filter(status => status === 'passed').length;
 
   const handleLogout = async () => {
@@ -682,6 +707,61 @@ export default function WelcomeCheck() {
 
             </Box>
 
+            {/* Identity photo */}
+            {faceRequired && (
+              <Card
+                elevation={0}
+                sx={{
+                  width: '100%',
+                  borderRadius: 2.5,
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                  bgcolor: '#FFFFFF',
+                }}
+              >
+                <CardContent sx={{ p: 3, '&:last-child': { pb: 3 } }}>
+                  <Stack direction="row" alignItems="center" spacing={1.5} sx={{ pb: 2, mb: 3, borderBottom: '1px solid #F1F5F9' }}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: 'rgba(242, 101, 34, 0.08)', color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <FaceRetouchingNaturalOutlinedIcon sx={{ fontSize: 18 }} />
+                    </Box>
+                    <Box sx={{ flexGrow: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1.05rem', color: '#0F172A' }}>
+                        Identity Photo
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                        Used only to confirm the same person completes this exam.
+                      </Typography>
+                    </Box>
+                    <Chip
+                      size="small"
+                      label={facePhoto ? 'Captured' : 'Required'}
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: '0.72rem',
+                        bgcolor: facePhoto ? 'rgba(34, 197, 94, 0.08)' : 'rgba(242, 101, 34, 0.08)',
+                        color: facePhoto ? '#16A34A' : '#F26522',
+                        border: `1px solid ${facePhoto ? 'rgba(34, 197, 94, 0.25)' : 'rgba(242, 101, 34, 0.25)'}`,
+                        borderRadius: 1.5,
+                      }}
+                    />
+                  </Stack>
+                  {stream ? (
+                    <FaceReferenceCapture
+                      stream={stream}
+                      disabled={isStartingSession}
+                      onAccepted={setFacePhoto}
+                      onReset={() => setFacePhoto(null)}
+                      onUnavailable={() => setFaceUnavailable(true)}
+                    />
+                  ) : (
+                    <Typography variant="body2" sx={{ color: '#94A3B8' }}>
+                      Allow camera access to take your identity photo.
+                    </Typography>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* CTA */}
             <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 1, gap: 1.5 }}>
               <Button
@@ -722,7 +802,9 @@ export default function WelcomeCheck() {
               </Button>
               {!isReady && (
                 <Typography variant="caption" sx={{ color: '#EF4444', fontSize: '0.8rem', fontWeight: 500}}>
-                  Please allow camera and microphone permissions in your browser to proceed.
+                  {!hardwareReady
+                    ? 'Please allow camera and microphone permissions in your browser to proceed.'
+                    : 'Please take your identity photo to proceed.'}
                 </Typography>
               )}
             </Box>

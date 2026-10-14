@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Box, Typography, IconButton, Button, CircularProgress, Tooltip } from '@mui/material';
+import { Box, Typography, IconButton, Button, CircularProgress, Tooltip, Dialog, DialogTitle, DialogContent } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import MicIcon from '@mui/icons-material/Mic';
 import StopIcon from '@mui/icons-material/Stop';
@@ -18,6 +18,8 @@ import { useFraudDetection } from '@/hooks/useFraudDetection';
 import { useExamLockdown } from '@/hooks/useExamLockdown';
 import { exitFullscreen } from '@/utils/fullscreen';
 import { useNoiseDetection } from '@/hooks/useNoiseDetection';
+import { useFaceVerification } from '@/hooks/useFaceVerification';
+import FaceReferenceCapture from '@/components/FaceReferenceCapture';
 import { useAuth } from '@/store/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -124,6 +126,13 @@ export default function VivaInProgress() {
 
   // Fraud detection hook (noise detection is wired up below, once isRecording is available)
   const { detectorStatus } = useFraudDetection(sessionId, currentQuestion?.viva_question_id, isEndingRef);
+
+  // Identity check: periodic camera snapshots compared server-side with the
+  // reference photo taken at WelcomeCheck. `needsReference` is only true when
+  // that photo is missing (upload failed, or the session was resumed without one).
+  const { needsReference, saveReference, giveUp: giveUpFaceVerification } =
+    useFaceVerification(sessionId, currentQuestion?.viva_question_id, isEndingRef);
+  const [referenceError, setReferenceError] = useState('');
 
   // 2. Active Session Recovery: Fallback to server query if storage is missing on reload
   useEffect(() => {
@@ -592,6 +601,32 @@ export default function VivaInProgress() {
 
   return (
     <Box sx={{ minHeight: '100vh', bgcolor: '#F8FAFC', position: 'relative' }}>
+
+      <Dialog open={needsReference} maxWidth="sm" fullWidth disableEscapeKeyDown>
+        <DialogTitle sx={{ fontWeight: 700 }}>Take your identity photo</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: '#64748B', mb: 2 }}>
+            We need a clear photo of you before the exam continues. It is used only to confirm that the same person completes the session.
+          </Typography>
+          {referenceError && (
+            <Typography variant="body2" sx={{ color: '#B91C1C', mb: 1.5 }}>{referenceError}</Typography>
+          )}
+          <FaceReferenceCapture
+            stream={globalState.mediaStream}
+            onUnavailable={giveUpFaceVerification}
+            onAccepted={async (blob) => {
+              setReferenceError('');
+              try {
+                const result = await saveReference(blob);
+                if (!result.accepted) setReferenceError(result.messages?.join(' ') || 'That photo could not be used. Please retake it.');
+              } catch (err) {
+                if (err.response?.status === 503 || err.response?.status === 409) giveUpFaceVerification();
+                else setReferenceError('Could not save the photo. Please retake it.');
+              }
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <ExamSidebar
         traineeName={traineeName}

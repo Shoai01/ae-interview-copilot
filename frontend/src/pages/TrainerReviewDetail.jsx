@@ -21,8 +21,10 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import TabOutlinedIcon from '@mui/icons-material/TabOutlined';
 import FullscreenExitOutlinedIcon from '@mui/icons-material/FullscreenExitOutlined';
 import GraphicEqOutlinedIcon from '@mui/icons-material/GraphicEqOutlined';
+import FaceRetouchingOffIcon from '@mui/icons-material/FaceRetouchingOff';
 import VerifiedUserOutlinedIcon from '@mui/icons-material/VerifiedUserOutlined';
 import CustomAudioPlayer from '@/components/CustomAudioPlayer';
+import FaceVerificationPanel from '@/components/FaceVerificationPanel';
 import { vivaService } from '@/services/api';
 import { useAuth } from '@/store/AuthContext';
 import toast from 'react-hot-toast';
@@ -377,6 +379,9 @@ export default function TrainerReviewDetail() {
           </Card>
         )}
 
+        {/* Identity check: reference photo vs. periodic camera snapshots */}
+        <FaceVerificationPanel sessionId={sessionId} />
+
         {/* Whole-session integrity totals */}
         {questions.length > 0 && <SessionIntegrityTotals questions={questions} />}
 
@@ -686,6 +691,7 @@ const FLAG_META = {
   TAB_SWITCH: { label: 'Left the exam tab', color: '#8B5CF6' },
   FULLSCREEN_EXIT: { label: 'Exited fullscreen', color: '#0EA5E9' },
   BACKGROUND_NOISE: { label: 'Background noise', color: '#CA8A04' },
+  FACE_MISMATCH: { label: 'Face did not match the reference', color: '#DC2626' },
 };
 const flagMeta = (type) => FLAG_META[type] || { label: type, color: '#64748B' };
 
@@ -873,6 +879,7 @@ const FLAG_ICONS = {
   TAB_SWITCH: TabOutlinedIcon,
   FULLSCREEN_EXIT: FullscreenExitOutlinedIcon,
   BACKGROUND_NOISE: GraphicEqOutlinedIcon,
+  FACE_MISMATCH: FaceRetouchingOffIcon,
 };
 
 // Whole-session totals: for each kind of flag, how many times it happened and

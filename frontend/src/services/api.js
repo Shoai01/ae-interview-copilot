@@ -289,6 +289,46 @@ export const vivaService = {
     });
     return fraudFlagQueue;
   },
+  // --- Face verification ---------------------------------------------------
+  getFaceConfig: async () => {
+    const response = await api.get('/viva/face/config');
+    return response.data;
+  },
+  // Quality-check a candidate reference photo before the session exists.
+  // -> { accepted, reasons, messages }
+  precheckFacePhoto: async (photoBlob) => {
+    const formData = new FormData();
+    formData.append('file', photoBlob, 'reference.jpg');
+    const response = await api.post('/viva/face/precheck', formData);
+    return response.data;
+  },
+  uploadFaceReference: async (sessionId, photoBlob) => {
+    const formData = new FormData();
+    formData.append('file', photoBlob, 'reference.jpg');
+    const response = await api.post(`/viva/${sessionId}/face/reference`, formData);
+    return response.data;
+  },
+  // The server never says whether the snapshot matched; trainers read that in review.
+  checkFace: async (sessionId, snapshotBlob, vivaQuestionId) => {
+    const formData = new FormData();
+    formData.append('file', snapshotBlob, 'snapshot.jpg');
+    if (vivaQuestionId) formData.append('viva_question_id', String(vivaQuestionId));
+    const response = await api.post(`/viva/${sessionId}/face/check`, formData);
+    return response.data;
+  },
+  getFaceSummary: async (sessionId) => {
+    const response = await api.get(`/viva/${sessionId}/face/summary`);
+    return response.data;
+  },
+  // Images need the auth header, so they come back as blobs for URL.createObjectURL.
+  getFaceReferenceImage: async (sessionId) => {
+    const response = await api.get(`/viva/${sessionId}/face/reference-image`, { responseType: 'blob' });
+    return response.data;
+  },
+  getFaceCheckImage: async (sessionId, checkId) => {
+    const response = await api.get(`/viva/${sessionId}/face/checks/${checkId}/image`, { responseType: 'blob' });
+    return response.data;
+  },
   submitDecision: async (sessionId, decision, notes, finalScore) => {
     const payload = { decision, notes: notes || null };
     if (finalScore !== undefined && finalScore !== null) {
