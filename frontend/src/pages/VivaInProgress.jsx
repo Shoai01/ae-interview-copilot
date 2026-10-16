@@ -20,6 +20,7 @@ import { exitFullscreen } from '@/utils/fullscreen';
 import { ensureExamStream, releaseAllMedia } from '@/utils/mediaStreams';
 import { useNoiseDetection } from '@/hooks/useNoiseDetection';
 import { useFaceVerification } from '@/hooks/useFaceVerification';
+import { useIntegrityGuard } from '@/hooks/useIntegrityGuard';
 import FaceReferenceCapture from '@/components/FaceReferenceCapture';
 import { useAuth } from '@/store/AuthContext';
 import toast from 'react-hot-toast';
@@ -364,17 +365,24 @@ export default function VivaInProgress() {
     }
   }, [currentQuestion, loading, speakQuestion]);
 
-  const handleAutoSubmit = useCallback(async () => {
+  // reason: 'timeout' (session duration ran out) or 'integrity' (violation points limit reached).
+  const handleAutoSubmit = useCallback(async (reason = 'timeout') => {
     if (isAutoSubmittingRef.current || submitting || hasSessionBeenSubmitted(sessionId)) return;
     isAutoSubmittingRef.current = true;
+    const byIntegrity = reason === 'integrity';
     setSubmitting(true);
     cancelSpeech();
 
-    toast("Session duration has expired. Submitting your assessment...", {
-      icon: '⏱️',
-      duration: 5000,
-      id: 'session-timeout-auto'
-    });
+    toast(
+      byIntegrity
+        ? "Too many integrity violations. Your exam is being submitted automatically..."
+        : "Session duration has expired. Submitting your assessment...",
+      {
+        icon: byIntegrity ? '🚫' : '⏱️',
+        duration: 5000,
+        id: 'session-timeout-auto'
+      }
+    );
 
     try {
       if (isRecording) {
@@ -387,7 +395,8 @@ export default function VivaInProgress() {
       await stopAudioCapture();
 
       if (currentQuestion) {
-        const transcriptToSubmit = getTranscriptText() || "(Session duration expired)";
+        const transcriptToSubmit = getTranscriptText()
+          || (byIntegrity ? "(Exam ended: integrity violation limit reached)" : "(Session duration expired)");
         try {
           await vivaService.submitAnswer(sessionId, currentQuestion.viva_question_id, transcriptToSubmit);
           try {
@@ -413,9 +422,12 @@ export default function VivaInProgress() {
       markSessionSubmitted(sessionId);
       exitFullscreen();
 
-      vivaService.evaluateSession(sessionId).catch(e => console.error("Evaluation error on timeout:", e));
+      vivaService.evaluateSession(sessionId).catch(e => console.error("Evaluation error on auto-submit:", e));
 
-      navigate('/complete', { state: { sessionId, timeExpired: true }, replace: true });
+      navigate('/complete', {
+        state: byIntegrity ? { sessionId, integrityEnded: true } : { sessionId, timeExpired: true },
+        replace: true,
+      });
     }
   }, [submitting, cancelSpeech, isRecording, isConnecting, stopRecording, cancelConnecting, closeConnection, stopAudioCapture, currentQuestion, getTranscriptText, sessionId, getAudioBlob, accessToken, navigate]);
 
@@ -425,6 +437,9 @@ export default function VivaInProgress() {
       handleAutoSubmit();
     }
   }, [timerExpired, loading, currentQuestion, handleAutoSubmit]);
+
+  // Violation points (scored server-side) reached the limit: end the exam now.
+  useIntegrityGuard(sessionId, isEndingRef, () => handleAutoSubmit('integrity'));
 
   // One-time alert when the session enters its final stretch — the sidebar
   // timer already turns amber, but a toast makes the low-time warning

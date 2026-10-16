@@ -25,8 +25,17 @@ class SessionResponse(BaseModel):
     start_time: Optional[datetime] = None
     new_user_password: Optional[str] = None
     face_reference_set: bool = False
+    end_reason: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class IntegrityStatusResponse(BaseModel):
+    enabled: bool
+    points: int
+    final_warning: bool
+    terminate: bool
+    end_reason: Optional[str] = None
+    poll_seconds: int
 
 class NextQuestionResponse(BaseModel):
     viva_question_id: int

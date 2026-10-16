@@ -1661,6 +1661,21 @@ function ReviewWorkspace() {
           </Stack>
         </Box>
 
+        {/* Exam ended by the system for too many integrity violations */}
+        {reportData.session?.end_reason && (
+          <Alert severity="error" sx={{ borderRadius: 2.5, border: '1px solid rgba(239, 68, 68, 0.25)' }}>
+            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+              This exam was auto-submitted by the system.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 0.5 }}>
+              {reportData.session.end_reason}
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: '#64748B' }}>
+              Answers after this point were not given. Review the flags below before deciding.
+            </Typography>
+          </Alert>
+        )}
+
         {/* Already-reviewed notice */}
         {reviewConflict && (
           <Alert severity="info" icon={<LockIcon sx={{ fontSize: 20 }} />} sx={{ borderRadius: 2.5, border: '1px solid rgba(99, 102, 241, 0.25)' }}>

@@ -627,7 +627,8 @@ def get_session_report(db: Session, session_id: int) -> viva_schemas.SessionFull
         duration_minutes=session.duration_minutes,
         total_questions=summary.total_questions,
         max_marks=session.max_marks,
-        start_time=session.start_time
+        start_time=session.start_time,
+        end_reason=session.end_reason
     )
 
     trainee_response = viva_schemas.TraineeResponse(

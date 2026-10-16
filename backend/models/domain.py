@@ -140,6 +140,9 @@ class VivaSession(Base):
     face_reference_path = Column(String, nullable=True)
     face_reference_embedding = Column(JSON, nullable=True)
     face_reference_at = Column(DateTime, nullable=True)
+    # Set when the exam was ended by the system rather than by the candidate or the
+    # timer (integrity-point limit reached — see integrity_service). Shown to trainers.
+    end_reason = Column(String, nullable=True)
 
     trainee = relationship("User", back_populates="sessions", foreign_keys=[trainee_id])
     module = relationship("TrainingModule", back_populates="sessions")

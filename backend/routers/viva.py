@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from core.database import get_db
 from schemas import viva as viva_schemas
-from services import viva_service, user_service, deepgram_service, keyterm_service, face_service, face_session_service
+from services import viva_service, user_service, deepgram_service, keyterm_service, face_service, face_session_service, integrity_service
 from repositories import viva_repository
 from core.deps import get_current_user, require_role
 from models.domain import User, UserRole
@@ -17,14 +17,15 @@ router = APIRouter(
     tags=["viva"]
 )
 
-def _verify_session_ownership(db: Session, session_id: int, current_user: User) -> None:
-    """Ensure the calling trainee owns this session before touching its data."""
+def _verify_session_ownership(db: Session, session_id: int, current_user: User) -> domain.VivaSession:
+    """Ensure the calling trainee owns this session before touching its data; returns it."""
     session = db.query(domain.VivaSession).filter(
         domain.VivaSession.id == session_id,
         domain.VivaSession.trainee_id == current_user.id
     ).first()
     if not session:
         raise HTTPException(status_code=403, detail="You are not authorized to access this session")
+    return session
 
 def _verify_session_access(db: Session, session_id: int, current_user: User) -> None:
     """Trainees may only access their own session; trainers/admins may review any session."""
@@ -446,6 +447,12 @@ def report_fraud_flag(session_id: int, flag_data: viva_schemas.FraudFlagCreate, 
     if not result:
         raise HTTPException(status_code=404, detail="Session or question not found")
     return viva_schemas.StatusResponse(status="flagged")
+
+@router.get("/{session_id}/integrity", response_model=viva_schemas.IntegrityStatusResponse)
+def get_integrity_status(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role([UserRole.TRAINEE]))):
+    """Polled by the exam page: warns near the point limit and says when to auto-submit."""
+    session = _verify_session_ownership(db, session_id, current_user)
+    return integrity_service.check(db, session)
 
 @router.post("/{session_id}/evaluate", response_model=viva_schemas.StatusResponse, status_code=status.HTTP_200_OK)
 def evaluate_session_route(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

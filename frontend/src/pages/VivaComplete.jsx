@@ -20,7 +20,8 @@ export default function VivaComplete() {
     if (location.state?.sessionId) {
       const data = {
         sessionId: location.state.sessionId,
-        timeExpired: Boolean(location.state.timeExpired)
+        timeExpired: Boolean(location.state.timeExpired),
+        integrityEnded: Boolean(location.state.integrityEnded)
       };
       try {
         sessionStorage.setItem('last_completed_viva_session', JSON.stringify(data));
@@ -37,6 +38,7 @@ export default function VivaComplete() {
   const [completionInfo, setCompletionInfo] = useState(getInitialCompletionData);
   const sessionId = completionInfo.sessionId;
   const timeExpired = completionInfo.timeExpired;
+  const integrityEnded = completionInfo.integrityEnded;
   
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -253,12 +255,12 @@ export default function VivaComplete() {
 
             {/* Headlines */}
             <Chip
-              label={timeExpired ? "TIME LIMIT REACHED • CONCLUDED" : "EXAMINATION CONCLUDED"}
+              label={integrityEnded ? "AUTO-SUBMITTED • INTEGRITY LIMIT" : timeExpired ? "TIME LIMIT REACHED • CONCLUDED" : "EXAMINATION CONCLUDED"}
               size="small"
               sx={{
-                bgcolor: timeExpired ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.08)',
-                color: timeExpired ? '#D97706' : '#16A34A',
-                border: `1px solid ${timeExpired ? 'rgba(245, 158, 11, 0.3)' : 'rgba(34, 197, 94, 0.25)'}`,
+                bgcolor: integrityEnded ? 'rgba(239, 68, 68, 0.1)' : timeExpired ? 'rgba(245, 158, 11, 0.1)' : 'rgba(34, 197, 94, 0.08)',
+                color: integrityEnded ? '#DC2626' : timeExpired ? '#D97706' : '#16A34A',
+                border: `1px solid ${integrityEnded ? 'rgba(239, 68, 68, 0.3)' : timeExpired ? 'rgba(245, 158, 11, 0.3)' : 'rgba(34, 197, 94, 0.25)'}`,
                 fontWeight: 700,
                 fontSize: '0.7rem',
                 letterSpacing: '0.05em',
@@ -291,7 +293,9 @@ export default function VivaComplete() {
                 mb: 4,
               }}
             >
-              {timeExpired 
+              {integrityEnded
+                ? "Your exam was submitted automatically because too many integrity violations were detected. Your answers so far have been saved, and your trainer will review the session."
+                : timeExpired 
                 ? "Your session reached its allotted duration and was automatically finalized. Your spoken responses and telemetry have been recorded for evaluation."
                 : "Your spoken responses and video session telemetry have been recorded. Your trainer and evaluator will review your performance report shortly."}
             </Typography>

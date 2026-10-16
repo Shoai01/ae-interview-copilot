@@ -405,10 +405,10 @@ export function FaceGalleryDialog({ open, onClose, sessionId, questions = [] }) 
             <Box sx={{ mt: 2.5 }}>
               <SectionLabel>Summary</SectionLabel>
               <Box sx={{ mt: 0.75, display: 'grid', gridTemplateColumns: { xs: 'repeat(auto-fit, minmax(110px, 1fr))', md: '1fr 1fr' }, gap: 1 }}>
-                <Stat label="Total checks" value={summary.total_checks} />
+                {/* Checks with no face in frame are left out so the three numbers add up. */}
+                <Stat label="Total checks" value={comparable} />
                 <Stat label="Matched" value={summary.matches} color="#059669" />
                 <Stat label="Did not match" value={summary.mismatches} color={flagged ? '#DC2626' : '#64748B'} />
-                {summary.no_face > 0 && <Stat label="No face seen" value={summary.no_face} color="#64748B" />}
               </Box>
               {summary.min_similarity != null && (
                 <Typography variant="caption" sx={{ color: '#64748B', display: 'block', mt: 1.25 }}>

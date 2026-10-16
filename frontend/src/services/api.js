@@ -299,6 +299,11 @@ export const vivaService = {
     return response.data;
   },
   // --- Face verification ---------------------------------------------------
+  // Integrity points so far -> { enabled, points, final_warning, terminate, end_reason, poll_seconds }.
+  getIntegrityStatus: async (sessionId) => {
+    const response = await api.get(`/viva/${sessionId}/integrity`);
+    return response.data;
+  },
   getFaceConfig: async () => {
     const response = await api.get('/viva/face/config');
     return response.data;
